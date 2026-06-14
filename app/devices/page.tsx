@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
 
+import RevokeDeviceButton from "@/components/devices/RevokeDeviceButton";
+
 export default async function DevicesPage() {
   const activations =
     await prisma.activation.findMany({
@@ -109,6 +111,10 @@ export default async function DevicesPage() {
               <th className="p-4 text-left">
                 Activated
               </th>
+
+<th className="p-4 text-left">
+  Actions
+</th>
             </tr>
           </thead>
 
@@ -120,8 +126,13 @@ export default async function DevicesPage() {
                   className="border-b border-zinc-800 hover:bg-zinc-800/30"
                 >
                   <td className="p-4">
-                    {activation.deviceName ||
-                      "Unknown Device"}
+<a
+  href={`/devices/${activation.id}`}
+  className="text-blue-400 hover:underline"
+>
+  {activation.deviceName ||
+    "Unknown Device"}
+</a>
                   </td>
 
                   <td className="p-4 font-mono text-xs">
@@ -167,7 +178,13 @@ export default async function DevicesPage() {
                       activation.createdAt
                     )}
                   </td>
-                </tr>
+     
+<td className="p-4">
+  <RevokeDeviceButton
+    id={activation.id}
+  />
+</td>
+      </tr>
               )
             )}
 
@@ -175,7 +192,7 @@ export default async function DevicesPage() {
               0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="p-8 text-center text-zinc-500"
                 >
                   No activated

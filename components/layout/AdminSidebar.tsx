@@ -52,27 +52,9 @@ const items = [
   },
 
   {
-    icon: UsersRound,
-    label: "Team Members",
-    href: "/team-members",
-  },
-
-  {
-    icon: UserCog,
-    label: "Roles",
-    href: "/roles",
-  },
-
-  {
     icon: Shield,
     label: "Owner",
     href: "/owner",
-  },
-
-  {
-    icon: KeyRound,
-    label: "Security Policies",
-    href: "/security-policies",
   },
 
   {

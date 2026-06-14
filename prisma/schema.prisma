@@ -31,7 +31,7 @@ model License {
   notes        String?
 
   createdAt    DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  updatedAt    DateTime @default(now()) @updatedAt
 
   activations  Activation[]
 }
@@ -66,4 +66,57 @@ model AuditLog {
   description   String?
 
   createdAt     DateTime @default(now())
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+
+  name      String
+  email     String   @unique
+
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  status    String   @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id          String       @id @default(cuid())
+
+  name        String       @unique
+  description String?
+
+  teamMembers TeamMember[]
+
+  permissions Permission[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+
+  roleId      String
+  role        Role     @relation(fields: [roleId], references: [id])
+
+  permission  String
+
+  createdAt   DateTime @default(now())
+}
+
+model SecurityPolicy {
+  id          String   @id @default(cuid())
+
+  name        String   @unique
+
+  enabled     Boolean  @default(true)
+
+  description String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
