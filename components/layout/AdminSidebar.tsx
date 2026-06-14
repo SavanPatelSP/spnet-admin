@@ -15,6 +15,9 @@ import {
   UserCog,
   KeyRound,
   UsersRound,
+  Monitor,
+  ClipboardList,
+  Settings,
 } from "lucide-react";
 
 const items = [
@@ -25,9 +28,21 @@ const items = [
   },
 
   {
-    icon: Shield,
-    label: "Owner",
-    href: "/owner",
+    icon: KeyRound,
+    label: "Licenses",
+    href: "/licenses",
+  },
+
+  {
+    icon: Monitor,
+    label: "Devices",
+    href: "/devices",
+  },
+
+  {
+    icon: ClipboardList,
+    label: "Audit Logs",
+    href: "/audit-logs",
   },
 
   {
@@ -37,39 +52,9 @@ const items = [
   },
 
   {
-    icon: FileText,
-    label: "Reports",
-    href: "/reports",
-  },
-
-  {
-    icon: BarChart3,
-    label: "Analytics",
-    href: "/analytics",
-  },
-
-  {
-    icon: Crown,
-    label: "Premium",
-    href: "/premium",
-  },
-
-  {
-    icon: CreditCard,
-    label: "Revenue",
-    href: "/revenue",
-  },
-
-  {
-    icon: Megaphone,
-    label: "Broadcasts",
-    href: "/broadcasts",
-  },
-
-  {
-    icon: KeyRound,
-    label: "Licenses",
-    href: "/licenses",
+    icon: UsersRound,
+    label: "Team Members",
+    href: "/team-members",
   },
 
   {
@@ -79,21 +64,51 @@ const items = [
   },
 
   {
+    icon: Shield,
+    label: "Owner",
+    href: "/owner",
+  },
+
+  {
     icon: KeyRound,
     label: "Security Policies",
     href: "/security-policies",
   },
 
   {
-    icon: UsersRound,
-    label: "Team Members",
-    href: "/team-members",
+    icon: BarChart3,
+    label: "Analytics",
+    href: "/analytics",
+  },
+
+  {
+    icon: CreditCard,
+    label: "Revenue",
+    href: "/revenue",
+  },
+
+  {
+    icon: Crown,
+    label: "Premium",
+    href: "/premium",
+  },
+
+  {
+    icon: Megaphone,
+    label: "Broadcasts",
+    href: "/broadcasts",
   },
 
   {
     icon: FileText,
-    label: "Audit Logs",
-    href: "/audit-logs",
+    label: "Reports",
+    href: "/reports",
+  },
+
+  {
+    icon: Settings,
+    label: "Settings",
+    href: "/settings",
   },
 ];
 
@@ -102,26 +117,25 @@ export default function AdminSidebar() {
 
   return (
     <aside className="w-72 border-r border-zinc-800 bg-zinc-950 min-h-screen">
-
-      <div className="p-6 border-b border-zinc-800">
-
-        <h1 className="text-2xl font-black">
+      <div className="border-b border-zinc-800 p-6">
+        <h1 className="text-2xl font-black tracking-tight">
           SP-NET
         </h1>
 
-        <p className="text-sm text-zinc-500 mt-1">
+        <p className="mt-1 text-sm text-zinc-500">
           Enterprise Control Center
         </p>
-
       </div>
 
       <nav className="p-4 space-y-2">
-
         {items.map((item) => {
           const Icon = item.icon;
 
           const active =
-            pathname === item.href;
+            pathname === item.href ||
+            pathname.startsWith(
+              item.href + "/"
+            );
 
           return (
             <Link
@@ -135,24 +149,23 @@ export default function AdminSidebar() {
                 px-4
                 py-3
                 transition-all
+                duration-200
                 ${
                   active
-                    ? "bg-blue-600 text-white"
-                    : "hover:bg-zinc-900 text-zinc-300"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/30"
+                    : "text-zinc-300 hover:bg-zinc-900 hover:text-white"
                 }
               `}
             >
               <Icon size={20} />
 
-              <span>
+              <span className="font-medium">
                 {item.label}
               </span>
             </Link>
           );
         })}
-
       </nav>
-
     </aside>
   );
 }

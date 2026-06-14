@@ -19,6 +19,10 @@ export default async function LicensesPage() {
     (license) => license.status === "ACTIVE"
   ).length;
 
+  const suspendedLicenses = licenses.filter(
+    (license) => license.status === "SUSPENDED"
+  ).length;
+
   const totalDevices = licenses.reduce(
     (total, license) =>
       total + license.activations.length,
@@ -31,23 +35,44 @@ export default async function LicensesPage() {
     0
   );
 
+  const utilization =
+    totalCapacity === 0
+      ? 0
+      : Math.round(
+          (totalDevices / totalCapacity) * 100
+        );
+
+  const expiringSoon = licenses.filter((license) => {
+    const expiry = new Date(
+      Number(license.expiresAt)
+    );
+
+    const days =
+      (expiry.getTime() - Date.now()) /
+      (1000 * 60 * 60 * 24);
+
+    return days >= 0 && days <= 30;
+  }).length;
+
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-4xl font-bold">
             License Management
           </h1>
 
           <p className="mt-2 text-zinc-500">
-            Create, manage and monitor enterprise licenses.
+            Enterprise license operations,
+            monitoring and lifecycle
+            management.
           </p>
         </div>
 
         <CreateLicenseModal />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-6">
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
           <p className="text-sm text-zinc-500">
             Total Licenses
@@ -60,11 +85,31 @@ export default async function LicensesPage() {
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
           <p className="text-sm text-zinc-500">
-            Active Licenses
+            Active
           </p>
 
           <h2 className="mt-2 text-3xl font-bold text-green-400">
             {activeLicenses}
+          </h2>
+        </div>
+
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+          <p className="text-sm text-zinc-500">
+            Suspended
+          </p>
+
+          <h2 className="mt-2 text-3xl font-bold text-yellow-400">
+            {suspendedLicenses}
+          </h2>
+        </div>
+
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+          <p className="text-sm text-zinc-500">
+            Expiring Soon
+          </p>
+
+          <h2 className="mt-2 text-3xl font-bold text-red-400">
+            {expiringSoon}
           </h2>
         </div>
 
@@ -80,18 +125,18 @@ export default async function LicensesPage() {
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
           <p className="text-sm text-zinc-500">
-            Device Capacity
+            Utilization
           </p>
 
           <h2 className="mt-2 text-3xl font-bold">
-            {totalCapacity}
+            {utilization}%
           </h2>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+      <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl">
         <table className="w-full">
-          <thead className="border-b border-zinc-800">
+          <thead className="border-b border-zinc-800 bg-zinc-950/40">
             <tr>
               <th className="p-4 text-left">
                 License Key
@@ -102,7 +147,7 @@ export default async function LicensesPage() {
               </th>
 
               <th className="p-4 text-left">
-                Plan
+                Plan & Health
               </th>
 
               <th className="p-4 text-left">
@@ -127,15 +172,15 @@ export default async function LicensesPage() {
             {licenses.map((license) => (
               <tr
                 key={license.id}
-                className="border-b border-zinc-800"
+                className="border-b border-zinc-800 hover:bg-zinc-800/30"
               >
                 <td className="p-4 font-mono text-sm">
-<a
-  href={`/licenses/${license.id}`}
-  className="text-blue-400 hover:underline"
->
-  {license.key}
-</a>	
+                  <a
+                    href={`/licenses/${license.id}`}
+                    className="text-blue-400 hover:underline"
+                  >
+                    {license.key}
+                  </a>
                 </td>
 
                 <td className="p-4">
@@ -143,7 +188,22 @@ export default async function LicensesPage() {
                 </td>
 
                 <td className="p-4">
-                  {license.plan}
+                  <div>
+                    <div>{license.plan}</div>
+
+                    <div className="mt-1">
+                      {license.status ===
+                      "ACTIVE" ? (
+                        <span className="text-xs text-green-400">
+                          Healthy
+                        </span>
+                      ) : (
+                        <span className="text-xs text-yellow-400">
+                          Attention Needed
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </td>
 
                 <td className="p-4">
@@ -171,9 +231,11 @@ export default async function LicensesPage() {
                 <td className="p-4">
                   <span
                     className={
-                      license.status === "ACTIVE"
+                      license.status ===
+                      "ACTIVE"
                         ? "rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-400"
-                        : license.status === "SUSPENDED"
+                        : license.status ===
+                          "SUSPENDED"
                         ? "rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-400"
                         : "rounded-full bg-red-500/10 px-3 py-1 text-xs text-red-400"
                     }

@@ -1,14 +1,16 @@
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const license = await prisma.license.findUnique({
-      where: {
-        id: body.id,
-      },
-    });
+    const license =
+      await prisma.license.findUnique({
+        where: {
+          id: body.id,
+        },
+      });
 
     if (!license) {
       return Response.json(
@@ -27,18 +29,33 @@ export async function POST(req: Request) {
         where: {
           id: body.id,
         },
+
         data: {
           status: newStatus,
         },
       });
 
-    return Response.json(updated);
+    await logAudit(
+      newStatus === "ACTIVE"
+        ? "LICENSE_REACTIVATED"
+        : "LICENSE_SUSPENDED",
+      updated.id,
+      `${updated.organization}`
+    );
+
+    return Response.json(
+      updated
+    );
   } catch (error) {
     console.error(error);
 
     return Response.json(
-      { error: "Failed" },
-      { status: 500 }
+      {
+        error: "Failed",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

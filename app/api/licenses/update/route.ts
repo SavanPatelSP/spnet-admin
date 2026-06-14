@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 function parseExpiryDate(dateString: string) {
   const [year, month, day] =
@@ -60,6 +61,12 @@ export async function POST(req: Request) {
             body.notes ?? "",
         },
       });
+
+    await logAudit(
+      "LICENSE_UPDATED",
+      license.id,
+      `Updated ${license.organization}`
+    );
 
     return Response.json(
       license

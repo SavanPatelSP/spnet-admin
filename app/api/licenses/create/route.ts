@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 import { randomBytes } from "crypto";
 
 function generateKey() {
@@ -25,57 +26,82 @@ function parseExpiryDate(dateString: string) {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  try {
+    const body = await req.json();
 
-  if (!body.organization?.trim()) {
+    if (!body.organization?.trim()) {
+      return Response.json(
+        { error: "Organization required" },
+        { status: 400 }
+      );
+    }
+
+    const expiryDate =
+      body.expiresAt
+        ? parseExpiryDate(
+            body.expiresAt
+          )
+        : new Date(
+            2027,
+            11,
+            31,
+            12,
+            0,
+            0
+          );
+
+    const license =
+      await prisma.license.create({
+        data: {
+          key: generateKey(),
+
+          organization:
+            body.organization,
+
+          plan:
+            body.plan ||
+            "ENTERPRISE",
+
+          status:
+            body.status ||
+            "ACTIVE",
+
+          maxDevices:
+            Number(
+              body.maxDevices
+            ) || 10,
+
+          expiresAt:
+            expiryDate,
+
+          notes:
+            body.notes || "",
+        },
+      });
+
+await logAudit(
+  "LICENSE_CREATED",
+  license.id,
+  license.organization,
+  "SUPER_ADMIN",
+  "Savan Patel",
+  `Created license for ${license.organization}`
+);
+
     return Response.json(
-      { error: "Organization required" },
-      { status: 400 }
+      license
+    );
+  } catch (error) {
+    console.error(error);
+
+    return Response.json(
+      {
+        error:
+          "Failed to create license",
+      },
+      {
+        status: 500,
+      }
     );
   }
-
-  const expiryDate =
-    body.expiresAt
-      ? parseExpiryDate(body.expiresAt)
-      : new Date(
-          2027,
-          11,
-          31,
-          12,
-          0,
-          0
-        );
-
-  const license =
-    await prisma.license.create({
-      data: {
-        key: generateKey(),
-
-        organization:
-          body.organization,
-
-        plan:
-          body.plan ||
-          "ENTERPRISE",
-
-        status:
-          body.status ||
-          "ACTIVE",
-
-        maxDevices:
-          Number(
-            body.maxDevices
-          ) || 10,
-
-        expiresAt:
-          expiryDate,
-
-        notes:
-          body.notes || "",
-      },
-    });
-
-  return Response.json(
-    license
-  );
 }

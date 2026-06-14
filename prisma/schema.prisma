@@ -8,56 +8,62 @@ datasource db {
 }
 
 model User {
-  id    String @id @default(cuid())
-  name  String
-  email String @unique
-  role  String
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String
 
   createdAt DateTime @default(now())
 }
 
 model License {
-  id String @id @default(cuid())
-
-  key String @unique
+  id           String   @id @default(cuid())
+  key          String   @unique
 
   organization String
+  plan         String
+  status       String
 
-  plan String
+  maxDevices   Int
 
-  status String
+  expiresAt    DateTime
 
-  maxDevices Int
+  notes        String?
 
-  expiresAt DateTime
+  createdAt    DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-  notes String?
-
-  createdAt DateTime @default(now())
-
-  activations Activation[]
+  activations  Activation[]
 }
 
 model Activation {
-  id String @id @default(cuid())
+  id         String   @id @default(cuid())
 
-  licenseId String
+  licenseId  String
+  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
 
-  deviceId String
-
+  deviceId   String
   deviceName String?
 
-  ipAddress String?
+  ipAddress  String?
 
-  activatedAt DateTime @default(now())
-
-  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 }
 
-model SecurityPolicy {
-  id String @id @default(cuid())
+model AuditLog {
+  id            String   @id @default(cuid())
 
-  role String @unique
+  action        String
 
-  revalidationDays Int
+  licenseId     String?
+
+  organization  String?
+
+  actorRole     String?
+
+  actorName     String?
+
+  description   String?
+
+  createdAt     DateTime @default(now())
 }

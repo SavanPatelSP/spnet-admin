@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 import { randomBytes } from "crypto";
 
 function generateKey() {
@@ -24,6 +25,12 @@ export async function POST(req: Request) {
           key: generateKey(),
         },
       });
+
+    await logAudit(
+      "LICENSE_KEY_REGENERATED",
+      license.id,
+      `${license.organization}`
+    );
 
     return Response.json(
       license
