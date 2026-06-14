@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,
+  YAxis,
   Tooltip,
-  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 
 const data = [
@@ -19,18 +21,28 @@ const data = [
 
 export default function RevenueChart() {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="text-xl font-semibold mb-4">
-        Revenue Growth
-      </h2>
+    <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">
+            Revenue Growth
+          </h2>
 
-<div className="h-[300px] w-full">
-  <ResponsiveContainer
-    width="100%"
-    height="100%"
-  >
+          <p className="text-sm text-zinc-500">
+            Monthly recurring revenue trend
+          </p>
+        </div>
+      </div>
+
+      <div className="h-[350px] w-full min-h-[350px]">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+
             <XAxis dataKey="month" />
+
+            <YAxis />
+
             <Tooltip />
 
             <Line
@@ -39,6 +51,7 @@ export default function RevenueChart() {
               stroke="#3b82f6"
               strokeWidth={3}
               dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
             />
           </LineChart>
         </ResponsiveContainer>
