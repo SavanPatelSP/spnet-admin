@@ -130,7 +130,12 @@ export default async function LicensesPage() {
                 className="border-b border-zinc-800"
               >
                 <td className="p-4 font-mono text-sm">
-                  {license.key}
+<a
+  href={`/licenses/${license.id}`}
+  className="text-blue-400 hover:underline"
+>
+  {license.key}
+</a>	
                 </td>
 
                 <td className="p-4">
