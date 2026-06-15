@@ -1,47 +1,35 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ActionButton } from "@/components/ui/ActionButton";
+import { API_ROUTES } from "@/lib/constants";
+import { useEffect, useState } from "react";
+import { ToggleLeft, ToggleRight } from "lucide-react";
 
-export default function PolicyActions({
-  id,
-  enabled,
-}: {
+interface Props {
   id: string;
   enabled: boolean;
-}) {
+  name: string;
+}
+
+export default function PolicyActions({ id, enabled, name }: Props) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   async function toggle() {
-    await fetch(
-      "/api/security/toggle-policy",
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          id,
-          enabled: !enabled,
-        }),
-      }
-    );
-
-    router.refresh();
+    const response = await fetch(API_ROUTES.SECURITY.TOGGLE_POLICY, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, enabled: !enabled }),
+    });
+    if (response.ok) router.refresh();
   }
 
-  return (
-    <button
-      onClick={toggle}
-      className={`rounded-lg px-4 py-2 text-sm ${
-        enabled
-          ? "bg-red-600 text-white"
-          : "bg-green-600 text-white"
-      }`}
-    >
-      {enabled
-        ? "Disable"
-        : "Enable"}
-    </button>
-  );
+  return mounted ? (
+    <ActionButton onClick={toggle} variant={enabled ? "secondary" : "primary"} size="sm">
+      {enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+      {enabled ? "Disable" : "Enable"}
+    </ActionButton>
+  ) : null;
 }

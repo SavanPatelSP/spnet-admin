@@ -1,100 +1,69 @@
-const contentQueue = [
-  {
-    id: "#C1021",
-    type: "Post",
-    author: "john",
-    status: "Pending",
-  },
-  {
-    id: "#C1020",
-    type: "Photo",
-    author: "alex",
-    status: "Flagged",
-  },
-  {
-    id: "#C1019",
-    type: "Message",
-    author: "mike",
-    status: "Review",
-  },
-];
+export const dynamic = "force-dynamic";
 
-export default function ContentPage() {
+import { prisma } from "@/lib/prisma";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
+import { DataTable } from "@/components/ui/DataTable";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { FileText, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { formatDateTime } from "@/lib/shared";
+
+export default async function ContentPage() {
+  const auditLogs = await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
+
+  const contentActions = ["LICENSE_CREATED", "LICENSE_UPDATED", "LICENSE_KEY_REGENERATED"];
+  const contentItems = auditLogs.filter((l) => contentActions.includes(l.action));
+
   return (
     <div className="space-y-8">
+      <PageHeader title="Content Moderation" description="Review and manage platform content and moderation queue." />
 
-      <div>
-        <h1 className="text-5xl font-black">
-          Content Moderation
-        </h1>
+      <StatCardGrid columns={4}>
+        <StatCard title="Total Items" value={contentItems.length} icon={FileText} color="blue" />
+        <StatCard title="Flagged" value={0} icon={AlertTriangle} color="red" subtitle="Awaiting review" />
+        <StatCard title="Approved" value={contentItems.length} icon={CheckCircle} color="green" />
+        <StatCard title="Pending" value={0} icon={Clock} color="yellow" />
+      </StatCardGrid>
 
-        <p className="text-zinc-400 mt-2">
-          Review flagged content and moderation actions
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-4 gap-6">
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-zinc-400">Pending Reviews</p>
-          <h2 className="text-4xl font-black mt-2">127</h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-zinc-400">Flagged Posts</p>
-          <h2 className="text-4xl font-black mt-2">43</h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-zinc-400">Removed Today</p>
-          <h2 className="text-4xl font-black mt-2">18</h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-zinc-400">Appeals Open</p>
-          <h2 className="text-4xl font-black mt-2">6</h2>
-        </div>
-
-      </div>
-
-      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 overflow-hidden">
-
-        <table className="w-full">
-
-          <thead className="bg-zinc-800/70">
-            <tr>
-              <th className="text-left p-4">ID</th>
-              <th className="text-left p-4">Type</th>
-              <th className="text-left p-4">Author</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {contentQueue.map((item) => (
-              <tr
-                key={item.id}
-                className="border-t border-zinc-800"
-              >
-                <td className="p-4">{item.id}</td>
-                <td className="p-4">{item.type}</td>
-                <td className="p-4">{item.author}</td>
-                <td className="p-4">{item.status}</td>
-
-                <td className="p-4">
-                  <button className="px-3 py-1 rounded-lg bg-zinc-800">
-                    Review
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-
-        </table>
-
-      </div>
-
+      <DataTable
+        columns={[
+          {
+            key: "action",
+            label: "Type",
+            sortable: true,
+            render: (c: Record<string, unknown>) => <StatusBadge status={(c.action as string)?.replace(/_/g, " ")} />,
+          },
+          {
+            key: "description",
+            label: "Content",
+            sortable: false,
+            searchable: true,
+            render: (c: Record<string, unknown>) => <span className="text-sm">{c.description as string || "-"}</span>,
+          },
+          {
+            key: "organization",
+            label: "Organization",
+            sortable: true,
+            searchable: true,
+          },
+          {
+            key: "actorName",
+            label: "Author",
+            sortable: true,
+            render: (c: Record<string, unknown>) => (c.actorName as string) || "-",
+          },
+          {
+            key: "createdAt",
+            label: "Date",
+            sortable: true,
+            render: (c: Record<string, unknown>) => formatDateTime(c.createdAt as Date),
+          },
+        ]}
+        data={contentItems as unknown as Record<string, unknown>[]}
+        keyExtractor={(c) => c.id as string}
+        emptyMessage="No content items found."
+        searchPlaceholder="Search content..."
+      />
     </div>
   );
 }
