@@ -62,4 +62,14 @@ async function main() {
   }
 }
 
-main();
+main()
+  .then(() => {
+    console.log("✅ Seed complete");
+  })
+  .catch((error) => {
+    console.error("❌ Seed failed");
+    console.error(error);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

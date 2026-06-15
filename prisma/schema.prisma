@@ -84,17 +84,20 @@ model TeamMember {
 }
 
 model Role {
-  id          String       @id @default(cuid())
+  id          String   @id @default(cuid())
 
-  name        String       @unique
+  name        String   @unique
   description String?
 
-  teamMembers TeamMember[]
+  riskLevel   String   @default("Medium")
 
-  permissions Permission[]
+  protected   Boolean  @default(false)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  members     TeamMember[]
+  permissions Permission[]
 }
 
 model Permission {
@@ -109,14 +112,20 @@ model Permission {
 }
 
 model SecurityPolicy {
-  id          String   @id @default(cuid())
+  id            String   @id @default(cuid())
 
-  name        String   @unique
+  name          String   @unique
 
-  enabled     Boolean  @default(true)
+  enabled       Boolean  @default(true)
 
-  description String?
+  description   String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  category      String   @default("General")
+
+  severity      String   @default("Medium")
+
+  systemManaged Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

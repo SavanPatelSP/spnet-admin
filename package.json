@@ -2,6 +2,9 @@
   "name": "spnet-admin",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -32,6 +35,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }
