@@ -1,8 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const hash = await bcrypt.hash("admin123", 12);
+
   const owner = await prisma.role.upsert({
     where: { name: "OWNER" },
     update: {},
@@ -45,16 +48,58 @@ async function main() {
     create: { name: "ANALYST", description: "Read-only analytics access", riskLevel: "Low", protected: false },
   });
 
+  // Create owner team member with license
+  const ownerLicense = await prisma.license.upsert({
+    where: { key: "SPNET-OWNER-00001-ADMIN" },
+    update: {},
+    create: {
+      key: "SPNET-OWNER-00001-ADMIN",
+      organization: "SP-NET",
+      plan: "ENTERPRISE",
+      status: "ACTIVE",
+      maxDevices: 25,
+      expiresAt: new Date("2030-12-31"),
+      notes: "Owner license key",
+    },
+  });
+
   await prisma.teamMember.upsert({
     where: { email: "owner@spnet.local" },
     update: {},
-    create: { name: "Savan Patel", email: "owner@spnet.local", roleId: owner.id },
+    create: {
+      name: "Savan Patel",
+      email: "owner@spnet.local",
+      password: hash,
+      roleId: owner.id,
+      licenseId: ownerLicense.id,
+    },
   });
 
-  const superAdminMember = await prisma.teamMember.upsert({
+  // Create admin team member with license
+  const adminLicense = await prisma.license.upsert({
+    where: { key: "SPNET-ADMIN-00002-ADMIN" },
+    update: {},
+    create: {
+      key: "SPNET-ADMIN-00002-ADMIN",
+      organization: "SP-NET",
+      plan: "ENTERPRISE",
+      status: "ACTIVE",
+      maxDevices: 15,
+      expiresAt: new Date("2028-06-30"),
+      notes: "Admin license key",
+    },
+  });
+
+  await prisma.teamMember.upsert({
     where: { email: "admin@spnet.local" },
     update: {},
-    create: { name: "Admin User", email: "admin@spnet.local", roleId: superAdmin.id },
+    create: {
+      name: "Admin User",
+      email: "admin@spnet.local",
+      password: hash,
+      roleId: superAdmin.id,
+      licenseId: adminLicense.id,
+    },
   });
 
   const securityPolicies = [
@@ -77,6 +122,8 @@ async function main() {
   }
 
   console.log("Seed complete");
+  console.log("  Owner: owner@spnet.local / admin123 / SPNET-OWNER-00001-ADMIN");
+  console.log("  Admin: admin@spnet.local / admin123 / SPNET-ADMIN-00002-ADMIN");
 }
 
 main()

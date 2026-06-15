@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function logAudit(
   action: string,
-  licenseId?: string,
-  organization?: string,
-  actorRole?: string,
-  actorName?: string,
-  description?: string
+  licenseId?: string | null,
+  organization?: string | null,
+  actorRole?: string | null,
+  actorName?: string | null,
+  description?: string | null,
+  actorEmail?: string | null
 ) {
   await prisma.auditLog.create({
     data: {
@@ -16,6 +17,7 @@ export async function logAudit(
       actorRole,
       actorName,
       description,
+      actorEmail,
     },
   });
 }

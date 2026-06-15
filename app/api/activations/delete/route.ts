@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth-helpers";
+import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function DELETE(req: Request) {
   try {
+    const session = await requireAuth();
     const body = await req.json();
     const activation = await prisma.activation.findUnique({
       where: { id: body.id },
@@ -20,8 +22,8 @@ export async function DELETE(req: Request) {
       AUDIT_ACTIONS.ACTIVATION_DELETED,
       activation.licenseId,
       activation.license.organization,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Deleted activation for device ${activation.deviceName || activation.deviceId}`
     );
 

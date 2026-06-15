@@ -1,62 +1,65 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, ReactNode } from "react";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/shared";
 
-interface Column<T> {
+interface Column {
   key: string;
   label: string;
   sortable?: boolean;
   searchable?: boolean;
-  render?: (item: T) => React.ReactNode;
   className?: string;
 }
 
-interface DataTableProps<T> {
-  columns: Column<T>[];
-  data: T[];
-  keyExtractor: (item: T) => string;
-  onRowClick?: (item: T) => void;
+interface Row {
+  id: string;
+  values: Record<string, unknown>;
+  cells: ReactNode[];
+}
+
+interface DataTableProps {
+  columns: Column[];
+  rows: Row[];
+  onRowClick?: (id: string) => void;
   pageSize?: number;
   emptyMessage?: string;
   searchPlaceholder?: string;
   className?: string;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable({
   columns,
-  data,
-  keyExtractor,
+  rows,
   onRowClick,
   pageSize = 10,
   emptyMessage = "No data found.",
   searchPlaceholder = "Search...",
   className,
-}: DataTableProps<T>) {
+}: DataTableProps) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
 
-  const searchableColumns = useMemo(() => columns.filter((c) => c.searchable).map((c) => c.key), [columns]);
+  const searchableColumnKeys = useMemo(() => columns.filter((c) => c.searchable).map((c) => c.key), [columns]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return data;
+    if (!search.trim()) return rows;
     const q = search.toLowerCase();
-    return data.filter((item) =>
-      searchableColumns.some((key) => {
-        const val = item[key];
+    return rows.filter((row) =>
+      searchableColumnKeys.some((key) => {
+        const val = row.values[key];
         return val != null && String(val).toLowerCase().includes(q);
       })
     );
-  }, [data, search, searchableColumns]);
+  }, [rows, search, searchableColumnKeys]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
     return [...filtered].sort((a, b) => {
-      const aVal = a[sortKey];
-      const bVal = b[sortKey];
+      const aVal = a.values[sortKey];
+      const bVal = b.values[sortKey];
       if (aVal == null) return 1;
       if (bVal == null) return -1;
       const cmp = typeof aVal === "string" ? aVal.localeCompare(String(bVal)) : Number(aVal) - Number(bVal);
@@ -123,18 +126,18 @@ export function DataTable<T extends Record<string, unknown>>({
             </tr>
           </thead>
           <tbody>
-            {paged.map((item) => (
+            {paged.map((row) => (
               <tr
-                key={keyExtractor(item)}
+                key={row.id}
                 className={cn(
                   "border-b border-zinc-800 transition-colors",
                   onRowClick ? "cursor-pointer hover:bg-zinc-800/30" : "hover:bg-zinc-800/20",
                 )}
-                onClick={() => onRowClick?.(item)}
+                onClick={() => onRowClick?.(row.id)}
               >
-                {columns.map((col) => (
-                  <td key={col.key} className={cn("p-4", col.className)}>
-                    {col.render ? col.render(item) : String(item[col.key] ?? "-")}
+                {row.cells.map((cell, i) => (
+                  <td key={columns[i]?.key ?? i} className={cn("p-4", columns[i]?.className)}>
+                    {cell ?? "-"}
                   </td>
                 ))}
               </tr>

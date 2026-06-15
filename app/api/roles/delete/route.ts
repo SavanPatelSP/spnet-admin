@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth-helpers";
+import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function DELETE(req: Request) {
   try {
+    const session = await requireAuth();
     const { id } = await req.json();
     const role = await prisma.role.findUnique({
       where: { id },
@@ -29,8 +31,8 @@ export async function DELETE(req: Request) {
       AUDIT_ACTIONS.ROLE_DELETED,
       undefined,
       undefined,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Deleted role "${role.name}"`
     );
 

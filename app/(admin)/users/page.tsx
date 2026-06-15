@@ -30,47 +30,31 @@ export default async function UsersPage() {
 
       <DataTable
         columns={[
-          {
-            key: "name",
-            label: "Name",
-            sortable: true,
-            searchable: true,
-            render: (m: Record<string, unknown>) => <span className="font-medium">{m.name as string}</span>,
-          },
-          {
-            key: "email",
-            label: "Email",
-            sortable: true,
-            searchable: true,
-          },
-          {
-            key: "role",
-            label: "Role",
-            sortable: true,
-            render: (m: Record<string, unknown>) => {
-              const role = m.role as { name: string; riskLevel: string };
-              return (
-                <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs font-medium">
-                  {role.name}
-                </span>
-              );
-            },
-          },
-          {
-            key: "status",
-            label: "Status",
-            sortable: true,
-            render: (m: Record<string, unknown>) => <StatusBadge status={m.status as string} />,
-          },
-          {
-            key: "createdAt",
-            label: "Joined",
-            sortable: true,
-            render: (m: Record<string, unknown>) => formatDate(m.createdAt as Date),
-          },
+          { key: "name", label: "Name", sortable: true, searchable: true },
+          { key: "email", label: "Email", sortable: true, searchable: true },
+          { key: "role", label: "Role", sortable: true },
+          { key: "status", label: "Status", sortable: true },
+          { key: "createdAt", label: "Joined", sortable: true },
         ]}
-        data={teamMembers as unknown as Record<string, unknown>[]}
-        keyExtractor={(m) => m.id as string}
+        rows={teamMembers.map((m) => ({
+          id: m.id,
+          values: {
+            name: m.name,
+            email: m.email,
+            role: m.role.name,
+            status: m.status,
+            createdAt: m.createdAt.toISOString(),
+          },
+          cells: [
+            <span className="font-medium">{m.name}</span>,
+            <>{m.email}</>,
+            <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs font-medium">
+              {m.role.name}
+            </span>,
+            <StatusBadge status={m.status} />,
+            <>{formatDate(m.createdAt)}</>,
+          ],
+        }))}
         searchPlaceholder="Search by name, email, or role..."
         emptyMessage="No team members found. Invite members to get started."
       />

@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth-helpers";
+import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
+    const session = await requireAuth();
     const body = await req.json();
 
     await prisma.permission.deleteMany({ where: { roleId: body.roleId } });
@@ -22,8 +24,8 @@ export async function PUT(req: Request) {
       AUDIT_ACTIONS.ROLE_PERMISSIONS_UPDATED,
       undefined,
       undefined,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Updated permissions for role "${role?.name}" (${body.permissions?.length || 0} permissions)`
     );
 

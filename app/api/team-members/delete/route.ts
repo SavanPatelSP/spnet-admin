@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth-helpers";
+import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function DELETE(req: Request) {
   try {
+    const session = await requireAuth();
     const body = await req.json();
     const member = await prisma.teamMember.findUnique({ where: { id: body.id } });
 
@@ -17,8 +19,8 @@ export async function DELETE(req: Request) {
       AUDIT_ACTIONS.TEAM_MEMBER_DELETED,
       undefined,
       undefined,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Deleted team member ${member.name} (${member.email})`
     );
 

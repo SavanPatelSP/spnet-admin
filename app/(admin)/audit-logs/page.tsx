@@ -51,65 +51,40 @@ export default async function AuditLogsPage() {
 
       <DataTable
         columns={[
-          {
-            key: "createdAt",
-            label: "Time",
-            sortable: true,
-            render: (log: Record<string, unknown>) => (
-              <span className="whitespace-nowrap text-sm">{formatDateTime(log.createdAt as Date)}</span>
-            ),
-          },
-          {
-            key: "action",
-            label: "Action",
-            sortable: true,
-            searchable: true,
-            render: (log: Record<string, unknown>) => (
-              <span className="inline-block rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
-                {log.action as string}
-              </span>
-            ),
-          },
-          {
-            key: "organization",
-            label: "Organization",
-            sortable: true,
-            searchable: true,
-            render: (log: Record<string, unknown>) => (log.organization as string) || "-",
-          },
-          {
-            key: "actorRole",
-            label: "Role",
-            sortable: true,
-            render: (log: Record<string, unknown>) =>
-              log.actorRole ? (
-                <span className="inline-block rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400">
-                  {log.actorRole as string}
-                </span>
-              ) : (
-                "-"
-              ),
-          },
-          {
-            key: "actorName",
-            label: "User",
-            sortable: true,
-            searchable: true,
-            render: (log: Record<string, unknown>) => (log.actorName as string) || "-",
-          },
-          {
-            key: "description",
-            label: "Description",
-            sortable: false,
-            searchable: true,
-            className: "max-w-md",
-            render: (log: Record<string, unknown>) => (
-              <span className="text-sm text-zinc-300">{log.description as string || "-"}</span>
-            ),
-          },
+          { key: "createdAt", label: "Time", sortable: true },
+          { key: "action", label: "Action", sortable: true, searchable: true },
+          { key: "organization", label: "Organization", sortable: true, searchable: true },
+          { key: "actorRole", label: "Role", sortable: true },
+          { key: "actorName", label: "User", sortable: true, searchable: true },
+          { key: "description", label: "Description", sortable: false, searchable: true, className: "max-w-md" },
         ]}
-        data={logs as unknown as Record<string, unknown>[]}
-        keyExtractor={(l) => l.id as string}
+        rows={logs.map((log) => ({
+          id: log.id,
+          values: {
+            createdAt: log.createdAt.toISOString(),
+            action: log.action,
+            organization: log.organization || "",
+            actorRole: log.actorRole || "",
+            actorName: log.actorName || "",
+            description: log.description || "",
+          },
+          cells: [
+            <span className="whitespace-nowrap text-sm">{formatDateTime(log.createdAt)}</span>,
+            <span className="inline-block rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
+              {log.action}
+            </span>,
+            <>{log.organization || "-"}</>,
+            log.actorRole ? (
+              <span className="inline-block rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400">
+                {log.actorRole}
+              </span>
+            ) : (
+              "-"
+            ),
+            <>{log.actorName || "-"}</>,
+            <span className="text-sm text-zinc-300">{log.description || "-"}</span>,
+          ],
+        }))}
         pageSize={15}
         searchPlaceholder="Search by action, user, organization..."
         emptyMessage="No audit logs available yet. Actions will be recorded here as they occur."

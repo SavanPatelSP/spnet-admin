@@ -27,41 +27,29 @@ export default async function ReportsPage() {
 
       <DataTable
         columns={[
-          {
-            key: "action",
-            label: "Type",
-            sortable: true,
-            render: (r: Record<string, unknown>) => <StatusBadge status={(r.action as string)?.replace(/_/g, " ")} />,
-          },
-          {
-            key: "description",
-            label: "Description",
-            sortable: true,
-            searchable: true,
-            render: (r: Record<string, unknown>) => <span className="text-sm">{r.description as string || "-"}</span>,
-          },
-          {
-            key: "organization",
-            label: "Organization",
-            sortable: true,
-            searchable: true,
-            render: (r: Record<string, unknown>) => (r.organization as string) || "-",
-          },
-          {
-            key: "actorName",
-            label: "Filed By",
-            sortable: true,
-            render: (r: Record<string, unknown>) => (r.actorName as string) || "-",
-          },
-          {
-            key: "createdAt",
-            label: "Date",
-            sortable: true,
-            render: (r: Record<string, unknown>) => formatDate(r.createdAt as Date),
-          },
+          { key: "action", label: "Type", sortable: true },
+          { key: "description", label: "Description", sortable: true, searchable: true },
+          { key: "organization", label: "Organization", sortable: true, searchable: true },
+          { key: "actorName", label: "Filed By", sortable: true },
+          { key: "createdAt", label: "Date", sortable: true },
         ]}
-        data={reportItems as unknown as Record<string, unknown>[]}
-        keyExtractor={(r) => r.id as string}
+        rows={reportItems.map((r) => ({
+          id: r.id,
+          values: {
+            action: r.action,
+            description: r.description || "",
+            organization: r.organization || "",
+            actorName: r.actorName || "",
+            createdAt: r.createdAt.toISOString(),
+          },
+          cells: [
+            <StatusBadge status={r.action.replace(/_/g, " ")} />,
+            <span className="text-sm">{r.description || "-"}</span>,
+            <>{r.organization || "-"}</>,
+            <>{r.actorName || "-"}</>,
+            <>{formatDate(r.createdAt)}</>,
+          ],
+        }))}
         emptyMessage="No reports found. System reports will appear here."
         searchPlaceholder="Search reports..."
       />

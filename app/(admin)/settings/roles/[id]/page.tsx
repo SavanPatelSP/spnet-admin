@@ -5,7 +5,7 @@ import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Shield, Users, KeyRound, AlertTriangle } from "lucide-react";
 import { formatDateTime } from "@/lib/shared";
-import DeleteRoleButton from "../../DeleteRoleButton";
+import DeleteRoleButton from "../DeleteRoleButton";
 
 export const dynamic = "force-dynamic";
 

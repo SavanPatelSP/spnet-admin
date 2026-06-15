@@ -16,10 +16,6 @@ export const EXPIRING_SOON_DAYS = Number(process.env.NEXT_PUBLIC_EXPIRING_SOON_D
 export const AUDIT_RETENTION_DAYS = Number(process.env.NEXT_PUBLIC_AUDIT_RETENTION_DAYS) || 365;
 export const DEFAULT_LOCALE = process.env.NEXT_PUBLIC_DEFAULT_LOCALE || "en-IN";
 
-export const ADMIN_NAME = process.env.ADMIN_NAME || "Savan Patel";
-export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@spnet.local";
-export const ADMIN_ROLE = process.env.ADMIN_ROLE || "SUPER_ADMIN";
-
 export const SECURITY_POLICY_DAYS: Record<string, number> = {
   HIGH: Number(process.env.SECURITY_POLICY_HIGH_DAYS) || 7,
   STANDARD: Number(process.env.SECURITY_POLICY_STANDARD_DAYS) || 14,
@@ -80,6 +76,13 @@ export const AUDIT_ACTIONS = {
   TEAM_MEMBER_DELETED: "TEAM_MEMBER_DELETED",
   POLICY_TOGGLED: "POLICY_TOGGLED",
   EMERGENCY_LOCKDOWN: "EMERGENCY_LOCKDOWN",
+  LOGIN_SUCCESS: "LOGIN_SUCCESS",
+  LOGIN_FAILURE: "LOGIN_FAILURE",
+  INVALID_LICENSE_KEY: "INVALID_LICENSE_KEY",
+  LICENSE_EXPIRED_DENIAL: "LICENSE_EXPIRED_DENIAL",
+  LICENSE_SUSPENDED_DENIAL: "LICENSE_SUSPENDED_DENIAL",
+  LOGOUT: "LOGOUT",
+  PERMISSION_DENIED: "PERMISSION_DENIED",
 } as const;
 
 export const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"] as const;
@@ -146,3 +149,11 @@ export const ALL_PERMISSIONS = Object.values(PERMISSION_GROUPS).flat();
 export const CACHING = {
   DYNAMIC: "force-dynamic" as const,
 };
+
+export const AUTH_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
+export const AUTH_SECRET = process.env.NEXTAUTH_SECRET || "";
+export const AUTH = {
+  MAX_LOGIN_ATTEMPTS: Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS) || 5,
+  LOCKOUT_DURATION_MINUTES: Number(process.env.AUTH_LOCKOUT_DURATION_MINUTES) || 15,
+  SESSION_MAX_AGE_SECONDS: Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS) || 86400,
+} as const;

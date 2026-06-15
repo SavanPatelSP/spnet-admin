@@ -30,6 +30,9 @@ model License {
 
   notes        String?
 
+  teamMemberId String?     @unique
+  teamMember   TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
@@ -63,6 +66,8 @@ model AuditLog {
 
   actorName     String?
 
+  actorEmail    String?
+
   description   String?
 
   createdAt     DateTime @default(now())
@@ -73,11 +78,19 @@ model TeamMember {
 
   name      String
   email     String   @unique
+  password  String
 
   roleId    String
   role      Role     @relation(fields: [roleId], references: [id])
 
   status    String   @default("ACTIVE")
+
+  licenseId String?  @unique
+  license   License?
+
+  lastLogin            DateTime?
+  failedLoginAttempts  Int      @default(0)
+  lockedUntil          DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

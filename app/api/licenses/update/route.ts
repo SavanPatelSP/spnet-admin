@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { requireAuth } from "@/lib/auth-helpers";
 import { parseExpiryDate } from "@/lib/shared";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE, DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
+import { AUDIT_ACTIONS, DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
+    const session = await requireAuth();
     const body = await req.json();
     const { id, organization, plan, status, maxDevices, expiresAt, notes } = body;
 
@@ -32,8 +34,8 @@ export async function POST(req: Request) {
       AUDIT_ACTIONS.LICENSE_UPDATED,
       license.id,
       license.organization,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Updated license for ${license.organization}`
     );
 

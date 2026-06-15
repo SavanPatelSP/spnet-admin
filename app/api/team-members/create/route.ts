@@ -1,23 +1,34 @@
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 import { logAudit } from "@/lib/audit";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
+import { AUDIT_ACTIONS } from "@/lib/constants";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+function generateTempPassword(): string {
+  return crypto.randomBytes(12).toString("hex");
+}
 
 export async function POST(req: Request) {
   try {
+    const session = await requireAuth();
     const body = await req.json();
     const { name, email, roleId } = body;
 
     if (!name || !email || !roleId) {
-      return Response.json({ error: "Name, email, and role are required" }, { status: 400 });
+      return Response.json({ success: false, error: "Name, email, and role are required" }, { status: 400 });
     }
 
     const existing = await prisma.teamMember.findUnique({ where: { email } });
     if (existing) {
-      return Response.json({ error: "A member with this email already exists" }, { status: 409 });
+      return Response.json({ success: false, error: "A member with this email already exists" }, { status: 409 });
     }
 
+    const tempPassword = generateTempPassword();
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
     const member = await prisma.teamMember.create({
-      data: { name, email, roleId },
+      data: { name, email, roleId, password: hashedPassword },
       include: { role: true },
     });
 
@@ -25,14 +36,18 @@ export async function POST(req: Request) {
       AUDIT_ACTIONS.TEAM_MEMBER_CREATED,
       undefined,
       undefined,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Created team member ${name} (${email}) with role ${member.role.name}`
     );
 
-    return Response.json(member);
+    return Response.json({
+      success: true,
+      data: member,
+      tempPassword,
+    });
   } catch (error) {
     console.error("Team member create error:", error);
-    return Response.json({ error: "Failed to create team member" }, { status: 500 });
+    return Response.json({ success: false, error: "Failed to create team member" }, { status: 500 });
   }
 }

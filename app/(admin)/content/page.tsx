@@ -27,40 +27,29 @@ export default async function ContentPage() {
 
       <DataTable
         columns={[
-          {
-            key: "action",
-            label: "Type",
-            sortable: true,
-            render: (c: Record<string, unknown>) => <StatusBadge status={(c.action as string)?.replace(/_/g, " ")} />,
-          },
-          {
-            key: "description",
-            label: "Content",
-            sortable: false,
-            searchable: true,
-            render: (c: Record<string, unknown>) => <span className="text-sm">{c.description as string || "-"}</span>,
-          },
-          {
-            key: "organization",
-            label: "Organization",
-            sortable: true,
-            searchable: true,
-          },
-          {
-            key: "actorName",
-            label: "Author",
-            sortable: true,
-            render: (c: Record<string, unknown>) => (c.actorName as string) || "-",
-          },
-          {
-            key: "createdAt",
-            label: "Date",
-            sortable: true,
-            render: (c: Record<string, unknown>) => formatDateTime(c.createdAt as Date),
-          },
+          { key: "action", label: "Type", sortable: true },
+          { key: "description", label: "Content", sortable: false, searchable: true },
+          { key: "organization", label: "Organization", sortable: true, searchable: true },
+          { key: "actorName", label: "Author", sortable: true },
+          { key: "createdAt", label: "Date", sortable: true },
         ]}
-        data={contentItems as unknown as Record<string, unknown>[]}
-        keyExtractor={(c) => c.id as string}
+        rows={contentItems.map((c) => ({
+          id: c.id,
+          values: {
+            action: c.action,
+            description: c.description || "",
+            organization: c.organization || "",
+            actorName: c.actorName || "",
+            createdAt: c.createdAt.toISOString(),
+          },
+          cells: [
+            <StatusBadge status={c.action.replace(/_/g, " ")} />,
+            <span className="text-sm">{c.description || "-"}</span>,
+            <>{c.organization || "-"}</>,
+            <>{c.actorName || "-"}</>,
+            <>{formatDateTime(c.createdAt)}</>,
+          ],
+        }))}
         emptyMessage="No content items found."
         searchPlaceholder="Search content..."
       />

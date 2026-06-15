@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth-helpers";
+import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
+    const session = await requireAuth();
     const body = await req.json();
     const { name, description, riskLevel, protected: isProtected } = body;
 
@@ -24,8 +26,8 @@ export async function POST(req: Request) {
       AUDIT_ACTIONS.ROLE_CREATED,
       undefined,
       undefined,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Created role "${name}" with risk level ${role.riskLevel}`
     );
 

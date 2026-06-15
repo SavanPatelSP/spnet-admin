@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth-helpers";
+import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST() {
   try {
+    const session = await requireAuth();
     const result = await prisma.license.updateMany({
       where: { status: "ACTIVE" },
       data: { status: "SUSPENDED" },
@@ -13,8 +15,8 @@ export async function POST() {
       AUDIT_ACTIONS.EMERGENCY_LOCKDOWN,
       undefined,
       undefined,
-      ADMIN_ROLE,
-      ADMIN_NAME,
+      session.user.role,
+      session.user.name,
       `Emergency lockdown activated: ${result.count} licenses suspended`
     );
 

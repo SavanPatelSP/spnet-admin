@@ -6,7 +6,7 @@ import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { KeyRound, Monitor, AlertTriangle, Activity } from "lucide-react";
-import { EXPIRING_SOON_DAYS, DEFAULT_LOCALE } from "@/lib/constants";
+import { EXPIRING_SOON_DAYS, DEFAULT_LOCALE, PLANS, LICENSE_STATUSES } from "@/lib/constants";
 import { daysUntil, calculateUtilization } from "@/lib/shared";
 import CreateLicenseModal from "@/components/licenses/CreateLicenseModal";
 import EditLicenseButton from "@/components/licenses/EditLicenseButton";
@@ -71,76 +71,51 @@ export default async function LicensesPage() {
 
       <DataTable
         columns={[
-          {
-            key: "key",
-            label: "License Key",
-            sortable: true,
-            searchable: true,
-            render: (l) => (
+          { key: "key", label: "License Key", sortable: true, searchable: true },
+          { key: "organization", label: "Organization", sortable: true, searchable: true },
+          { key: "plan", label: "Plan", sortable: true },
+          { key: "activations", label: "Devices", sortable: false },
+          { key: "expiresAt", label: "Expiry", sortable: true },
+          { key: "status", label: "Status", sortable: true },
+          { key: "actions", label: "Actions", sortable: false, className: "w-48" },
+        ]}
+        rows={licenses.map((l) => {
+          const expiry = new Date(l.expiresAt);
+          const days = daysUntil(expiry);
+          const color = days < 0 ? "text-red-400" : days <= EXPIRING_SOON_DAYS ? "text-yellow-400" : "text-zinc-300";
+          return {
+            id: String(l.id),
+            values: {
+              key: l.key,
+              organization: l.organization,
+              plan: l.plan,
+              activations: `${l.activations.length}/${l.maxDevices}`,
+              expiresAt: expiry.toISOString(),
+              status: l.status,
+              actions: "",
+            },
+            cells: [
               <Link href={`/licenses/${l.id}`} className="font-mono text-sm text-blue-400 transition-colors hover:text-blue-300 hover:underline">
                 {l.key}
-              </Link>
-            ),
-          },
-          {
-            key: "organization",
-            label: "Organization",
-            sortable: true,
-            searchable: true,
-          },
-          {
-            key: "plan",
-            label: "Plan",
-            sortable: true,
-            render: (l) => (
-              <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium">{l.plan}</span>
-            ),
-          },
-          {
-            key: "devices",
-            label: "Devices",
-            sortable: false,
-            render: (l) => `${l.activations.length}/${l.maxDevices}`,
-          },
-          {
-            key: "expiresAt",
-            label: "Expiry",
-            sortable: true,
-            render: (l) => {
-              const days = daysUntil(l.expiresAt);
-              const color = days < 0 ? "text-red-400" : days <= EXPIRING_SOON_DAYS ? "text-yellow-400" : "text-zinc-300";
-              return (
-                <span className={color}>
-                  {new Intl.DateTimeFormat(DEFAULT_LOCALE, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(l.expiresAt))}
-                  {days >= 0 && days <= EXPIRING_SOON_DAYS && <span className="ml-2 text-xs text-yellow-500">({days}d)</span>}
-                  {days < 0 && <span className="ml-2 text-xs text-red-500">(expired)</span>}
-                </span>
-              );
-            },
-          },
-          {
-            key: "status",
-            label: "Status",
-            sortable: true,
-            render: (l) => <StatusBadge status={l.status} />,
-          },
-          {
-            key: "actions",
-            label: "Actions",
-            sortable: false,
-            className: "w-48",
-            render: (l) => (
+              </Link>,
+              <>{l.organization}</>,
+              <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium">{l.plan}</span>,
+              <>{`${l.activations.length}/${l.maxDevices}`}</>,
+              <span className={color}>
+                {new Intl.DateTimeFormat(DEFAULT_LOCALE, { day: "2-digit", month: "short", year: "numeric" }).format(expiry)}
+                {days >= 0 && days <= EXPIRING_SOON_DAYS && <span className="ml-2 text-xs text-yellow-500">({days}d)</span>}
+                {days < 0 && <span className="ml-2 text-xs text-red-500">(expired)</span>}
+              </span>,
+              <StatusBadge status={l.status} />,
               <div className="flex items-center gap-1.5">
-                <EditLicenseButton license={l} />
+                <EditLicenseButton license={l as never} />
                 <ToggleLicenseStatusButton id={l.id} status={l.status} size="sm" />
                 <RegenerateLicenseButton id={l.id} size="sm" />
                 <DeleteLicenseButton id={l.id} size="sm" />
-              </div>
-            ),
-          },
-        ]}
-        data={licenses as unknown as Record<string, unknown>[]}
-        keyExtractor={(l) => l.id as string}
+              </div>,
+            ],
+          };
+        })}
         searchPlaceholder="Search by license key or organization..."
         emptyMessage="No licenses found. Create your first license to get started."
       />
