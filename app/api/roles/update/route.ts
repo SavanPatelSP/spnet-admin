@@ -1,20 +1,27 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { logAudit } from "@/lib/audit";
+import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
 
 export async function PUT(req: Request) {
-  const body = await req.json();
+  try {
+    const body = await req.json();
+    const role = await prisma.role.update({
+      where: { id: body.id },
+      data: { name: body.name, description: body.description, riskLevel: body.riskLevel },
+    });
 
-  const role = await prisma.role.update({
-    where: {
-      id: body.id,
-    },
-    data: {
-      name: body.name,
-      description: body.description,
-      riskLevel: body.riskLevel,
-      protected: body.protected,
-    },
-  });
+    await logAudit(
+      AUDIT_ACTIONS.ROLE_UPDATED,
+      undefined,
+      undefined,
+      ADMIN_ROLE,
+      ADMIN_NAME,
+      `Updated role "${role.name}"`
+    );
 
-  return NextResponse.json(role);
+    return Response.json(role);
+  } catch (error) {
+    console.error("Role update error:", error);
+    return Response.json({ error: "Failed to update role" }, { status: 500 });
+  }
 }

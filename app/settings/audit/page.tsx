@@ -12,9 +12,10 @@ export default async function AuditSettingsPage() {
 
   const uniqueActions = [...new Set(logs.map((l) => l.action))].length;
   const oldestLog = logs.length > 0 ? logs[logs.length - 1].createdAt : null;
-  const averageDaily = logs.length > 0
-    ? Math.round(logs.length / Math.max(1, Math.ceil((Date.now() - new Date(oldestLog!).getTime()) / (1000 * 60 * 60 * 24))))
-    : 0;
+  const daysSinceOldest = oldestLog
+    ? Math.max(1, Math.ceil((Date.now() - new Date(oldestLog).getTime()) / (1000 * 60 * 60 * 24)))
+    : 1;
+  const averageDaily = Math.round(logs.length / daysSinceOldest);
 
   const actionBreakdown = logs.reduce<Record<string, number>>((acc, l) => {
     acc[l.action] = (acc[l.action] || 0) + 1;
@@ -45,8 +46,8 @@ export default async function AuditSettingsPage() {
               <span className="font-medium">{oldestLog ? formatDateTime(oldestLog) : "N/A"}</span>
             </div>
             <div className="flex justify-between rounded-xl bg-zinc-800/50 px-4 py-3">
-              <span className="text-zinc-400">Storage Estimate</span>
-              <span className="font-medium">~{logs.length * 0.5} KB</span>
+              <span className="text-zinc-400">Total Records</span>
+              <span className="font-medium">{logs.length}</span>
             </div>
           </div>
         </div>

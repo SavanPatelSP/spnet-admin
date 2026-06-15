@@ -2,230 +2,137 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ActionButton } from "@/components/ui/ActionButton";
+import { API_ROUTES, ALL_PERMISSIONS, RISK_LEVELS } from "@/lib/constants";
+import type { RoleWithPermissions } from "@/types/common";
 
-const ALL_PERMISSIONS = [
-  "View Users",
-  "Suspend Users",
-  "Delete Users",
-  "Restore Users",
-  "Manage User Access",
-  "Add Team Members",
-  "Remove Team Members",
-  "Assign Roles",
-  "Transfer Ownership",
-  "Create Roles",
-  "Edit Roles",
-  "Delete Roles",
-  "Manage Permission Matrix",
-  "View Devices",
-  "Revoke Devices",
-  "View Activations",
-  "View Audit Logs",
-  "Export Audit Logs",
-  "View Analytics",
-  "View Revenue",
-  "Export Reports",
-  "Manage Settings",
-  "Maintenance Mode",
-  "Backup Management",
-];
+interface Props {
+  role: RoleWithPermissions;
+}
 
-export default function EditRoleForm({
-  role,
-}: {
-  role: any;
-}) {
+export default function EditRoleForm({ role }: Props) {
   const router = useRouter();
-
   const [name, setName] = useState(role.name);
-  const [description, setDescription] =
-    useState(role.description || "");
+  const [description, setDescription] = useState(role.description ?? "");
+  const [riskLevel, setRiskLevel] = useState(role.riskLevel);
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
+    new Set(role.permissions.map((p: { permission: string }) => p.permission))
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const [riskLevel, setRiskLevel] =
-    useState(role.riskLevel);
-
-  const [protectedRole, setProtectedRole] =
-    useState(role.protected);
-
-  const [permissions, setPermissions] =
-    useState(
-      role.permissions.map(
-        (p: any) => p.permission
-      )
-    );
-
-  const [saving, setSaving] =
-    useState(false);
+  function togglePermission(p: string) {
+    setSelectedPermissions((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  }
 
   async function saveRole() {
+    setError("");
+    if (!name.trim()) {
+      setError("Role name is required");
+      return;
+    }
+    setSaving(true);
     try {
-      setSaving(true);
-
-      const response = await fetch(
-        "/api/roles/update",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            id: role.id,
-            name,
-            description,
-            riskLevel,
-            protected: protectedRole,
-          }),
-        }
-      );
-
+      const response = await fetch(API_ROUTES.ROLES.UPDATE, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: role.id, name, description, riskLevel }),
+      });
       if (!response.ok) {
-        throw new Error();
+        const data = await response.json();
+        setError(data.error || "Failed to update role");
+        return;
       }
 
-      await fetch(
-        "/api/roles/update-permissions",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            roleId: role.id,
-            permissions,
-          }),
-        }
-      );
+      await fetch(API_ROUTES.ROLES.UPDATE_PERMISSIONS, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: role.id, permissions: [...selectedPermissions] }),
+      });
 
-      router.push(
-        `/settings/roles/${role.id}`
-      );
-
+      router.push(`/settings/roles/${role.id}`);
       router.refresh();
     } catch {
-      alert("Failed to update role");
+      setError("Failed to save role");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-3xl border border-zinc-800 bg-gradient-to-r from-zinc-900 to-black p-8">
-        <h1 className="text-4xl font-black">
-          Edit Role
-        </h1>
+    <div className="space-y-6">
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+      )}
 
-        <p className="mt-3 text-zinc-400">
-          Update role settings,
-          permissions and governance.
-        </p>
-      </div>
-
-      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
-        <div className="grid gap-6">
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+        <h2 className="mb-4 text-xl font-bold">Role Information</h2>
+        <div className="space-y-4">
           <input
             value={name}
-            onChange={(e) =>
-              setName(e.target.value)
-            }
-            className="rounded-xl border border-zinc-800 bg-zinc-950 p-3"
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Role Name"
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-3 text-zinc-100 outline-none focus:border-blue-500"
           />
-
           <textarea
-            rows={5}
+            rows={3}
             value={description}
-            onChange={(e) =>
-              setDescription(
-                e.target.value
-              )
-            }
-            className="rounded-xl border border-zinc-800 bg-zinc-950 p-3"
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description"
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-3 text-zinc-100 outline-none focus:border-blue-500"
           />
-
           <select
             value={riskLevel}
-            onChange={(e) =>
-              setRiskLevel(
-                e.target.value
-              )
-            }
-            className="rounded-xl border border-zinc-800 bg-zinc-950 p-3"
+            onChange={(e) => setRiskLevel(e.target.value)}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-3 text-zinc-100 outline-none focus:border-blue-500"
           >
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-            <option>Critical</option>
+            {RISK_LEVELS.map((level) => (
+              <option key={level} value={level}>{level}</option>
+            ))}
           </select>
-
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={protectedRole}
-              onChange={(e) =>
-                setProtectedRole(
-                  e.target.checked
-                )
-              }
-            />
-            Protected Role
-          </label>
-
-          <div>
-            <h2 className="mb-4 text-xl font-semibold">
-              Permission Assignment
-            </h2>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              {ALL_PERMISSIONS.map(
-                (permission) => (
-                  <label
-                    key={permission}
-                    className="flex items-center gap-3 rounded-xl border border-zinc-800 p-3"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={permissions.includes(
-                        permission
-                      )}
-                      onChange={(e) => {
-                        if (
-                          e.target.checked
-                        ) {
-                          setPermissions([
-                            ...permissions,
-                            permission,
-                          ]);
-                        } else {
-                          setPermissions(
-                            permissions.filter(
-                              (p) =>
-                                p !==
-                                permission
-                            )
-                          );
-                        }
-                      }}
-                    />
-
-                    {permission}
-                  </label>
-                )
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={saveRole}
-            disabled={saving}
-            className="rounded-xl bg-blue-600 px-4 py-3 text-white"
-          >
-            {saving
-              ? "Saving..."
-              : "Save Changes"}
-          </button>
         </div>
+      </div>
+
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold">Permissions</h2>
+          <span className="text-sm text-zinc-500">{selectedPermissions.size} of {ALL_PERMISSIONS.length} selected</span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {ALL_PERMISSIONS.map((permission) => (
+            <label
+              key={permission}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${
+                selectedPermissions.has(permission)
+                  ? "border-blue-500/50 bg-blue-500/10"
+                  : "border-zinc-800 bg-zinc-950/30 hover:bg-zinc-800"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={selectedPermissions.has(permission)}
+                onChange={() => togglePermission(permission)}
+                className="h-4 w-4"
+              />
+              <span className="text-sm">{permission}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <ActionButton variant="secondary" onClick={() => router.push(`/settings/roles/${role.id}`)}>
+          Cancel
+        </ActionButton>
+        <ActionButton variant="primary" onClick={saveRole} disabled={saving}>
+          {saving ? "Saving..." : "Save Changes"}
+        </ActionButton>
       </div>
     </div>
   );
