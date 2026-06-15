@@ -1,63 +1,33 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    const activation =
-      await prisma.activation.findUnique({
-        where: {
-          id: body.id,
-        },
-        include: {
-          license: true,
-        },
-      });
+    const activation = await prisma.activation.findUnique({
+      where: { id: body.id },
+      include: { license: true },
+    });
 
     if (!activation) {
-      return Response.json(
-        {
-          error: "Device not found",
-        },
-        {
-          status: 404,
-        }
-      );
+      return Response.json({ error: "Activation not found" }, { status: 404 });
     }
 
-    await prisma.activation.delete({
-      where: {
-        id: activation.id,
-      },
-    });
+    await prisma.activation.delete({ where: { id: body.id } });
 
     await logAudit(
-      "DEVICE_REVOKED",
+      AUDIT_ACTIONS.DEVICE_REVOKED,
       activation.license.id,
       activation.license.organization,
-      "SUPER_ADMIN",
-      "Savan Patel",
-      `Revoked device ${
-        activation.deviceName ??
-        activation.deviceId
-      }`
+      ADMIN_ROLE,
+      ADMIN_NAME,
+      `Revoked device ${activation.deviceName || activation.deviceId} from license ${activation.license.key}`
     );
 
-    return Response.json({
-      success: true,
-    });
+    return Response.json({ success: true });
   } catch (error) {
-    console.error(error);
-
-    return Response.json(
-      {
-        error:
-          "Failed to revoke device",
-      },
-      {
-        status: 500,
-      }
-    );
+    console.error("Device revoke error:", error);
+    return Response.json({ error: "Failed to revoke device" }, { status: 500 });
   }
 }

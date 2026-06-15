@@ -1,189 +1,145 @@
 import { prisma } from "@/lib/prisma";
+import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { formatDate, formatDateTime, daysUntil } from "@/lib/shared";
+import { DEFAULT_LOCALE, EXPIRING_SOON_DAYS } from "@/lib/constants";
 import DeleteLicenseButton from "@/components/licenses/DeleteLicenseButton";
 import EditLicenseButton from "@/components/licenses/EditLicenseButton";
 import ToggleLicenseStatusButton from "@/components/licenses/ToggleLicenseStatusButton";
 import RegenerateLicenseButton from "@/components/licenses/RegenerateLicenseButton";
-import { notFound } from "next/navigation";
+import { KeyRound, CalendarDays, Monitor, FileText } from "lucide-react";
+import Link from "next/link";
 
-export default async function LicenseDetailsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export const dynamic = "force-dynamic";
+
+export default async function LicenseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
   const license = await prisma.license.findUnique({
-    where: {
-      id,
-    },
-    include: {
-      activations: true,
-    },
+    where: { id },
+    include: { activations: { orderBy: { createdAt: "desc" } } },
   });
 
-  if (!license) {
-    notFound();
-  }
+  if (!license) notFound();
+
+  const days = daysUntil(license.expiresAt);
+  const devicesUsed = license.activations.length;
+  const utilization = license.maxDevices > 0 ? Math.round((devicesUsed / license.maxDevices) * 100) : 0;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">
-          License Details
-        </h1>
+      <PageHeader
+        title="License Details"
+        description={`Manage and monitor license ${license.key}`}
+        gradient={false}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <EditLicenseButton license={license} size="md" />
+            <ToggleLicenseStatusButton id={license.id} status={license.status} size="md" />
+            <RegenerateLicenseButton id={license.id} size="md" />
+            <DeleteLicenseButton id={license.id} size="md" />
+          </div>
+        }
+      />
 
-        <p className="mt-2 text-zinc-500">
-          Manage and monitor this license.
-        </p>
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatCard title="License Key" value={license.key} icon={KeyRound} subtitle={license.plan} />
+        <StatCard title="Organization" value={license.organization} subtitle={`Created ${formatDate(license.createdAt)}`} />
+        <StatCard
+          title="Expiry"
+          value={formatDate(license.expiresAt)}
+          icon={CalendarDays}
+          color={days < 0 ? "red" : days <= EXPIRING_SOON_DAYS ? "yellow" : "default"}
+          subtitle={days < 0 ? "Expired" : `${days} days remaining`}
+        />
+        <StatCard title="Devices" value={`${devicesUsed}/${license.maxDevices}`} icon={Monitor} subtitle={`${utilization}% utilized`} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="mb-4 text-xl font-bold">
-            License Information
-          </h2>
-
-          <div className="space-y-3">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6 lg:col-span-2">
+          <h2 className="mb-4 text-xl font-bold">License Information</h2>
+          <div className="grid gap-6 sm:grid-cols-2">
             <div>
-              <p className="text-sm text-zinc-500">
-                License Key
-              </p>
-
-              <p className="font-mono">
-                {license.key}
-              </p>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-zinc-500">License Key</p>
+                  <p className="mt-0.5 font-mono text-sm">{license.key}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Organization</p>
+                  <p className="mt-0.5">{license.organization}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Plan</p>
+                  <p className="mt-0.5">
+                    <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-sm">{license.plan}</span>
+                  </p>
+                </div>
+              </div>
             </div>
-
             <div>
-              <p className="text-sm text-zinc-500">
-                Organization
-              </p>
-
-              <p>{license.organization}</p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Plan
-              </p>
-
-              <p>{license.plan}</p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Status
-              </p>
-
-              <p>{license.status}</p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Devices
-              </p>
-
-              <p>
-                {license.activations.length}/
-                {license.maxDevices}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Expiry Date
-              </p>
-
-              <p>
-                {new Intl.DateTimeFormat(
-                  "en-IN",
-                  {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }
-                ).format(
-                  new Date(
-                    Number(
-                      license.expiresAt
-                    )
-                  )
-                )}
-              </p>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-zinc-500">Status</p>
+                  <p className="mt-0.5"><StatusBadge status={license.status} /></p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Max Devices</p>
+                  <p className="mt-0.5">{license.maxDevices}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Created</p>
+                  <p className="mt-0.5 text-sm">{formatDateTime(license.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Last Updated</p>
+                  <p className="mt-0.5 text-sm">{formatDateTime(license.updatedAt)}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="mb-4 text-xl font-bold">
-            Actions
-          </h2>
+          <h2 className="mb-4 text-xl font-bold">Notes</h2>
+          {license.notes ? (
+            <p className="whitespace-pre-wrap text-sm text-zinc-300">{license.notes}</p>
+          ) : (
+            <p className="text-sm text-zinc-500">No notes available.</p>
+          )}
 
-          <div className="flex flex-wrap gap-3">
-            <EditLicenseButton
-              license={license}
-            />
-
-            <ToggleLicenseStatusButton
-              id={license.id}
-              status={license.status}
-            />
-
-           <RegenerateLicenseButton
-             id={license.id}
-           />
-
-            <DeleteLicenseButton
-              id={license.id}
-            />
-          </div>
-
-          <div className="mt-6">
-            <h3 className="mb-2 font-semibold">
-              Notes
-            </h3>
-
-            <div className="rounded-xl bg-zinc-800 p-4">
-              {license.notes ||
-                "No notes available."}
-            </div>
+          <h3 className="mb-3 mt-6 font-semibold">Danger Zone</h3>
+          <div className="space-y-2">
+            <DeleteLicenseButton id={license.id} size="md" />
           </div>
         </div>
       </div>
 
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-        <h2 className="mb-4 text-xl font-bold">
-          Activated Devices
-        </h2>
-
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold">Activated Devices ({devicesUsed})</h2>
+        </div>
         {license.activations.length === 0 ? (
-          <p className="text-zinc-500">
-            No active devices.
-          </p>
+          <p className="text-sm text-zinc-500">No devices activated for this license.</p>
         ) : (
           <div className="space-y-3">
-            {license.activations.map(
-              (device) => (
-                <div
-                  key={device.id}
-                  className="rounded-xl bg-zinc-800 p-4"
-                >
-                  <p>
-                    {device.deviceName ||
-                      "Unknown Device"}
-                  </p>
-
-                  <p className="text-sm text-zinc-500">
-                    {device.deviceId}
-                  </p>
-
-                  <p className="text-sm text-zinc-500">
-                    {device.ipAddress ||
-                      "No IP"}
-                  </p>
+            {license.activations.map((device) => (
+              <Link
+                key={device.id}
+                href={`/devices/${device.id}`}
+                className="flex items-center justify-between rounded-xl bg-zinc-800/50 px-4 py-3 transition-colors hover:bg-zinc-800"
+              >
+                <div>
+                  <p className="font-medium">{device.deviceName || "Unknown Device"}</p>
+                  <p className="font-mono text-xs text-zinc-500">{device.deviceId}</p>
                 </div>
-              )
-            )}
+                <div className="text-right text-sm text-zinc-500">
+                  <p>{device.ipAddress || "-"}</p>
+                  <p className="text-xs">{formatDate(device.createdAt)}</p>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </div>

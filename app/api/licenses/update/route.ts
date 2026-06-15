@@ -1,87 +1,45 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-
-function parseExpiryDate(dateString: string) {
-  const [year, month, day] =
-    dateString.split("-").map(Number);
-
-  return new Date(
-    year,
-    month - 1,
-    day,
-    12,
-    0,
-    0
-  );
-}
+import { parseExpiryDate } from "@/lib/shared";
+import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE, DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const { id, organization, plan, status, maxDevices, expiresAt, notes } = body;
 
-    const expiryDate =
-      body.expiresAt
-        ? parseExpiryDate(
-            body.expiresAt
-          )
-        : new Date(
-            2027,
-            11,
-            31,
-            12,
-            0,
-            0
-          );
+    if (!id) {
+      return Response.json({ error: "License ID is required" }, { status: 400 });
+    }
 
-    const license =
-      await prisma.license.update({
-        where: {
-          id: body.id,
-        },
+    const expiryDate = expiresAt
+      ? parseExpiryDate(expiresAt)
+      : new Date(DEFAULT_EXPIRY_YEAR, 11, 31, 12, 0, 0);
 
-        data: {
-          organization:
-            body.organization,
-
-          plan:
-            body.plan,
-
-          status:
-            body.status,
-
-          maxDevices:
-            Number(
-              body.maxDevices
-            ),
-
-          expiresAt:
-            expiryDate,
-
-          notes:
-            body.notes ?? "",
-        },
-      });
+    const license = await prisma.license.update({
+      where: { id },
+      data: {
+        organization,
+        plan,
+        status,
+        maxDevices: Number(maxDevices),
+        expiresAt: expiryDate,
+        notes,
+      },
+    });
 
     await logAudit(
-      "LICENSE_UPDATED",
+      AUDIT_ACTIONS.LICENSE_UPDATED,
       license.id,
-      `Updated ${license.organization}`
+      license.organization,
+      ADMIN_ROLE,
+      ADMIN_NAME,
+      `Updated license for ${license.organization}`
     );
 
-    return Response.json(
-      license
-    );
+    return Response.json(license);
   } catch (error) {
-    console.error(error);
-
-    return Response.json(
-      {
-        error:
-          "Failed to update license",
-      },
-      {
-        status: 500,
-      }
-    );
+    console.error("License update error:", error);
+    return Response.json({ error: "Failed to update license" }, { status: 500 });
   }
 }

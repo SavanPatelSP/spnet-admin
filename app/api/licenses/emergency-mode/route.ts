@@ -1,17 +1,26 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { logAudit } from "@/lib/audit";
+import { AUDIT_ACTIONS, ADMIN_NAME, ADMIN_ROLE } from "@/lib/constants";
 
 export async function POST() {
-  await prisma.license.updateMany({
-    where: {
-      status: "ACTIVE",
-    },
-    data: {
-      status: "SUSPENDED",
-    },
-  });
+  try {
+    const result = await prisma.license.updateMany({
+      where: { status: "ACTIVE" },
+      data: { status: "SUSPENDED" },
+    });
 
-  return NextResponse.json({
-    success: true,
-  });
+    await logAudit(
+      AUDIT_ACTIONS.EMERGENCY_LOCKDOWN,
+      undefined,
+      undefined,
+      ADMIN_ROLE,
+      ADMIN_NAME,
+      `Emergency lockdown activated: ${result.count} licenses suspended`
+    );
+
+    return Response.json({ success: true, suspendedCount: result.count });
+  } catch (error) {
+    console.error("Emergency mode error:", error);
+    return Response.json({ error: "Emergency lockdown failed" }, { status: 500 });
+  }
 }

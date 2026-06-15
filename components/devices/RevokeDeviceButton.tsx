@@ -1,71 +1,49 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ActionButton } from "@/components/ui/ActionButton";
+import { API_ROUTES } from "@/lib/constants";
+import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 
-export default function RevokeDeviceButton({
-  id,
-}: {
+interface Props {
   id: string;
-}) {
+}
+
+export default function RevokeDeviceButton({ id }: Props) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const [open, setOpen] = useState(false);
 
-  const [loading, setLoading] =
-    useState(false);
-
-  async function revoke() {
-    const confirmed =
-      window.confirm(
-        "Revoke this device?"
-      );
-
-    if (!confirmed) return;
-
-    try {
-      setLoading(true);
-
-      const response =
-        await fetch(
-          "/api/devices/revoke",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              id,
-            }),
-          }
-        );
-
-      if (!response.ok) {
-        throw new Error(
-          "Failed to revoke device"
-        );
-      }
-
+  async function handleRevoke() {
+    const response = await fetch(API_ROUTES.DEVICES.REVOKE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (response.ok) {
+      setOpen(false);
       router.refresh();
-    } catch (error) {
-      console.error(error);
-
-      alert(
-        "Failed to revoke device"
-      );
-    } finally {
-      setLoading(false);
     }
   }
 
-  return (
-    <button
-      onClick={revoke}
-      disabled={loading}
-      className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
-    >
-      {loading
-        ? "Revoking..."
-        : "Revoke"}
-    </button>
-  );
+  return mounted ? (
+    <>
+      <ActionButton onClick={() => setOpen(true)} variant="danger" size="sm">
+        <Trash2 size={14} /> Revoke
+      </ActionButton>
+
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={handleRevoke}
+        title="Revoke Device"
+        description="This will remove the device activation. The device will no longer be able to use this license."
+        confirmLabel="Revoke Device"
+        variant="danger"
+      />
+    </>
+  ) : null;
 }

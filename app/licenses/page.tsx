@@ -1,276 +1,149 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DataTable } from "@/components/ui/DataTable";
+import { KeyRound, Monitor, AlertTriangle, Activity } from "lucide-react";
+import { EXPIRING_SOON_DAYS, DEFAULT_LOCALE } from "@/lib/constants";
+import { daysUntil, calculateUtilization } from "@/lib/shared";
 import CreateLicenseModal from "@/components/licenses/CreateLicenseModal";
-import DeleteLicenseButton from "@/components/licenses/DeleteLicenseButton";
 import EditLicenseButton from "@/components/licenses/EditLicenseButton";
+import DeleteLicenseButton from "@/components/licenses/DeleteLicenseButton";
+import ToggleLicenseStatusButton from "@/components/licenses/ToggleLicenseStatusButton";
+import RegenerateLicenseButton from "@/components/licenses/RegenerateLicenseButton";
+import LicensingAdminActions from "@/components/licenses/LicensingAdminActions";
+import Link from "next/link";
 
 export default async function LicensesPage() {
   const licenses = await prisma.license.findMany({
-    include: {
-      activations: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+    include: { activations: true },
+    orderBy: { createdAt: "desc" },
   });
 
-  const activeLicenses = licenses.filter(
-    (license) => license.status === "ACTIVE"
-  ).length;
-
-  const suspendedLicenses = licenses.filter(
-    (license) => license.status === "SUSPENDED"
-  ).length;
-
-  const totalDevices = licenses.reduce(
-    (total, license) =>
-      total + license.activations.length,
-    0
-  );
-
-  const totalCapacity = licenses.reduce(
-    (total, license) =>
-      total + license.maxDevices,
-    0
-  );
-
-  const utilization =
-    totalCapacity === 0
-      ? 0
-      : Math.round(
-          (totalDevices / totalCapacity) * 100
-        );
-
-  const expiringSoon = licenses.filter((license) => {
-    const expiry = new Date(
-      Number(license.expiresAt)
-    );
-
-    const days =
-      (expiry.getTime() - Date.now()) /
-      (1000 * 60 * 60 * 24);
-
-    return days >= 0 && days <= 30;
+  const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
+  const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
+  const totalDevices = licenses.reduce((t, l) => t + l.activations.length, 0);
+  const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
+  const utilization = calculateUtilization(totalDevices, totalCapacity);
+  const expiringSoon = licenses.filter((l) => {
+    const d = daysUntil(l.expiresAt);
+    return d >= 0 && d <= EXPIRING_SOON_DAYS;
   }).length;
+
+  const planDistribution = licenses.reduce<Record<string, number>>((acc, l) => {
+    acc[l.plan] = (acc[l.plan] || 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold">
-            License Management
-          </h1>
+      <PageHeader
+        title="License Management"
+        description="Enterprise license operations, monitoring and lifecycle management."
+        actions={
+          <div className="flex items-center gap-3">
+            <LicensingAdminActions />
+            <CreateLicenseModal />
+          </div>
+        }
+      />
 
-          <p className="mt-2 text-zinc-500">
-            Enterprise license operations,
-            monitoring and lifecycle
-            management.
-          </p>
+      <StatCardGrid columns={6}>
+        <StatCard title="Total Licenses" value={licenses.length} icon={KeyRound} color="blue" />
+        <StatCard title="Active" value={activeLicenses} icon={Activity} color="green" subtitle={`${licenses.length > 0 ? Math.round((activeLicenses / licenses.length) * 100) : 0}% of total`} />
+        <StatCard title="Suspended" value={suspendedLicenses} icon={AlertTriangle} color={suspendedLicenses > 0 ? "yellow" : "default"} />
+        <StatCard title="Expiring Soon" value={expiringSoon} icon={Activity} color={expiringSoon > 0 ? "red" : "default"} subtitle={`Within ${EXPIRING_SOON_DAYS} days`} />
+        <StatCard title="Active Devices" value={totalDevices} icon={Monitor} color="green" />
+        <StatCard title="Utilization" value={`${utilization}%`} icon={Monitor} color={utilization > 80 ? "yellow" : "default"} subtitle={`${totalDevices}/${totalCapacity} devices`} />
+      </StatCardGrid>
+
+      {Object.keys(planDistribution).length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(planDistribution).map(([plan, count]) => (
+            <div key={plan} className="rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-sm text-zinc-300">
+              {plan}: <span className="font-semibold text-zinc-100">{count}</span>
+            </div>
+          ))}
         </div>
+      )}
 
-        <CreateLicenseModal />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-6">
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Total Licenses
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold">
-            {licenses.length}
-          </h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Active
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-green-400">
-            {activeLicenses}
-          </h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Suspended
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-yellow-400">
-            {suspendedLicenses}
-          </h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Expiring Soon
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-red-400">
-            {expiringSoon}
-          </h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Active Devices
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold">
-            {totalDevices}
-          </h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Utilization
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold">
-            {utilization}%
-          </h2>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl">
-        <table className="w-full">
-          <thead className="border-b border-zinc-800 bg-zinc-950/40">
-            <tr>
-              <th className="p-4 text-left">
-                License Key
-              </th>
-
-              <th className="p-4 text-left">
-                Organization
-              </th>
-
-              <th className="p-4 text-left">
-                Plan & Health
-              </th>
-
-              <th className="p-4 text-left">
-                Devices
-              </th>
-
-              <th className="p-4 text-left">
-                Expiry
-              </th>
-
-              <th className="p-4 text-left">
-                Status
-              </th>
-
-              <th className="p-4 text-left">
-                Actions
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {licenses.map((license) => (
-              <tr
-                key={license.id}
-                className="border-b border-zinc-800 hover:bg-zinc-800/30"
-              >
-                <td className="p-4 font-mono text-sm">
-                  <a
-                    href={`/licenses/${license.id}`}
-                    className="text-blue-400 hover:underline"
-                  >
-                    {license.key}
-                  </a>
-                </td>
-
-                <td className="p-4">
-                  {license.organization}
-                </td>
-
-                <td className="p-4">
-                  <div>
-                    <div>{license.plan}</div>
-
-                    <div className="mt-1">
-                      {license.status ===
-                      "ACTIVE" ? (
-                        <span className="text-xs text-green-400">
-                          Healthy
-                        </span>
-                      ) : (
-                        <span className="text-xs text-yellow-400">
-                          Attention Needed
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </td>
-
-                <td className="p-4">
-                  {license.activations.length}/
-                  {license.maxDevices}
-                </td>
-
-                <td className="p-4">
-                  {new Intl.DateTimeFormat(
-                    "en-IN",
-                    {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    }
-                  ).format(
-                    new Date(
-                      Number(
-                        license.expiresAt
-                      )
-                    )
-                  )}
-                </td>
-
-                <td className="p-4">
-                  <span
-                    className={
-                      license.status ===
-                      "ACTIVE"
-                        ? "rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-400"
-                        : license.status ===
-                          "SUSPENDED"
-                        ? "rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-400"
-                        : "rounded-full bg-red-500/10 px-3 py-1 text-xs text-red-400"
-                    }
-                  >
-                    {license.status}
-                  </span>
-                </td>
-
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    <EditLicenseButton
-                      license={license}
-                    />
-
-                    <DeleteLicenseButton
-                      id={license.id}
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-            {licenses.length === 0 && (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="p-8 text-center text-zinc-500"
-                >
-                  No licenses found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={[
+          {
+            key: "key",
+            label: "License Key",
+            sortable: true,
+            searchable: true,
+            render: (l) => (
+              <Link href={`/licenses/${l.id}`} className="font-mono text-sm text-blue-400 transition-colors hover:text-blue-300 hover:underline">
+                {l.key}
+              </Link>
+            ),
+          },
+          {
+            key: "organization",
+            label: "Organization",
+            sortable: true,
+            searchable: true,
+          },
+          {
+            key: "plan",
+            label: "Plan",
+            sortable: true,
+            render: (l) => (
+              <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium">{l.plan}</span>
+            ),
+          },
+          {
+            key: "devices",
+            label: "Devices",
+            sortable: false,
+            render: (l) => `${l.activations.length}/${l.maxDevices}`,
+          },
+          {
+            key: "expiresAt",
+            label: "Expiry",
+            sortable: true,
+            render: (l) => {
+              const days = daysUntil(l.expiresAt);
+              const color = days < 0 ? "text-red-400" : days <= EXPIRING_SOON_DAYS ? "text-yellow-400" : "text-zinc-300";
+              return (
+                <span className={color}>
+                  {new Intl.DateTimeFormat(DEFAULT_LOCALE, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(l.expiresAt))}
+                  {days >= 0 && days <= EXPIRING_SOON_DAYS && <span className="ml-2 text-xs text-yellow-500">({days}d)</span>}
+                  {days < 0 && <span className="ml-2 text-xs text-red-500">(expired)</span>}
+                </span>
+              );
+            },
+          },
+          {
+            key: "status",
+            label: "Status",
+            sortable: true,
+            render: (l) => <StatusBadge status={l.status} />,
+          },
+          {
+            key: "actions",
+            label: "Actions",
+            sortable: false,
+            className: "w-48",
+            render: (l) => (
+              <div className="flex items-center gap-1.5">
+                <EditLicenseButton license={l} />
+                <ToggleLicenseStatusButton id={l.id} status={l.status} size="sm" />
+                <RegenerateLicenseButton id={l.id} size="sm" />
+                <DeleteLicenseButton id={l.id} size="sm" />
+              </div>
+            ),
+          },
+        ]}
+        data={licenses as unknown as Record<string, unknown>[]}
+        keyExtractor={(l) => l.id as string}
+        searchPlaceholder="Search by license key or organization..."
+        emptyMessage="No licenses found. Create your first license to get started."
+      />
     </div>
   );
 }

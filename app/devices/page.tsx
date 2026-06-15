@@ -1,208 +1,108 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
+import { DataTable } from "@/components/ui/DataTable";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Monitor, Fingerprint, Globe, KeyRound } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/shared";
 import RevokeDeviceButton from "@/components/devices/RevokeDeviceButton";
+import Link from "next/link";
 
 export default async function DevicesPage() {
-  const activations =
-    await prisma.activation.findMany({
-      include: {
-        license: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+  const activations = await prisma.activation.findMany({
+    include: { license: true },
+    orderBy: { createdAt: "desc" },
+  });
 
-  const totalDevices =
-    activations.length;
-
-  const uniqueLicenses =
-    new Set(
-      activations.map(
-        (a) => a.licenseId
-      )
-    ).size;
-
-  const uniqueIPs =
-    new Set(
-      activations
-        .map((a) => a.ipAddress)
-        .filter(Boolean)
-    ).size;
+  const totalDevices = activations.length;
+  const uniqueLicenses = new Set(activations.map((a) => a.licenseId)).size;
+  const uniqueIPs = new Set(activations.map((a) => a.ipAddress).filter(Boolean)).size;
+  const uniqueOrgs = new Set(activations.map((a) => a.license.organization)).size;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold">
-          Device Management
-        </h1>
+      <PageHeader
+        title="Device Management"
+        description="Monitor and manage all activated devices across your licensing platform."
+      />
 
-        <p className="mt-2 text-zinc-500">
-          Monitor and manage all
-          activated devices across
-          your licensing platform.
-        </p>
-      </div>
+      <StatCardGrid columns={4}>
+        <StatCard title="Total Devices" value={totalDevices} icon={Monitor} color="blue" />
+        <StatCard title="Licensed Products" value={uniqueLicenses} icon={KeyRound} color="green" />
+        <StatCard title="Unique IPs" value={uniqueIPs} icon={Globe} color="purple" />
+        <StatCard title="Organizations" value={uniqueOrgs} icon={Fingerprint} color="yellow" />
+      </StatCardGrid>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Total Devices
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold">
-            {totalDevices}
-          </h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Licensed Products
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-green-400">
-            {uniqueLicenses}
-          </h2>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">
-            Unique IPs
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-blue-400">
-            {uniqueIPs}
-          </h2>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl">
-        <div className="border-b border-zinc-800 p-5">
-          <h2 className="text-xl font-semibold">
-            Activated Devices
-          </h2>
-        </div>
-
-        <table className="w-full">
-          <thead className="border-b border-zinc-800 bg-zinc-950/40">
-            <tr>
-              <th className="p-4 text-left">
-                Device
-              </th>
-
-              <th className="p-4 text-left">
-                Device ID
-              </th>
-
-              <th className="p-4 text-left">
-                IP Address
-              </th>
-
-              <th className="p-4 text-left">
-                License
-              </th>
-
-              <th className="p-4 text-left">
-                Organization
-              </th>
-
-              <th className="p-4 text-left">
-                Activated
-              </th>
-
-<th className="p-4 text-left">
-  Actions
-</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {activations.map(
-              (activation) => (
-                <tr
-                  key={activation.id}
-                  className="border-b border-zinc-800 hover:bg-zinc-800/30"
-                >
-                  <td className="p-4">
-<a
-  href={`/devices/${activation.id}`}
-  className="text-blue-400 hover:underline"
->
-  {activation.deviceName ||
-    "Unknown Device"}
-</a>
-                  </td>
-
-                  <td className="p-4 font-mono text-xs">
-                    {
-                      activation.deviceId
-                    }
-                  </td>
-
-                  <td className="p-4">
-                    {activation.ipAddress ||
-                      "-"}
-                  </td>
-
-                  <td className="p-4 font-mono text-xs">
-                    <a
-                      href={`/licenses/${activation.license.id}`}
-                      className="text-blue-400 hover:underline"
-                    >
-                      {
-                        activation
-                          .license.key
-                      }
-                    </a>
-                  </td>
-
-                  <td className="p-4">
-                    {
-                      activation
-                        .license
-                        .organization
-                    }
-                  </td>
-
-                  <td className="p-4">
-                    {new Intl.DateTimeFormat(
-                      "en-IN",
-                      {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      }
-                    ).format(
-                      activation.createdAt
-                    )}
-                  </td>
-     
-<td className="p-4">
-  <RevokeDeviceButton
-    id={activation.id}
-  />
-</td>
-      </tr>
-              )
-            )}
-
-            {activations.length ===
-              0 && (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="p-8 text-center text-zinc-500"
-                >
-                  No activated
-                  devices found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={[
+          {
+            key: "deviceName",
+            label: "Device",
+            sortable: true,
+            searchable: true,
+            render: (a: Record<string, unknown>) => (
+              <Link href={`/devices/${a.id}`} className="font-medium text-blue-400 hover:underline">
+                {(a.deviceName as string) || "Unknown Device"}
+              </Link>
+            ),
+          },
+          {
+            key: "deviceId",
+            label: "Device ID",
+            sortable: true,
+            searchable: true,
+            render: (a: Record<string, unknown>) => <span className="font-mono text-xs text-zinc-400">{a.deviceId as string}</span>,
+          },
+          {
+            key: "ipAddress",
+            label: "IP Address",
+            sortable: true,
+            render: (a: Record<string, unknown>) => (a.ipAddress as string) || "-",
+          },
+          {
+            key: "license",
+            label: "License",
+            sortable: true,
+            searchable: true,
+            render: (a: Record<string, unknown>) => {
+              const lic = a.license as { id: string; key: string; status: string };
+              return (
+                <Link href={`/licenses/${lic.id}`} className="font-mono text-xs text-blue-400 hover:underline">
+                  {lic.key}
+                </Link>
+              );
+            },
+          },
+          {
+            key: "organization",
+            label: "Organization",
+            sortable: true,
+            searchable: true,
+            render: (a: Record<string, unknown>) => {
+              const lic = a.license as { organization: string };
+              return lic.organization;
+            },
+          },
+          {
+            key: "createdAt",
+            label: "Activated",
+            sortable: true,
+            render: (a: Record<string, unknown>) => formatDate(a.createdAt as Date),
+          },
+          {
+            key: "actions",
+            label: "Actions",
+            className: "w-24",
+            render: (a: Record<string, unknown>) => <RevokeDeviceButton id={a.id as string} />,
+          },
+        ]}
+        data={activations as unknown as Record<string, unknown>[]}
+        keyExtractor={(a) => a.id as string}
+        searchPlaceholder="Search by device name, ID, or license..."
+        emptyMessage="No activated devices found. Activate a license to see devices here."
+      />
     </div>
   );
 }
