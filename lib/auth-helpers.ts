@@ -26,6 +26,19 @@ export async function requireAuth(): Promise<AuthSession> {
   if (!session) {
     redirect("/login");
   }
+
+  // Validate license is still active and not expired
+  if (session.user.licenseId) {
+    const license = await prisma.license.findUnique({
+      where: { id: session.user.licenseId },
+      select: { status: true, expiresAt: true },
+    });
+
+    if (!license || license.status !== "ACTIVE" || license.expiresAt < new Date()) {
+      redirect("/login");
+    }
+  }
+
   return session;
 }
 

@@ -227,12 +227,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Creating a new token on sign-in
         token.id = user.id as string;
         token.role = (user as { role: string }).role;
         token.roleId = (user as { roleId: string }).roleId;
         token.licenseId = (user as { licenseId: string | null }).licenseId;
         token.licenseStatus = (user as { licenseStatus: string | null }).licenseStatus;
         token.licensePlan = (user as { licensePlan: string | null }).licensePlan;
+      } else if (token.licenseId) {
+        // Validating license on every token read (each session access)
+        try {
+          const { prisma } = await import("@/lib/prisma");
+          const license = await prisma.license.findUnique({
+            where: { id: token.licenseId as string },
+            select: { status: true, expiresAt: true },
+          });
+
+          if (!license) {
+            return null;
+          }
+
+          const isExpired = license.expiresAt < new Date();
+
+          if (isExpired || license.status !== "ACTIVE") {
+            return null;
+          }
+
+          if (token.licenseStatus !== license.status) {
+            token.licenseStatus = license.status;
+          }
+        } catch {
+          return null;
+        }
       }
       return token;
     },
