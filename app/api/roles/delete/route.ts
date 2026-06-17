@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function DELETE(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requirePermission("Delete Roles");
     const { id } = await req.json();
+    if (!id) {
+      return Response.json({ error: "Role ID is required" }, { status: 400 });
+    }
     const role = await prisma.role.findUnique({
       where: { id },
       include: { members: true },

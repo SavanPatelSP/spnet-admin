@@ -3,24 +3,29 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { DataTable } from "@/components/ui/DataTable";
-import { KeyRound, Monitor, AlertTriangle, Activity } from "lucide-react";
-import { EXPIRING_SOON_DAYS, DEFAULT_LOCALE, PLANS, LICENSE_STATUSES } from "@/lib/constants";
+import { KeyRound, Monitor, AlertTriangle, Activity, LayoutTemplate, FlaskConical, ArrowRightLeft } from "lucide-react";
+import { EXPIRING_SOON_DAYS } from "@/lib/constants";
 import { daysUntil, calculateUtilization } from "@/lib/shared";
 import CreateLicenseModal from "@/components/licenses/CreateLicenseModal";
-import EditLicenseButton from "@/components/licenses/EditLicenseButton";
-import DeleteLicenseButton from "@/components/licenses/DeleteLicenseButton";
-import ToggleLicenseStatusButton from "@/components/licenses/ToggleLicenseStatusButton";
-import RegenerateLicenseButton from "@/components/licenses/RegenerateLicenseButton";
 import LicensingAdminActions from "@/components/licenses/LicensingAdminActions";
-import Link from "next/link";
+import { LicensesTable } from "@/components/licenses/LicensesTable";
+import LicenseTemplatesManager from "@/components/licenses/LicenseTemplatesManager";
+import BulkCreateButton from "./BulkCreateButton";
 
 export default async function LicensesPage() {
-  const licenses = await prisma.license.findMany({
-    include: { activations: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [licenses, templates, trialLicenses, transferredLicenses] = await Promise.all([
+    prisma.license.findMany({
+      include: { activations: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.licenseTemplate.findMany({ orderBy: { name: "asc" } }),
+    prisma.license.count({
+      where: { trialStartDate: { not: null }, trialEndDate: { not: null } },
+    }),
+    prisma.license.count({
+      where: { parentLicenseId: { not: null } },
+    }),
+  ]);
 
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
@@ -37,6 +42,11 @@ export default async function LicensesPage() {
     return acc;
   }, {});
 
+  const templatePlanDistribution = templates.reduce<Record<string, number>>((acc, t) => {
+    acc[t.plan] = (acc[t.plan] || 0) + 1;
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -46,6 +56,7 @@ export default async function LicensesPage() {
           <div className="flex items-center gap-3">
             <LicensingAdminActions />
             <CreateLicenseModal />
+            <BulkCreateButton templates={templates.map((t) => ({ id: t.id, name: t.name }))} />
           </div>
         }
       />
@@ -59,66 +70,45 @@ export default async function LicensesPage() {
         <StatCard title="Utilization" value={`${utilization}%`} icon={Monitor} color={utilization > 80 ? "yellow" : "default"} subtitle={`${totalDevices}/${totalCapacity} devices`} />
       </StatCardGrid>
 
+      <StatCardGrid columns={3}>
+        <StatCard title="Templates" value={templates.length} icon={LayoutTemplate} color="blue" subtitle="Available license templates" />
+        <StatCard title="Trial Licenses" value={trialLicenses} icon={FlaskConical} color="yellow" subtitle="With trial dates set" />
+        <StatCard title="Transferred" value={transferredLicenses} icon={ArrowRightLeft} color="purple" subtitle="Licenses with parent" />
+      </StatCardGrid>
+
+      <LicenseTemplatesManager />
+
       {Object.keys(planDistribution).length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(planDistribution).map(([plan, count]) => (
-            <div key={plan} className="rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-sm text-zinc-300">
-              {plan}: <span className="font-semibold text-zinc-100">{count}</span>
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+          <h2 className="mb-4 text-xl font-bold">Plan Distribution</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="mb-2 text-sm font-semibold text-zinc-400">Licenses by Plan</h3>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(planDistribution).map(([plan, count]) => (
+                  <div key={plan} className="rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-sm text-zinc-300">
+                    {plan}: <span className="font-semibold text-zinc-100">{count}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+            {Object.keys(templatePlanDistribution).length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold text-zinc-400">Templates by Plan</h3>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(templatePlanDistribution).map(([plan, count]) => (
+                    <div key={plan} className="rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-sm text-zinc-300">
+                      {plan}: <span className="font-semibold text-zinc-100">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      <DataTable
-        columns={[
-          { key: "key", label: "License Key", sortable: true, searchable: true },
-          { key: "organization", label: "Organization", sortable: true, searchable: true },
-          { key: "plan", label: "Plan", sortable: true },
-          { key: "activations", label: "Devices", sortable: false },
-          { key: "expiresAt", label: "Expiry", sortable: true },
-          { key: "status", label: "Status", sortable: true },
-          { key: "actions", label: "Actions", sortable: false, className: "w-48" },
-        ]}
-        rows={licenses.map((l) => {
-          const expiry = new Date(l.expiresAt);
-          const days = daysUntil(expiry);
-          const color = days < 0 ? "text-red-400" : days <= EXPIRING_SOON_DAYS ? "text-yellow-400" : "text-zinc-300";
-          return {
-            id: String(l.id),
-            values: {
-              key: l.key,
-              organization: l.organization,
-              plan: l.plan,
-              activations: `${l.activations.length}/${l.maxDevices}`,
-              expiresAt: expiry.toISOString(),
-              status: l.status,
-              actions: "",
-            },
-            cells: [
-              <Link href={`/licenses/${l.id}`} className="font-mono text-sm text-blue-400 transition-colors hover:text-blue-300 hover:underline">
-                {l.key}
-              </Link>,
-              <>{l.organization}</>,
-              <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium">{l.plan}</span>,
-              <>{`${l.activations.length}/${l.maxDevices}`}</>,
-              <span className={color}>
-                {new Intl.DateTimeFormat(DEFAULT_LOCALE, { day: "2-digit", month: "short", year: "numeric" }).format(expiry)}
-                {days >= 0 && days <= EXPIRING_SOON_DAYS && <span className="ml-2 text-xs text-yellow-500">({days}d)</span>}
-                {days < 0 && <span className="ml-2 text-xs text-red-500">(expired)</span>}
-              </span>,
-              <StatusBadge status={l.status} />,
-              <div className="flex items-center gap-1.5">
-                <EditLicenseButton license={l as never} />
-                <ToggleLicenseStatusButton id={l.id} status={l.status} size="sm" />
-                <RegenerateLicenseButton id={l.id} size="sm" />
-                <DeleteLicenseButton id={l.id} size="sm" />
-              </div>,
-            ],
-          };
-        })}
-        searchPlaceholder="Search by license key or organization..."
-        emptyMessage="No licenses found. Create your first license to get started."
-      />
+      <LicensesTable licenses={licenses as never} />
     </div>
   );
 }

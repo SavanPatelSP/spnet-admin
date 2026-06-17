@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound, Eye, EyeOff, AlertCircle, Shield } from "lucide-react";
@@ -10,6 +10,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const urlError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,30 +19,31 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (urlError) {
+        setError(
+          urlError === "CredentialsSignin"
+            ? "Invalid credentials. Check your email, password, and license key."
+            : "Authentication failed. Please try again."
+        );
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [urlError]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const result = await signIn("credentials", {
+      await signIn("credentials", {
         email,
         password,
         licenseKey,
-        redirect: false,
+        callbackUrl,
       });
-
-      if (result?.error) {
-        setError(
-          result.error === "CredentialsSignin"
-            ? "Invalid credentials. Check your email, password, and license key."
-            : "Authentication failed. Please try again."
-        );
-        return;
-      }
-
-      router.push(callbackUrl);
-      router.refresh();
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {

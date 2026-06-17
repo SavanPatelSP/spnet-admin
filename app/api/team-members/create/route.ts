@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 import bcrypt from "bcryptjs";
@@ -11,7 +11,7 @@ function generateTempPassword(): string {
 
 export async function POST(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requirePermission("Invite Team Members");
     const body = await req.json();
     const { name, email, roleId } = body;
 

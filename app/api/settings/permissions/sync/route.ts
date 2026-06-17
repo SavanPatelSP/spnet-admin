@@ -1,0 +1,69 @@
+import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
+import { requirePermission } from "@/lib/auth-helpers";
+import { PERMISSION_GROUPS, ALL_PERMISSIONS, AUDIT_ACTIONS } from "@/lib/constants";
+
+export async function GET() {
+  await requirePermission("Edit Roles");
+  return Response.json(PERMISSION_GROUPS);
+}
+
+export async function POST(req: Request) {
+  try {
+    const session = await requirePermission("Edit Roles");
+    const body = await req.json();
+    const roleId: string | undefined = body.roleId;
+
+    if (roleId) {
+      await syncRolePermissions(roleId, session);
+      return Response.json({ success: true });
+    }
+
+    const roles = await prisma.role.findMany({ select: { id: true } });
+    for (const role of roles) {
+      await syncRolePermissions(role.id, session);
+    }
+
+    return Response.json({ success: true, roleCount: roles.length });
+  } catch (error) {
+    console.error("Permission sync error:", error);
+    return Response.json({ error: "Failed to sync permissions" }, { status: 500 });
+  }
+}
+
+async function syncRolePermissions(roleId: string, session: { user: { role: string; name: string } }) {
+  const existing = await prisma.permission.findMany({
+    where: { roleId },
+    select: { permission: true, id: true },
+  });
+
+  const existingSet = new Set(existing.map((p) => p.permission));
+  const allowedSet = new Set<string>(ALL_PERMISSIONS);
+
+  const toAdd = ALL_PERMISSIONS.filter((p) => !existingSet.has(p));
+  const toRemove = existing.filter((p) => !allowedSet.has(p.permission)).map((p) => p.id);
+
+  if (toAdd.length > 0) {
+    await prisma.permission.createMany({
+      data: toAdd.map((permission) => ({ roleId, permission })),
+    });
+  }
+
+  if (toRemove.length > 0) {
+    await prisma.permission.deleteMany({
+      where: { id: { in: toRemove } },
+    });
+  }
+
+  if (toAdd.length > 0 || toRemove.length > 0) {
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
+    await logAudit(
+      AUDIT_ACTIONS.ROLE_PERMISSIONS_UPDATED,
+      undefined,
+      undefined,
+      session.user.role,
+      session.user.name,
+      `Synced permissions for role "${role?.name}" (added ${toAdd.length}, removed ${toRemove.length})`
+    );
+  }
+}

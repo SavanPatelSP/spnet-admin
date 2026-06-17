@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function DELETE(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requirePermission("Remove Team Members");
     const body = await req.json();
+    if (!body.id) {
+      return Response.json({ error: "Member ID is required" }, { status: 400 });
+    }
     const member = await prisma.teamMember.findUnique({ where: { id: body.id } });
 
     if (!member) {

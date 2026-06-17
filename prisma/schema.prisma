@@ -30,13 +30,186 @@ model License {
 
   notes        String?
 
-  teamMemberId String?     @unique
-  teamMember   TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
+  featureFlags String?   // JSON string of feature flag key-value pairs
+
+  trialStartDate DateTime?
+  trialEndDate   DateTime?
+
+  parentLicenseId String?
+  parentLicense   License?  @relation("LicenseTransfer", fields: [parentLicenseId], references: [id], onDelete: SetNull)
+  childLicenses   License[] @relation("LicenseTransfer")
+
+  teamMember   TeamMember?
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
   activations  Activation[]
+  coinBalance  CoinBalance?
+  coinTransactions CoinTransaction[]
+  gemBalance   GemBalance?
+  gemTransactions GemTransaction[]
+  premiumSubscriptions PremiumSubscription[]
+  premiumRequests    PremiumRequest[]
+  supportTickets SupportTicket[]
+  tags         LicenseTag[]
+  events       LicenseEvent[]
+}
+
+model LicenseTag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("gray")
+  licenseId String
+  license   License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([licenseId, name])
+}
+
+model LicenseEvent {
+  id          String   @id @default(cuid())
+  licenseId   String
+  license     License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type        String   // ACTIVATED, DEACTIVATED, SUSPENDED, REACTIVATED, EXPIRED, RENEWED, PLAN_CHANGED, TRANSFERRED, TRIAL_STARTED, TRIAL_CONVERTED, FEATURE_UPDATED, TAG_ADDED, TAG_REMOVED, VALIDATED
+  description String?
+  metadata    String?  // JSON string
+  performedBy String?
+  createdAt   DateTime @default(now())
+}
+
+model LicenseTemplate {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?
+  plan          String
+  maxDevices    Int      @default(5)
+  durationDays  Int      @default(365)
+  featureFlags  String?  // JSON string of default feature flag values
+  defaultNotes  String?
+  isActive      Boolean  @default(true)
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+}
+
+model CoinBalance {
+  id         String   @id @default(cuid())
+  licenseId  String   @unique
+  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type       String   @default("FINITE")  // FINITE, PROMOTIONAL, BONUS
+  balance    Int      @default(0)
+  isInfinite Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+}
+
+model CoinTransaction {
+  id           String   @id @default(cuid())
+  licenseId    String
+  license      License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type         String   // CREDIT, DEBIT, REFUND, ADJUSTMENT
+  amount       Int
+  balanceAfter Int
+  reason       String?
+  description  String?
+  performedBy  String?
+  metadata     String?
+  createdAt    DateTime @default(now())
+}
+
+model GemBalance {
+  id         String   @id @default(cuid())
+  licenseId  String   @unique
+  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type       String   @default("FINITE")  // FINITE, PROMOTIONAL, REWARD
+  balance    Int      @default(0)
+  isInfinite Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+}
+
+model GemTransaction {
+  id           String   @id @default(cuid())
+  licenseId    String
+  license      License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type         String   // GRANT, REVOKE, ADJUSTMENT, REWARD
+  amount       Int
+  balanceAfter Int
+  rewardId     String?
+  reward       GemReward? @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+  reason       String?
+  description  String?
+  performedBy  String?
+  createdAt    DateTime @default(now())
+}
+
+model GemReward {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  amount      Int
+  category    String   @default("ACHIEVEMENT")  // ACHIEVEMENT, REFERRAL, EVENT, SEASONAL
+  active      Boolean  @default(true)
+  cooldownDays Int?
+  maxClaims   Int?
+  budget      Int?
+  icon        String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions GemTransaction[]
+}
+
+model PremiumSubscription {
+  id        String   @id @default(cuid())
+
+  licenseId String
+  license   License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  plan      String
+  action    String   // GRANTED, EXTENDED, PLAN_CHANGED, REVOKED, CANCELLED, RENEWED, DOWNGRADED, CONVERTED_TO_LIFETIME
+
+  subscriptionType String @default("MONTHLY")  // MONTHLY, YEARLY, CUSTOM, LIFETIME
+
+  startDate DateTime @default(now())
+  endDate   DateTime
+  durationDays Int?
+
+  grantedBy String?
+  notes     String?
+
+  previousPlan     String?
+  previousEndDate  DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+model PremiumRequest {
+  id            String   @id @default(cuid())
+
+  licenseId     String
+  license       License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  organization  String?
+  requestedPlan String
+  requestedDurationDays Int
+  reason        String?
+  status        String   @default("PENDING")  // PENDING, APPROVED, REJECTED, EXPIRED
+
+  submittedBy   String?
+  submittedAt   DateTime @default(now())
+
+  reviewedBy    String?
+  reviewedAt    DateTime?
+
+  reviewNotes   String?
+  convertedSubscriptionId String?
+
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Activation {
@@ -49,8 +222,35 @@ model Activation {
   deviceName String?
 
   ipAddress  String?
+  os         String?
+  browser    String?
+  browserVersion String?
+  deviceType String?     // DESKTOP, MOBILE, TABLET, SERVER, OTHER
+  manufacturer String?
+  model      String?
+
+  country    String?
+  city       String?
+  region     String?
+  isp        String?
+
+  trustScore Int      @default(50)
+  isBlacklisted Boolean @default(false)
+  lastSeen   DateTime?
 
   createdAt  DateTime @default(now())
+
+  fingerprint DeviceFingerprint?
+}
+
+model DeviceFingerprint {
+  id              String   @id @default(cuid())
+  activationId    String   @unique
+  activation      Activation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+  fingerprint     String
+  confidenceScore Int      @default(75)
+  firstSeen       DateTime @default(now())
+  lastSeen        DateTime @default(now())
 }
 
 model AuditLog {
@@ -85,15 +285,64 @@ model TeamMember {
 
   status    String   @default("ACTIVE")
 
-  licenseId String?  @unique
-  license   License?
+  licenseId String?     @unique
+  license   License?    @relation(fields: [licenseId], references: [id], onDelete: SetNull)
 
   lastLogin            DateTime?
+  lastLoginIp          String?
+  lastUserAgent        String?
   failedLoginAttempts  Int      @default(0)
   lockedUntil          DateTime?
 
+  mfaSecret   String?
+  mfaEnabled  Boolean  @default(false)
+
+  passwordChangedAt DateTime?
+
+  ssoProvider  String?
+  ssoId        String?
+
+  department String?
+  phone      String?
+  avatarUrl  String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  sessions      Session[]
+  loginHistory  LoginHistory[]
+  mfaBackupCodes MfaBackupCode[]
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  token         String
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+}
+
+model LoginHistory {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  ipAddress     String?
+  userAgent     String?
+  success       Boolean
+  failureReason String?
+  createdAt     DateTime @default(now())
+}
+
+model MfaBackupCode {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  code          String
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now())
 }
 
 model Role {
@@ -122,6 +371,82 @@ model Permission {
   permission  String
 
   createdAt   DateTime @default(now())
+}
+
+model SupportTicket {
+  id         String   @id @default(cuid())
+  subject    String
+  message    String
+  status     String   @default("OPEN")       // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  priority   String   @default("MEDIUM")     // LOW, MEDIUM, HIGH, CRITICAL
+  category   String   @default("GENERAL")    // GENERAL, BILLING, TECHNICAL, ACCOUNT, OTHER
+
+  licenseId  String?
+  license    License? @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  assignedTo String?                          // TeamMember ID
+  createdBy  String?
+  resolvedBy String?
+  resolvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notes SupportNote[]
+}
+
+model SupportNote {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  note       String
+  isInternal Boolean  @default(true)
+  createdBy  String?
+  createdAt  DateTime @default(now())
+}
+
+model ModerationReport {
+  id          String   @id @default(cuid())
+  targetType  String                        // LICENSE, USER, CONTENT
+  targetId    String
+  reason      String
+  description String?
+  reporterId  String?
+  status      String   @default("PENDING")  // PENDING, INVESTIGATING, RESOLVED, DISMISSED
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  actionTaken String?                        // WARNING, SUSPENSION, BAN, NONE
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ModerationAction {
+  id            String   @id @default(cuid())
+  targetType    String                        // LICENSE, USER, TEAM_MEMBER
+  targetId      String
+  actionType    String                        // WARNING, SUSPENSION, REINSTATEMENT, BAN
+  reason        String
+  durationDays  Int?
+  expiresAt     DateTime?
+  performedBy   String?
+  reportId      String?
+  createdAt     DateTime @default(now())
+}
+
+model Broadcast {
+  id           String   @id @default(cuid())
+  subject      String
+  message      String
+  type         String   @default("INFO")     // INFO, WARNING, CRITICAL
+  audience     String   @default("ALL")       // ALL, PREMIUM, FREE, SPECIFIC
+  status       String   @default("DRAFT")     // DRAFT, SCHEDULED, SENT, CANCELLED
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  sentCount    Int      @default(0)
+  targetCount  Int      @default(0)
+  failedCount  Int      @default(0)
+  createdBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model SecurityPolicy {

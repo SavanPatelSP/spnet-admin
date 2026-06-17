@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, PLANS, LICENSE_STATUSES, DEFAULT_PLAN, DEFAULT_MAX_DEVICES } from "@/lib/constants";
+import { API_ROUTES, PLANS, LICENSE_STATUSES, DEFAULT_PLAN, DEFAULT_MAX_DEVICES, Plan } from "@/lib/constants";
 
 const defaultExpiry = `${new Date().getFullYear() + 3}-12-31`;
 
@@ -101,7 +101,7 @@ export default function CreateLicenseModal() {
               <label className="mb-1.5 block text-sm font-medium text-zinc-400">Plan</label>
               <select
                 value={plan}
-                onChange={(e) => setPlan(e.target.value as "FREE" | "BASIC" | "PRO" | "BUSINESS" | "ENTERPRISE" | "LIFETIME")}
+                onChange={(e) => setPlan(e.target.value as Plan)}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-3 text-zinc-100 outline-none focus:border-blue-500"
               >
                 {PLANS.map((p) => (

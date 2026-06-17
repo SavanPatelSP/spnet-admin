@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST() {
   try {
-    const session = await requireAuth();
+    const session = await requirePermission("Emergency License Lockdown");
     const result = await prisma.license.updateMany({
       where: { status: "ACTIVE" },
       data: { status: "SUSPENDED" },

@@ -13,7 +13,7 @@ export default async function AuditSettingsPage() {
   const uniqueActions = [...new Set(logs.map((l) => l.action))].length;
   const oldestLog = logs.length > 0 ? logs[logs.length - 1].createdAt : null;
   const daysSinceOldest = oldestLog
-    ? Math.max(1, Math.ceil((Date.now() - new Date(oldestLog).getTime()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(1, Math.ceil((new Date().getTime() - new Date(oldestLog).getTime()) / (1000 * 60 * 60 * 24)))
     : 1;
   const averageDaily = Math.round(logs.length / daysSinceOldest);
 

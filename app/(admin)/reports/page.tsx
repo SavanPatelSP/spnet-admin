@@ -43,11 +43,11 @@ export default async function ReportsPage() {
             createdAt: r.createdAt.toISOString(),
           },
           cells: [
-            <StatusBadge status={r.action.replace(/_/g, " ")} />,
-            <span className="text-sm">{r.description || "-"}</span>,
-            <>{r.organization || "-"}</>,
-            <>{r.actorName || "-"}</>,
-            <>{formatDate(r.createdAt)}</>,
+            <StatusBadge key="action" status={r.action.replace(/_/g, " ")} />,
+            <span key="description" className="text-sm">{r.description || "-"}</span>,
+            <span key="organization">{r.organization || "-"}</span>,
+            <span key="actorName">{r.actorName || "-"}</span>,
+            <span key="createdAt">{formatDate(r.createdAt)}</span>,
           ],
         }))}
         emptyMessage="No reports found. System reports will appear here."

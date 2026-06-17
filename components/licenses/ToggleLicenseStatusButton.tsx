@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
-import { useEffect, useState } from "react";
 import { Ban, CheckCircle } from "lucide-react";
 
 interface Props {
@@ -14,8 +13,6 @@ interface Props {
 
 export default function ToggleLicenseStatusButton({ id, status, size = "sm" }: Props) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
   async function toggle() {
     const response = await fetch(API_ROUTES.LICENSES.TOGGLE_STATUS, {
@@ -30,9 +27,9 @@ export default function ToggleLicenseStatusButton({ id, status, size = "sm" }: P
 
   const isActive = status === "ACTIVE";
 
-  return mounted ? (
+  return (
     <ActionButton onClick={toggle} variant={isActive ? "ghost" : "ghost"} size={size}>
       {isActive ? <Ban size={14} className="text-yellow-400" /> : <CheckCircle size={14} className="text-green-400" />}
     </ActionButton>
-  ) : null;
+  );
 }

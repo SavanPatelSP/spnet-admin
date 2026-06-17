@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
-import { useEffect, useState } from "react";
 import { ToggleLeft, ToggleRight } from "lucide-react";
 
 interface Props {
@@ -12,10 +11,8 @@ interface Props {
   name: string;
 }
 
-export default function PolicyActions({ id, enabled, name }: Props) {
+export default function PolicyActions({ id, enabled, name: _name }: Props) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
   async function toggle() {
     const response = await fetch(API_ROUTES.SECURITY.TOGGLE_POLICY, {
@@ -26,10 +23,10 @@ export default function PolicyActions({ id, enabled, name }: Props) {
     if (response.ok) router.refresh();
   }
 
-  return mounted ? (
+  return (
     <ActionButton onClick={toggle} variant={enabled ? "secondary" : "primary"} size="sm">
       {enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
       {enabled ? "Disable" : "Enable"}
     </ActionButton>
-  ) : null;
+  );
 }

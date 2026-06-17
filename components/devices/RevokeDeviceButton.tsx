@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
 interface Props {
@@ -13,8 +13,6 @@ interface Props {
 
 export default function RevokeDeviceButton({ id }: Props) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const [open, setOpen] = useState(false);
 
   async function handleRevoke() {
@@ -29,7 +27,7 @@ export default function RevokeDeviceButton({ id }: Props) {
     }
   }
 
-  return mounted ? (
+  return (
     <>
       <ActionButton onClick={() => setOpen(true)} variant="danger" size="sm">
         <Trash2 size={14} /> Revoke
@@ -45,5 +43,5 @@ export default function RevokeDeviceButton({ id }: Props) {
         variant="danger"
       />
     </>
-  ) : null;
+  );
 }

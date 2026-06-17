@@ -5,7 +5,7 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
-import { Download, AlertTriangle, FileSpreadsheet, ShieldAlert } from "lucide-react";
+import { Download, ShieldAlert } from "lucide-react";
 
 export default function LicensingAdminActions() {
   const router = useRouter();

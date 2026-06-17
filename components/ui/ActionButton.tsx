@@ -12,6 +12,7 @@ interface ActionButtonProps {
   disabled?: boolean;
   className?: string;
   confirmText?: string;
+  loading?: boolean;
 }
 
 const variantStyles = {
@@ -27,8 +28,9 @@ const sizeStyles = {
   lg: "px-5 py-3 text-base rounded-xl",
 };
 
-export function ActionButton({ onClick, children, variant = "primary", size = "md", disabled, className, confirmText }: ActionButtonProps) {
-  const [loading, setLoading] = useState(false);
+export function ActionButton({ onClick, children, variant = "primary", size = "md", disabled, className, confirmText, loading: externalLoading }: ActionButtonProps) {
+  const [localLoading, setLoading] = useState(false);
+  const loading = externalLoading ?? localLoading;
   const [confirming, setConfirming] = useState(false);
 
   async function handleClick() {

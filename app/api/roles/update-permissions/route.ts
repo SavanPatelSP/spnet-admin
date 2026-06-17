@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requirePermission("Edit Roles");
     const body = await req.json();
+    if (!body.roleId) {
+      return Response.json({ error: "Role ID is required" }, { status: 400 });
+    }
 
     await prisma.permission.deleteMany({ where: { roleId: body.roleId } });
 

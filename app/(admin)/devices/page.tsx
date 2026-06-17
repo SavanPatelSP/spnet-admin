@@ -3,12 +3,10 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { DataTable } from "@/components/ui/DataTable";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Monitor, Fingerprint, Globe, KeyRound } from "lucide-react";
-import { formatDate, formatDateTime } from "@/lib/shared";
-import RevokeDeviceButton from "@/components/devices/RevokeDeviceButton";
-import Link from "next/link";
+import { DevicesTable } from "@/components/devices/DevicesTable";
+import { DeviceAnalyticsPanel } from "@/components/devices/DeviceAnalyticsPanel";
+import { DevicesExportButton } from "@/components/devices/DevicesExportButton";
+import { Monitor, Fingerprint, Globe, KeyRound, Ban, TrendingUp, Laptop, Flag } from "lucide-react";
 
 export default async function DevicesPage() {
   const activations = await prisma.activation.findMany({
@@ -20,12 +18,35 @@ export default async function DevicesPage() {
   const uniqueLicenses = new Set(activations.map((a) => a.licenseId)).size;
   const uniqueIPs = new Set(activations.map((a) => a.ipAddress).filter(Boolean)).size;
   const uniqueOrgs = new Set(activations.map((a) => a.license.organization)).size;
+  const blacklisted = activations.filter((a) => a.isBlacklisted).length;
+  const avgTrustScore = totalDevices > 0
+    ? Math.round(activations.reduce((sum, a) => sum + a.trustScore, 0) / totalDevices)
+    : 0;
+  const osTypes = new Set(activations.map((a) => a.os).filter(Boolean)).size;
+  const countries = new Set(activations.map((a) => a.country).filter(Boolean)).size;
+
+  const devices = activations.map((a) => ({
+    id: a.id,
+    deviceName: a.deviceName,
+    deviceId: a.deviceId,
+    ipAddress: a.ipAddress,
+    trustScore: a.trustScore,
+    os: a.os,
+    browser: a.browser,
+    country: a.country,
+    isBlacklisted: a.isBlacklisted,
+    licenseId: a.license.id,
+    licenseKey: a.license.key,
+    organization: a.license.organization,
+    createdAt: a.createdAt,
+  }));
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Device Management"
         description="Monitor and manage all activated devices across your licensing platform."
+        actions={<DevicesExportButton />}
       />
 
       <StatCardGrid columns={4}>
@@ -33,46 +54,15 @@ export default async function DevicesPage() {
         <StatCard title="Licensed Products" value={uniqueLicenses} icon={KeyRound} color="green" />
         <StatCard title="Unique IPs" value={uniqueIPs} icon={Globe} color="purple" />
         <StatCard title="Organizations" value={uniqueOrgs} icon={Fingerprint} color="yellow" />
+        <StatCard title="Blacklisted" value={blacklisted} icon={Ban} color="red" />
+        <StatCard title="Avg Trust Score" value={`${avgTrustScore}%`} icon={TrendingUp} color={avgTrustScore >= 60 ? "green" : avgTrustScore >= 30 ? "yellow" : "red"} />
+        <StatCard title="OS Types" value={osTypes} icon={Laptop} color="blue" />
+        <StatCard title="Countries" value={countries} icon={Flag} color="purple" />
       </StatCardGrid>
 
-      <DataTable
-        columns={[
-          { key: "deviceName", label: "Device", sortable: true, searchable: true },
-          { key: "deviceId", label: "Device ID", sortable: true, searchable: true },
-          { key: "ipAddress", label: "IP Address", sortable: true },
-          { key: "license", label: "License", sortable: true, searchable: true },
-          { key: "organization", label: "Organization", sortable: true, searchable: true },
-          { key: "createdAt", label: "Activated", sortable: true },
-          { key: "actions", label: "Actions", className: "w-24" },
-        ]}
-        rows={activations.map((a) => ({
-          id: a.id,
-          values: {
-            deviceName: a.deviceName || "Unknown Device",
-            deviceId: a.deviceId,
-            ipAddress: a.ipAddress || "",
-            license: a.license.key,
-            organization: a.license.organization,
-            createdAt: a.createdAt.toISOString(),
-            actions: "",
-          },
-          cells: [
-            <Link href={`/devices/${a.id}`} className="font-medium text-blue-400 hover:underline">
-              {a.deviceName || "Unknown Device"}
-            </Link>,
-            <span className="font-mono text-xs text-zinc-400">{a.deviceId}</span>,
-            <>{a.ipAddress || "-"}</>,
-            <Link href={`/licenses/${a.license.id}`} className="font-mono text-xs text-blue-400 hover:underline">
-              {a.license.key}
-            </Link>,
-            <>{a.license.organization}</>,
-            <>{formatDate(a.createdAt)}</>,
-            <RevokeDeviceButton id={a.id} />,
-          ],
-        }))}
-        searchPlaceholder="Search by device name, ID, or license..."
-        emptyMessage="No activated devices found. Activate a license to see devices here."
-      />
+      <DeviceAnalyticsPanel />
+
+      <DevicesTable devices={devices} />
     </div>
   );
 }

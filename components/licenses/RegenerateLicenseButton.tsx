@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 interface Props {
@@ -14,8 +14,6 @@ interface Props {
 
 export default function RegenerateLicenseButton({ id, size = "sm" }: Props) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const [open, setOpen] = useState(false);
 
   async function handleRegenerate() {
@@ -30,7 +28,7 @@ export default function RegenerateLicenseButton({ id, size = "sm" }: Props) {
     }
   }
 
-  return mounted ? (
+  return (
     <>
       <ActionButton onClick={() => setOpen(true)} variant="ghost" size={size}>
         <RefreshCw size={14} className="text-blue-400" />
@@ -46,5 +44,5 @@ export default function RegenerateLicenseButton({ id, size = "sm" }: Props) {
         variant="primary"
       />
     </>
-  ) : null;
+  );
 }

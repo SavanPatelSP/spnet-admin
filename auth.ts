@@ -12,6 +12,7 @@ declare module "next-auth" {
       licenseId: string | null;
       licenseStatus: string | null;
       licensePlan: string | null;
+      permissions: string[];
     } & DefaultSession["user"];
   }
 }
@@ -25,6 +26,7 @@ declare module "@auth/core/jwt" {
     licenseId: string | null;
     licenseStatus: string | null;
     licensePlan: string | null;
+    permissions: string[];
   }
 }
 
@@ -152,7 +154,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // 5. License belongs to this user (enforced by DB relation, double-check)
-          if (license.teamMemberId !== member.id) {
+          if (member.licenseId !== license.id) {
             await logAuthEvent("INVALID_LICENSE_KEY", {
               teamMemberId: member.id,
               email,
@@ -201,6 +203,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
           });
 
+          const permissions = (await prisma.permission.findMany({
+            where: { roleId: member.roleId },
+            select: { permission: true },
+          })).map((p) => p.permission);
+
           await logAuthEvent("LOGIN_SUCCESS", {
             teamMemberId: member.id,
             email,
@@ -216,6 +223,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             licenseId: license.id,
             licenseStatus: license.status,
             licensePlan: license.plan,
+            permissions,
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -234,6 +242,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.licenseId = (user as { licenseId: string | null }).licenseId;
         token.licenseStatus = (user as { licenseStatus: string | null }).licenseStatus;
         token.licensePlan = (user as { licensePlan: string | null }).licensePlan;
+        token.permissions = (user as { permissions: string[] }).permissions;
       } else if (token.licenseId) {
         // Validating license on every token read (each session access)
         try {
@@ -269,6 +278,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.licenseId = token.licenseId;
       session.user.licenseStatus = token.licenseStatus;
       session.user.licensePlan = token.licensePlan;
+      session.user.permissions = token.permissions || [];
       return session;
     },
   },

@@ -69,20 +69,20 @@ export default async function AuditLogsPage() {
             description: log.description || "",
           },
           cells: [
-            <span className="whitespace-nowrap text-sm">{formatDateTime(log.createdAt)}</span>,
-            <span className="inline-block rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
+            <span key="createdAt" className="whitespace-nowrap text-sm">{formatDateTime(log.createdAt)}</span>,
+            <span key="action" className="inline-block rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
               {log.action}
             </span>,
-            <>{log.organization || "-"}</>,
+            <span key="organization">{log.organization || "-"}</span>,
             log.actorRole ? (
-              <span className="inline-block rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400">
+              <span key="actorRole" className="inline-block rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400">
                 {log.actorRole}
               </span>
             ) : (
-              "-"
+              <span key="actorRole">-</span>
             ),
-            <>{log.actorName || "-"}</>,
-            <span className="text-sm text-zinc-300">{log.description || "-"}</span>,
+            <span key="actorName">{log.actorName || "-"}</span>,
+            <span key="description" className="text-sm text-zinc-300">{log.description || "-"}</span>,
           ],
         }))}
         pageSize={15}

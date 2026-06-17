@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, type ReactNode } from "react";
+import { Component, useState, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
@@ -48,10 +48,11 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 export function LoadingSkeleton({ rows = 3 }: { rows?: number }) {
+  const [randomWidths] = useState(() => Array.from({ length: rows }, () => 70 + Math.random() * 30));
   return (
     <div className="space-y-4">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-6 animate-pulse rounded-xl bg-zinc-800" style={{ width: `${70 + Math.random() * 30}%` }} />
+        <div key={i} className="h-6 animate-pulse rounded-xl bg-zinc-800" style={{ width: `${randomWidths[i]}%` }} />
       ))}
     </div>
   );

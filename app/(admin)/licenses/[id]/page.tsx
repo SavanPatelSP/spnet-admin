@@ -4,28 +4,53 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDate, formatDateTime, daysUntil } from "@/lib/shared";
-import { DEFAULT_LOCALE, EXPIRING_SOON_DAYS } from "@/lib/constants";
+import { EXPIRING_SOON_DAYS } from "@/lib/constants";
 import DeleteLicenseButton from "@/components/licenses/DeleteLicenseButton";
 import EditLicenseButton from "@/components/licenses/EditLicenseButton";
 import ToggleLicenseStatusButton from "@/components/licenses/ToggleLicenseStatusButton";
 import RegenerateLicenseButton from "@/components/licenses/RegenerateLicenseButton";
-import { KeyRound, CalendarDays, Monitor, FileText } from "lucide-react";
+import { LicenseAnalytics } from "@/components/licenses/LicenseAnalytics";
+import LicenseFeatureFlags from "@/components/licenses/LicenseFeatureFlags";
+import LicenseTagsInput from "@/components/licenses/LicenseTagsInput";
+import LicenseTransferButton from "@/components/licenses/LicenseTransferButton";
+import LicenseTrialManager from "@/components/licenses/LicenseTrialManager";
+import LicenseUsageDashboard from "@/components/licenses/LicenseUsageDashboard";
+import LicenseEventsTimeline from "@/components/licenses/LicenseEventsTimeline";
+import LicenseValidateForm from "@/components/licenses/LicenseValidateForm";
+import { KeyRound, CalendarDays, Monitor, FileText, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function LicenseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const license = await prisma.license.findUnique({
-    where: { id },
-    include: { activations: { orderBy: { createdAt: "desc" } } },
-  });
+  const [license, auditLogs, _eventsCount] = await Promise.all([
+    prisma.license.findUnique({
+      where: { id },
+      include: {
+        activations: { orderBy: { createdAt: "desc" } },
+        tags: true,
+      },
+    }),
+    prisma.auditLog.findMany({
+      where: { licenseId: id },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.licenseEvent.count({
+      where: { licenseId: id },
+    }),
+  ]);
 
   if (!license) notFound();
 
   const days = daysUntil(license.expiresAt);
   const devicesUsed = license.activations.length;
   const utilization = license.maxDevices > 0 ? Math.round((devicesUsed / license.maxDevices) * 100) : 0;
+
+  let featureFlags: Record<string, boolean | string | number> = {};
+  try {
+    if (license.featureFlags) featureFlags = JSON.parse(license.featureFlags);
+  } catch {}
 
   return (
     <div className="space-y-8">
@@ -55,6 +80,30 @@ export default async function LicenseDetailsPage({ params }: { params: Promise<{
         />
         <StatCard title="Devices" value={`${devicesUsed}/${license.maxDevices}`} icon={Monitor} subtitle={`${utilization}% utilized`} />
       </div>
+
+      <LicenseAnalytics
+        license={{
+          id: license.id,
+          status: license.status,
+          maxDevices: license.maxDevices,
+          expiresAt: license.expiresAt,
+          createdAt: license.createdAt,
+        }}
+        activations={license.activations}
+        auditLogs={auditLogs.map((log) => ({ action: log.action, createdAt: log.createdAt }))}
+      />
+
+      <details className="group rounded-3xl border border-zinc-800 bg-zinc-900">
+        <summary className="flex cursor-pointer items-center gap-2 px-6 py-4">
+          <ShieldCheck size={18} className="text-blue-400" />
+          <span className="font-semibold">Validate License Key</span>
+          <span className="ml-auto text-sm text-zinc-500 group-open:hidden">Expand</span>
+          <span className="ml-auto hidden text-sm text-zinc-500 group-open:inline">Collapse</span>
+        </summary>
+        <div className="px-6 pb-6">
+          <LicenseValidateForm />
+        </div>
+      </details>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6 lg:col-span-2">
@@ -143,6 +192,25 @@ export default async function LicenseDetailsPage({ params }: { params: Promise<{
           </div>
         )}
       </div>
+
+      <LicenseFeatureFlags licenseId={license.id} initialFlags={featureFlags} />
+
+      <LicenseTagsInput
+        licenseId={license.id}
+        initialTags={license.tags.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
+      />
+
+      <LicenseTrialManager
+        licenseId={license.id}
+        trialStartDate={license.trialStartDate?.toISOString()}
+        trialEndDate={license.trialEndDate?.toISOString()}
+      />
+
+      <LicenseUsageDashboard licenseId={license.id} />
+
+      <LicenseTransferButton licenseId={license.id} currentOrganization={license.organization} />
+
+      <LicenseEventsTimeline licenseId={license.id} />
     </div>
   );
 }

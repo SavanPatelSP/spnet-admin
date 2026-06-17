@@ -1,25 +1,57 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import TeamMembersTable from "@/components/settings/TeamMembersTable";
+import TeamMembersDataTable from "@/components/settings/TeamMembersDataTable";
 import AddMemberForm from "@/components/settings/team-members/AddMemberForm";
+import OwnershipPanel from "@/components/settings/team-members/OwnershipPanel";
+import SecurityEventsPanel from "@/components/settings/team-members/SecurityEventsPanel";
 import { Users, UserCheck, UserX, Shield } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamMembersPage() {
-  const [totalMembers, activeMembers, totalRoles] = await Promise.all([
+  const [totalMembers, activeMembers, totalRoles, members, auditEvents] = await Promise.all([
     prisma.teamMember.count(),
     prisma.teamMember.count({ where: { status: "ACTIVE" } }),
     prisma.role.count(),
+    prisma.teamMember.findMany({
+      include: { role: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.auditLog.findMany({
+      where: {
+        action: {
+          in: [
+            "LOGIN_FAILURE", "LOGIN_SUCCESS", "LOGOUT", "PERMISSION_DENIED",
+            "TEAM_MEMBER_SUSPENDED", "TEAM_MEMBER_REACTIVATED",
+            "PASSWORD_RESET", "EMERGENCY_LOCKDOWN",
+          ],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
   ]);
 
   const suspendedMembers = totalMembers - activeMembers;
+  const roles = await prisma.role.findMany({ orderBy: { name: "asc" } });
 
-  const owner = await prisma.teamMember.findFirst({
-    include: { role: true },
-    where: { role: { name: "OWNER" } },
-  });
+  const owner = members.find((m) => m.role.name === "OWNER");
+  const memberRows = members.map((m) => ({
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    status: m.status,
+    roleId: m.roleId,
+    roleName: m.role.name,
+    createdAt: m.createdAt,
+    lastLogin: m.lastLogin,
+    failedLoginAttempts: m.failedLoginAttempts,
+    lockedUntil: m.lockedUntil,
+    licenseId: m.licenseId,
+  }));
+
+  const roleList = roles.map((r) => ({ id: r.id, name: r.name }));
 
   return (
     <div className="space-y-8">
@@ -44,29 +76,28 @@ export default async function TeamMembersPage() {
           <AddMemberForm />
         </div>
 
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="text-xl font-bold">Ownership</h2>
-          <div className="mt-6">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Current Owner</p>
-            <p className="mt-2 text-lg font-semibold">{owner?.name || "Unknown"}</p>
-            <p className="text-sm text-zinc-500">{owner?.email || "-"}</p>
-          </div>
-          <div className="mt-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-            <p className="text-sm text-yellow-400">Ownership Protected</p>
-            <p className="mt-1 text-xs text-zinc-400">Transfer requires explicit owner approval.</p>
-          </div>
-          <div className="mt-6 flex flex-col gap-3">
-            <button className="rounded-xl bg-yellow-600 px-4 py-3 font-medium text-white transition-colors hover:bg-yellow-500">
-              Transfer Ownership
-            </button>
-            <button className="rounded-xl bg-zinc-800 px-4 py-3 font-medium text-zinc-200 transition-colors hover:bg-zinc-700">
-              Export Access Report
-            </button>
-          </div>
-        </div>
+        <OwnershipPanel
+          owner={owner ? { id: owner.id, name: owner.name, email: owner.email } : null}
+          members={memberRows.map((m) => ({ id: m.id, name: m.name, email: m.email }))}
+        />
       </div>
 
-      <TeamMembersTable />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <TeamMembersDataTable members={memberRows} roles={roleList} />
+        </div>
+        <div>
+          <SecurityEventsPanel
+            events={auditEvents.map((e) => ({
+              id: e.id,
+              action: e.action,
+              description: e.description,
+              actorEmail: e.actorEmail,
+              createdAt: e.createdAt,
+            }))}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
 interface Props {
@@ -14,8 +14,6 @@ interface Props {
 
 export default function DeleteLicenseButton({ id, size = "sm" }: Props) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const [open, setOpen] = useState(false);
 
   async function handleDelete() {
@@ -30,7 +28,7 @@ export default function DeleteLicenseButton({ id, size = "sm" }: Props) {
     }
   }
 
-  return mounted ? (
+  return (
     <>
       <ActionButton onClick={() => setOpen(true)} variant="ghost" size={size}>
         <Trash2 size={14} className="text-red-400" />
@@ -46,5 +44,5 @@ export default function DeleteLicenseButton({ id, size = "sm" }: Props) {
         variant="danger"
       />
     </>
-  ) : null;
+  );
 }

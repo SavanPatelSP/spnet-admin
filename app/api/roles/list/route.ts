@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { requirePermission } from "@/lib/auth-helpers";
 
 export async function GET() {
+  await requirePermission("View Roles");
+
   const roles = await prisma.role.findMany({
-    orderBy: {
-      name: "asc",
-    },
+    orderBy: { name: "asc" },
   });
 
-  return NextResponse.json(roles);
+  return Response.json(roles);
 }

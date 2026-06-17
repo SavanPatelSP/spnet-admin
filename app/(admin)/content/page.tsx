@@ -43,11 +43,11 @@ export default async function ContentPage() {
             createdAt: c.createdAt.toISOString(),
           },
           cells: [
-            <StatusBadge status={c.action.replace(/_/g, " ")} />,
-            <span className="text-sm">{c.description || "-"}</span>,
-            <>{c.organization || "-"}</>,
-            <>{c.actorName || "-"}</>,
-            <>{formatDateTime(c.createdAt)}</>,
+            <StatusBadge key="action" status={c.action.replace(/_/g, " ")} />,
+            <span key="description" className="text-sm">{c.description || "-"}</span>,
+            <span key="organization">{c.organization || "-"}</span>,
+            <span key="actorName">{c.actorName || "-"}</span>,
+            <span key="createdAt">{formatDateTime(c.createdAt)}</span>,
           ],
         }))}
         emptyMessage="No content items found."

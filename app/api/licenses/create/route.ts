@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { generateKey, parseExpiryDate } from "@/lib/shared";
 import { DEFAULT_PLAN, DEFAULT_MAX_DEVICES, AUDIT_ACTIONS } from "@/lib/constants";
 import { DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requirePermission("Create Licenses");
     const body = await req.json();
 
     if (!body.organization?.trim()) {

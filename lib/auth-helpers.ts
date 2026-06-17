@@ -12,6 +12,7 @@ export type AuthSession = {
     licenseId: string | null;
     licenseStatus: string | null;
     licensePlan: string | null;
+    permissions: string[];
   };
 };
 
@@ -42,11 +43,25 @@ export async function requireAuth(): Promise<AuthSession> {
   return session;
 }
 
+export function hasPermission(
+  session: AuthSession | null,
+  permission: string
+): boolean {
+  if (!session) return false;
+  return session.user.permissions.includes(permission);
+}
+
 export async function requirePermission(
   permission: string
 ): Promise<AuthSession> {
   const session = await requireAuth();
 
+  // Fast path: check JWT-stored permissions first
+  if (session.user.permissions.includes(permission)) {
+    return session;
+  }
+
+  // Fallback: check DB in case permissions changed since login
   const perm = await prisma.permission.findFirst({
     where: {
       roleId: session.user.roleId,

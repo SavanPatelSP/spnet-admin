@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requireAuth();
+    const session = await requirePermission("Change Member Roles");
     const body = await req.json();
+    if (!body.id) {
+      return Response.json({ error: "Member ID is required" }, { status: 400 });
+    }
     const member = await prisma.teamMember.update({
       where: { id: body.id },
       data: { roleId: body.roleId },
