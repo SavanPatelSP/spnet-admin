@@ -102,51 +102,46 @@ export default async function PremiumPage() {
 
   return (
     <div className="space-y-10">
-      {/* Section 1: Executive Overview */}
-      <div>
-        <PageHeader
-          title="Premium Subscriptions"
-          description="Enterprise subscription operations center"
+      <PageHeader
+        title="Premium Subscriptions"
+        description="Enterprise subscription operations center"
+      />
+
+      <StatCardGrid columns={4}>
+        <StatCard
+          title="Active Premium"
+          value={premiumLicenses.length}
+          icon={Crown}
+          color="purple"
+          subtitle={`${conversionRate}% of all licenses`}
         />
+        <StatCard
+          title="Subscription Types"
+          value={`${yearlyCount + monthlyCount + lifetimeCount + customCount}`}
+          icon={CalendarDays}
+          color="blue"
+          subtitle={`${yearlyCount} yearly · ${monthlyCount} monthly · ${lifetimeCount} lifetime · ${customCount} custom`}
+        />
+        <StatCard
+          title="Pending Requests"
+          value={pendingRequests}
+          icon={ClipboardList}
+          color={pendingRequests > 0 ? "yellow" : "default"}
+          subtitle={pendingRequests > 0 ? `${approvedRequests} approved · ${rejectedRequests} rejected` : "No pending requests"}
+        />
+        <StatCard
+          title="Expiring Soon"
+          value={expiringPremium}
+          icon={Clock}
+          color={expiringPremium > 0 ? "red" : "default"}
+          subtitle={`Within ${EXPIRING_SOON_DAYS} days`}
+        />
+      </StatCardGrid>
 
-        <StatCardGrid columns={4}>
-          <StatCard
-            title="Active Premium"
-            value={premiumLicenses.length}
-            icon={Crown}
-            color="purple"
-            subtitle={`${conversionRate}% of all licenses`}
-          />
-          <StatCard
-            title="Subscription Types"
-            value={`${yearlyCount + monthlyCount + lifetimeCount + customCount}`}
-            icon={CalendarDays}
-            color="blue"
-            subtitle={`${yearlyCount} yearly · ${monthlyCount} monthly · ${lifetimeCount} lifetime · ${customCount} custom`}
-          />
-          <StatCard
-            title="Pending Requests"
-            value={pendingRequests}
-            icon={ClipboardList}
-            color={pendingRequests > 0 ? "yellow" : "default"}
-            subtitle={pendingRequests > 0 ? `${approvedRequests} approved · ${rejectedRequests} rejected` : "No pending requests"}
-          />
-          <StatCard
-            title="Expiring Soon"
-            value={expiringPremium}
-            icon={Clock}
-            color={expiringPremium > 0 ? "red" : "default"}
-            subtitle={`Within ${EXPIRING_SOON_DAYS} days`}
-          />
-        </StatCardGrid>
-      </div>
-
-      {/* Section 2: Quick Actions */}
       <div>
         <h2 className="mb-5 text-xl font-bold text-zinc-100">Quick Actions</h2>
         <div className="grid gap-4 md:grid-cols-4">
           <GrantPremiumModal availableLicenses={availableForGrant} requests={premiumRequests} />
-
           <Link
             href="/premium-requests"
             className="flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-800"
@@ -161,7 +156,6 @@ export default async function PremiumPage() {
               {pendingRequests > 0 ? `${pendingRequests} pending` : "Manage requests"}
             </span>
           </Link>
-
           <Link
             href="/reports"
             className="flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-800"
@@ -174,7 +168,6 @@ export default async function PremiumPage() {
             </div>
             <span className="text-xs text-zinc-500">Download premium analytics</span>
           </Link>
-
           <Link
             href="/licenses"
             className="flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-800"
@@ -190,7 +183,6 @@ export default async function PremiumPage() {
         </div>
       </div>
 
-      {/* Section 3: Premium Requests */}
       <div>
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-zinc-100">Premium Requests</h2>
@@ -230,7 +222,6 @@ export default async function PremiumPage() {
         )}
       </div>
 
-      {/* Section 4: Premium Subscriptions */}
       <div>
         <h2 className="mb-5 text-xl font-bold text-zinc-100">Premium Subscriptions</h2>
         <PremiumTable
@@ -249,7 +240,6 @@ export default async function PremiumPage() {
         />
       </div>
 
-      {/* Section 5: Analytics */}
       <div>
         <h2 className="mb-5 text-xl font-bold text-zinc-100">Analytics</h2>
         <PremiumAnalytics
@@ -260,7 +250,6 @@ export default async function PremiumPage() {
         />
       </div>
 
-      {/* Section 6: Timeline */}
       {history.length > 0 && (
         <div>
           <h2 className="mb-5 text-xl font-bold text-zinc-100">Timeline</h2>

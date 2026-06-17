@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, ReactNode } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { cn } from "@/lib/shared";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Column {
   key: string;
@@ -33,6 +34,8 @@ interface DataTableProps {
   exportable?: boolean;
   onExport?: () => void;
   filters?: ReactNode;
+  emptyIcon?: ReactNode;
+  emptyTitle?: string;
 }
 
 export function DataTable({
@@ -50,6 +53,8 @@ export function DataTable({
   exportable,
   onExport,
   filters,
+  emptyIcon,
+  emptyTitle,
 }: DataTableProps) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -234,8 +239,19 @@ export function DataTable({
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={columns.length + (selectable ? 1 : 0)} className="p-10 text-center text-zinc-500">
-                  {emptyMessage}
+                <td colSpan={columns.length + (selectable ? 1 : 0)} className="p-10">
+                  {search.trim() || filters ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <p className="text-sm text-zinc-500">{emptyMessage}</p>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title={emptyTitle || "No data found"}
+                      description={emptyMessage}
+                      icon={emptyIcon}
+                      className="border-0 bg-transparent"
+                    />
+                  )}
                 </td>
               </tr>
             )}

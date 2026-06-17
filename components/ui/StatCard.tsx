@@ -5,7 +5,7 @@ interface StatCardProps {
   title: string;
   value: string | number;
   icon?: LucideIcon;
-  trend?: { value: string; positive: boolean };
+  trend?: { value: string; direction: "up" | "down" | "neutral"; label?: string };
   color?: "blue" | "green" | "yellow" | "red" | "purple" | "default";
   subtitle?: string;
   className?: string;
@@ -29,6 +29,18 @@ const iconBgMap = {
   purple: "bg-purple-500/10",
 };
 
+const trendColorMap = {
+  up: "text-green-400",
+  down: "text-red-400",
+  neutral: "text-zinc-400",
+};
+
+const trendIconMap = {
+  up: "↑",
+  down: "↓",
+  neutral: "→",
+};
+
 export function StatCard({ title, value, icon: Icon, trend, color = "default", subtitle, className }: StatCardProps) {
   return (
     <div className={cn("rounded-3xl border border-zinc-800 bg-zinc-900 p-6 transition-all hover:border-zinc-700", className)}>
@@ -43,12 +55,17 @@ export function StatCard({ title, value, icon: Icon, trend, color = "default", s
       <h2 className={cn("mt-2 text-3xl font-bold", color !== "default" && colorMap[color])}>
         {value}
       </h2>
-      {trend && (
-        <p className={cn("mt-1 text-sm", trend.positive ? "text-green-400" : "text-red-400")}>
-          {trend.positive ? "↑" : "↓"} {trend.value}
-        </p>
+      {(trend || subtitle) && (
+        <div className="mt-1 flex items-center gap-2">
+          {trend && (
+            <span className={cn("text-xs font-medium", trendColorMap[trend.direction])}>
+              {trendIconMap[trend.direction]} {trend.value}
+              {trend.label && <span className="text-zinc-600"> {trend.label}</span>}
+            </span>
+          )}
+          {subtitle && <span className="text-xs text-zinc-600">{subtitle}</span>}
+        </div>
       )}
-      {subtitle && <p className="mt-1 text-xs text-zinc-600">{subtitle}</p>}
     </div>
   );
 }

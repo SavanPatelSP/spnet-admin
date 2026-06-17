@@ -103,6 +103,7 @@ export function UserLifecycleTimeline({ teamMemberId }: Props) {
 
       setEvents(lifecycle);
     } catch {
+      // Silently handle fetch errors for lifecycle events
     } finally {
       setLoading(false);
     }
@@ -139,7 +140,6 @@ export function UserLifecycleTimeline({ teamMemberId }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Lifecycle Timeline</h2>
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
         <div className="relative">
           <div className="absolute bottom-0 left-4 top-0 w-px bg-zinc-800" />
