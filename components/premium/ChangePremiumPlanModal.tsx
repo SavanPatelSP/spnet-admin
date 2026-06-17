@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, PREMIUM_PLANS, PLAN_TIERS, SUBSCRIPTION_TYPES } from "@/lib/constants";
+import { API_ROUTES, PLAN_TIERS, SUBSCRIPTION_TYPES } from "@/lib/constants";
 import { daysUntil } from "@/lib/shared";
 import { ArrowUp, ArrowDown, Check, Minus, ArrowRight, RefreshCw } from "lucide-react";
 
@@ -77,8 +77,8 @@ export default function ChangePremiumPlanModal({
   const targetPrice = PLAN_PRICES[newPlan] || 0;
   const priceDiff = targetPrice - currentPrice;
 
-  const currentFeatures = PLAN_FEATURES[currentPlan] || [];
-  const targetFeatures = PLAN_FEATURES[newPlan] || [];
+  const currentFeatures = useMemo(() => PLAN_FEATURES[currentPlan] || [], [currentPlan]);
+  const targetFeatures = useMemo(() => PLAN_FEATURES[newPlan] || [], [newPlan]);
   const gainedFeatures = useMemo(
     () => direction === "upgrade" ? targetFeatures.filter((f) => !currentFeatures.includes(f)) : [],
     [direction, currentFeatures, targetFeatures]

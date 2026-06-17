@@ -3,7 +3,7 @@ import { requirePermission } from "@/lib/auth-helpers";
 
 export async function GET(req: Request) {
   try {
-    const session = await requirePermission("Manage Sessions");
+    await requirePermission("Manage Sessions");
     const url = new URL(req.url);
     const teamMemberId = url.searchParams.get("teamMemberId");
 

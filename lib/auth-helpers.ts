@@ -28,7 +28,6 @@ export async function requireAuth(): Promise<AuthSession> {
     redirect("/login");
   }
 
-  // Validate license is still active and not expired
   if (session.user.licenseId) {
     const license = await prisma.license.findUnique({
       where: { id: session.user.licenseId },
@@ -56,12 +55,10 @@ export async function requirePermission(
 ): Promise<AuthSession> {
   const session = await requireAuth();
 
-  // Fast path: check JWT-stored permissions first
   if (session.user.permissions.includes(permission)) {
     return session;
   }
 
-  // Fallback: check DB in case permissions changed since login
   const perm = await prisma.permission.findFirst({
     where: {
       roleId: session.user.roleId,

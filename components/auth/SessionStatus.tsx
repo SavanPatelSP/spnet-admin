@@ -2,8 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { LogOut, User, Shield, KeyRound, AlertTriangle } from "lucide-react";
-import { APP_NAME } from "@/lib/constants";
+import { LogOut, Shield, KeyRound, AlertTriangle } from "lucide-react";
 
 export function SessionStatus() {
   const { data: session, status } = useSession();

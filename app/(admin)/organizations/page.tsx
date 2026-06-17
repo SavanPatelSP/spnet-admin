@@ -7,8 +7,8 @@ import { DataTable } from "@/components/ui/DataTable";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  Building2, Users, Crown,
-  Coins, TrendingUp, Monitor,
+  Building2, Crown,
+  TrendingUp, Monitor,
 } from "lucide-react";
 import Link from "next/link";
 import { EXPIRING_SOON_DAYS } from "@/lib/constants";

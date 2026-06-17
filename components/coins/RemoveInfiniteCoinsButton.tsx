@@ -9,7 +9,7 @@ interface RemoveInfiniteCoinsButtonProps {
   organization: string;
 }
 
-export default function RemoveInfiniteCoinsButton({ licenseId, organization: _organization }: RemoveInfiniteCoinsButtonProps) {
+export default function RemoveInfiniteCoinsButton({ licenseId }: RemoveInfiniteCoinsButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

@@ -3,25 +3,19 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
-import { Gem, TrendingUp, TrendingDown, Gift, Users, Trophy, Infinity, PieChart } from "lucide-react";
+import { Gem, TrendingUp, Gift, Infinity } from "lucide-react";
 import { DEFAULT_LOCALE } from "@/lib/constants";
 import { GemsAnalytics } from "@/components/gems/GemsAnalytics";
 import GemsBalancesTable from "@/components/gems/GemsBalancesTable";
 import AntiAbusePanel from "@/components/gems/AntiAbusePanel";
-import GrantGemsModal from "@/components/gems/GrantGemsModal";
-import RevokeGemsModal from "@/components/gems/RevokeGemsModal";
-import CreateRewardModal from "@/components/gems/CreateRewardModal";
-import EditRewardModal from "@/components/gems/EditRewardModal";
 import DeleteRewardButton from "@/components/gems/DeleteRewardButton";
 import RewardCampaignEditor from "@/components/gems/RewardCampaignEditor";
 import { TopGemHolders } from "@/components/gems/TopGemHolders";
 import { GemDistributionChart } from "@/components/gems/GemDistributionChart";
-import Link from "next/link";
 
 export default async function GemsPage() {
-  const [balances, transactions, rewards, licenseCount] = await Promise.all([
+  const [balances, transactions, rewards] = await Promise.all([
     prisma.gemBalance.findMany({
       include: { license: { select: { organization: true, key: true, plan: true, status: true } } },
       orderBy: { balance: "desc" },
@@ -41,7 +35,7 @@ export default async function GemsPage() {
   const totalGems = balances.reduce((sum, b) => sum + b.balance, 0);
   const totalGranted = transactions.filter((t) => t.type === "GRANT" || t.type === "REWARD")
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-  const totalRevoked = transactions.filter((t) => t.type === "REVOKE")
+  transactions.filter((t) => t.type === "REVOKE")
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   const topBalance = balances.length > 0 ? balances[0].balance : 0;

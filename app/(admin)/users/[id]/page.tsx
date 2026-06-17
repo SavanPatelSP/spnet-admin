@@ -11,7 +11,7 @@ import { UserMfaSetup } from "@/components/users/UserMfaSetup";
 import { UserPasswordPolicy } from "@/components/users/UserPasswordPolicy";
 import { UserLifecycleTimeline } from "@/components/users/UserLifecycleTimeline";
 import { formatDateTime } from "@/lib/shared";
-import { User, Shield, Calendar, Clock, AlertTriangle, KeyRound, ShieldCheck, Activity, Ban } from "lucide-react";
+import { User, Shield, Calendar, Clock, AlertTriangle, ShieldCheck, Activity, Ban } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 

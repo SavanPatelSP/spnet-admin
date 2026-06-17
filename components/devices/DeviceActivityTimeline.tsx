@@ -32,7 +32,7 @@ function getActionStyle(action: string): string {
   return actionStyles[action] || "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
 }
 
-export function DeviceActivityTimeline({ logs, deviceName: _deviceName, totalOrgActivations }: Props) {
+export function DeviceActivityTimeline({ logs, totalOrgActivations }: Props) {
   const [actionFilter, setActionFilter] = useState("");
 
   const filtered = useMemo(() => {

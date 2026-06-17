@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { MiniStat, BarChart } from "@/components/ui/Chart";
-import { Coins, TrendingUp, TrendingDown, AlertTriangle, Activity, Clock, DollarSign } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, Activity, Clock } from "lucide-react";
 
 const NOW = Date.now();
 

@@ -8,7 +8,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   LifeBuoy, MessageSquare, Clock, CheckCircle2,
-  AlertTriangle, ArrowUpRight,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/shared";

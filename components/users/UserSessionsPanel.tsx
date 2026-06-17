@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
@@ -25,7 +25,7 @@ export function UserSessionsPanel({ teamMemberId }: Props) {
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
 
-  async function fetchSessions() {
+  const fetchSessions = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_ROUTES.TEAM_MEMBERS.SESSIONS_LIST}?teamMemberId=${teamMemberId}`);
@@ -37,14 +37,14 @@ export function UserSessionsPanel({ teamMemberId }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [teamMemberId]);
 
   useEffect(() => {
     const t = setTimeout(() => {
       fetchSessions();
     }, 0);
     return () => clearTimeout(t);
-  }, [teamMemberId]);
+  }, [fetchSessions]);
 
   async function revokeSession(sessionId: string) {
     setRevoking(sessionId);

@@ -453,3 +453,26 @@ export const AUTH = {
   LOCKOUT_DURATION_MINUTES: Number(process.env.AUTH_LOCKOUT_DURATION_MINUTES) || 15,
   SESSION_MAX_AGE_SECONDS: Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS) || 86400,
 } as const;
+
+export const RATE_LIMIT = {
+  LOGIN_WINDOW_MS: Number(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 60_000,
+  LOGIN_MAX_ATTEMPTS: Number(process.env.RATE_LIMIT_LOGIN_MAX_ATTEMPTS) || 5,
+  API_WINDOW_MS: Number(process.env.RATE_LIMIT_API_WINDOW_MS) || 60_000,
+  API_MAX_REQUESTS: Number(process.env.RATE_LIMIT_API_MAX_REQUESTS) || 100,
+  SENSITIVE_WINDOW_MS: Number(process.env.RATE_LIMIT_SENSITIVE_WINDOW_MS) || 60_000,
+  SENSITIVE_MAX_REQUESTS: Number(process.env.RATE_LIMIT_SENSITIVE_MAX_REQUESTS) || 30,
+} as const;
+
+export const CSP = {
+  DIRECTIVES: {
+    DEFAULT_SRC: ["'self'"],
+    SCRIPT_SRC: ["'self'", "'strict-dynamic'"],
+    STYLE_SRC: ["'self'"],
+    IMG_SRC: ["'self'", "blob:", "data:", "https:"],
+    FONT_SRC: ["'self'"],
+    OBJECT_SRC: ["'none'"],
+    BASE_URI: ["'self'"],
+    FORM_ACTION: ["'self'"],
+    FRAME_ANCESTORS: ["'none'"],
+  },
+} as const;

@@ -15,7 +15,6 @@ const statusColors: Record<string, string> = {
 };
 
 type TargetType = "LICENSE" | "USER" | "TEAM_MEMBER";
-type ActionType = "WARNING" | "SUSPENSION" | "REINSTATEMENT" | "BAN" | "NONE";
 
 export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("Moderate Content");

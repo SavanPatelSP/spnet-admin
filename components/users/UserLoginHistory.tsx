@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { formatDateTime } from "@/lib/shared";
 import { API_ROUTES } from "@/lib/constants";
@@ -25,7 +25,7 @@ export function UserLoginHistory({ teamMemberId, initialLogs }: Props) {
   const [loading, setLoading] = useState(!initialLogs);
   const [statusFilter, setStatusFilter] = useState("");
 
-  async function fetchLogs() {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_ROUTES.TEAM_MEMBERS.LOGIN_HISTORY}?teamMemberId=${teamMemberId}`);
@@ -37,7 +37,7 @@ export function UserLoginHistory({ teamMemberId, initialLogs }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [teamMemberId]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -46,7 +46,7 @@ export function UserLoginHistory({ teamMemberId, initialLogs }: Props) {
       }
     }, 0);
     return () => clearTimeout(t);
-  }, [teamMemberId]);
+  }, [initialLogs, fetchLogs]);
 
   const filtered = useMemo(() => {
     if (!statusFilter) return logs;

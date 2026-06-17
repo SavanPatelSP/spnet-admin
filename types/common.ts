@@ -1,4 +1,4 @@
-import type { License, Activation, AuditLog, TeamMember, Role, Permission, SecurityPolicy } from "@prisma/client";
+import type { License, Activation, AuditLog, TeamMember, Role, Permission } from "@prisma/client";
 
 export type LicenseWithActivations = License & { activations: Activation[] };
 export type ActivationWithLicense = Activation & { license: License };

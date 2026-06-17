@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth-helpers";
-import { PREMIUM_PLANS, AUDIT_ACTIONS, PREMIUM_REQUEST_STATUSES } from "@/lib/constants";
+import { logAudit } from "@/lib/audit";
+import { PREMIUM_PLANS, PREMIUM_REQUEST_STATUSES, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET(req: Request) {
   try {
-    const session = await requirePermission("premium.requests.view");
+    await requirePermission("premium.requests.view");
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const licenseId = searchParams.get("licenseId");

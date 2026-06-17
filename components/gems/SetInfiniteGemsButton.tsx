@@ -9,7 +9,7 @@ interface SetInfiniteGemsButtonProps {
   organization: string;
 }
 
-export default function SetInfiniteGemsButton({ licenseId, organization: _organization }: SetInfiniteGemsButtonProps) {
+export default function SetInfiniteGemsButton({ licenseId }: SetInfiniteGemsButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

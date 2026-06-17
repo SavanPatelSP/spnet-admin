@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
 import { daysUntil } from "@/lib/shared";
-import { Crown, History, Bell, CheckCircle, Infinity } from "lucide-react";
+import { History, Bell, CheckCircle } from "lucide-react";
 
 const CONVERSION_REASONS = [
   "Customer Loyalty Program",
@@ -58,10 +58,6 @@ function fmt(d: Date) {
   return `${dd} ${mm} ${date.getFullYear()}`;
 }
 
-function toDateInput(d: Date) {
-  return d.toISOString().split("T")[0];
-}
-
 export default function ConvertToLifetimeModal({
   licenseId, licenseKey, organization, currentPlan, currentSubscriptionType, currentExpiry,
   open: externalOpen, onClose: externalOnClose,
@@ -79,19 +75,37 @@ export default function ConvertToLifetimeModal({
   const [notes, setNotes] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const [notifyUser, setNotifyUser] = useState(true);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [, startTransition] = useTransition();
+  const [loadState, setLoadState] = useState<{ loading: boolean; data: HistoryEntry[] }>({ loading: false, data: [] });
 
   useEffect(() => {
     if (!open) return;
-    setHistoryLoading(true);
+
+    startTransition(() => {
+      setLoadState({ loading: true, data: [] });
+    });
+
+    let cancelled = false;
     fetch(`/api/premium/history?licenseId=${licenseId}`)
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setHistory(data.slice(0, 8));
+        if (!cancelled) {
+          startTransition(() => {
+            setLoadState({ loading: false, data: Array.isArray(data) ? data.slice(0, 8) : [] });
+          });
+        }
       })
-      .catch(() => {})
-      .finally(() => setHistoryLoading(false));
+      .catch(() => {
+        if (!cancelled) {
+          startTransition(() => {
+            setLoadState({ loading: false, data: [] });
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, licenseId]);
 
   const remainingDays = daysUntil(new Date(currentExpiry));
@@ -319,13 +333,13 @@ export default function ConvertToLifetimeModal({
                 Recent Activity
               </h4>
             </div>
-            {historyLoading ? (
+            {loadState.loading ? (
               <div className="py-3 text-center text-xs text-zinc-500">Loading history...</div>
-            ) : history.length === 0 ? (
+            ) : loadState.data.length === 0 ? (
               <div className="py-3 text-center text-xs text-zinc-500">No prior activity found.</div>
             ) : (
               <div className="space-y-2">
-                {history.map((h) => (
+                {loadState.data.map((h) => (
                   <div key={h.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/30 px-3 py-2 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 font-medium text-zinc-300">{h.action}</span>

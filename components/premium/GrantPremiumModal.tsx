@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, PLAN_TIERS, SUBSCRIPTION_TYPES } from "@/lib/constants";
-import { Search, Building2, Key, User, Crown, CalendarDays, CheckCircle, X } from "lucide-react";
+import { Search, Building2, Key, User, CheckCircle, X } from "lucide-react";
 
 interface LicenseOption {
   id: string;
@@ -92,7 +92,6 @@ export default function GrantPremiumModal({
   const selectedRequest = requests?.find((r) => r.licenseId === licenseId);
 
   const hasAnySearch = orgSearch || licenseSearch || userSearch;
-  const showResults = open && !propLicenseId && availableLicenses && hasAnySearch;
 
   function resetSelection() {
     setLicenseId("");

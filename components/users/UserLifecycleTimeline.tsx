@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn, formatDateTime } from "@/lib/shared";
 import { API_ROUTES } from "@/lib/constants";
 import {
@@ -55,7 +55,7 @@ export function UserLifecycleTimeline({ teamMemberId }: Props) {
   const [events, setEvents] = useState<LifecycleEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function fetchEvents() {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
       const [loginRes, auditRes] = await Promise.all([
@@ -106,14 +106,14 @@ export function UserLifecycleTimeline({ teamMemberId }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [teamMemberId]);
 
   useEffect(() => {
     const t = setTimeout(() => {
       fetchEvents();
     }, 0);
     return () => clearTimeout(t);
-  }, [teamMemberId]);
+  }, [fetchEvents]);
 
   if (loading) {
     return (

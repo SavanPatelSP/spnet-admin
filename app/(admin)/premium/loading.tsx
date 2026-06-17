@@ -1,5 +1,3 @@
-import { Crown } from "lucide-react";
-
 function SkeletonBlock({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-xl bg-zinc-800/50 ${className}`} />;
 }

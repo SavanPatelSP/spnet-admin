@@ -5,17 +5,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Megaphone, Users, Send, Clock, FileEdit, CheckCircle2, XCircle } from "lucide-react";
+import { Megaphone, Send, Clock, FileEdit } from "lucide-react";
 import { CreateBroadcastForm } from "./CreateBroadcastForm";
 import { BroadcastActions } from "./BroadcastActions";
 import { formatDate } from "@/lib/shared";
 
 export default async function BroadcastsPage() {
-  const [teamMembers, licenses, broadcasts] = await Promise.all([
-    prisma.teamMember.findMany(),
-    prisma.license.findMany(),
-    prisma.broadcast.findMany({ orderBy: { createdAt: "desc" } }),
-  ]);
+  const broadcasts = await prisma.broadcast.findMany({ orderBy: { createdAt: "desc" } });
 
   const drafts = broadcasts.filter((b) => b.status === "DRAFT").length;
   const scheduled = broadcasts.filter((b) => b.status === "SCHEDULED").length;

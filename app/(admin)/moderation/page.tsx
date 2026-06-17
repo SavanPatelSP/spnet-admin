@@ -7,8 +7,8 @@ import { DataTable } from "@/components/ui/DataTable";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  Shield, AlertTriangle, Ban, CheckCircle2,
-  Clock, FileWarning,
+  AlertTriangle, Ban, CheckCircle2,
+  FileWarning,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/shared";
@@ -31,10 +31,9 @@ const actionColors: Record<string, string> = {
 export default async function ModerationPage() {
   await requirePermission("Moderate Content");
 
-  const [reports, actions, teamMembers] = await Promise.all([
+  const [reports, actions] = await Promise.all([
     prisma.moderationReport.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.moderationAction.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.teamMember.findMany(),
   ]);
 
   const pendingReports = reports.filter((r) => r.status === "PENDING").length;

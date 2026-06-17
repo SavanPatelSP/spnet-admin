@@ -3,8 +3,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
-  KeyRound, Monitor, Users, CreditCard, Activity, AlertTriangle,
-  ClipboardList, Crown, Coins, Gem, TrendingUp, Shield,
+  KeyRound, Monitor, Users, Activity, AlertTriangle,
+  Crown, Coins, Gem, Shield,
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,7 +28,6 @@ export default async function DashboardPage() {
 
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
-  const expiredLicenses = licenses.filter((l) => l.status === "EXPIRED").length;
   const totalDevices = activations.length;
   const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
   const utilization = totalCapacity === 0 ? 0 : Math.round((totalDevices / totalCapacity) * 100);

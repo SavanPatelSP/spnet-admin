@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
 import {
-  Building2, KeyRound, Monitor, Coins, Gem,
+  KeyRound, Monitor, Coins, Gem,
   Crown, Shield, ClipboardList,
 } from "lucide-react";
 import Link from "next/link";

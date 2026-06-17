@@ -1,12 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth-helpers";
-import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const session = await requirePermission("premium.requests.convert");
+    await requirePermission("premium.requests.convert");
     const existing = await prisma.premiumRequest.findUnique({ where: { id } });
     if (!existing) return Response.json({ error: "Premium request not found" }, { status: 404 });
 

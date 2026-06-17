@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Shield, Users, KeyRound, FileText, Server, Settings as SettingsIcon, Activity, AlertTriangle, CheckCircle } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
+import { StatCard } from "@/components/ui/StatCard";
 
 export const dynamic = "force-dynamic";
 

@@ -3,9 +3,8 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { DataTable } from "@/components/ui/DataTable";
 import {
-  Activity, Server, Database, Globe, Shield,
+  Activity, Database, Globe, Shield,
   CheckCircle2, AlertTriangle, XCircle, Clock,
 } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/shared";

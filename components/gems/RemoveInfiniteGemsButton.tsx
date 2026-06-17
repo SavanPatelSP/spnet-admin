@@ -9,7 +9,7 @@ interface RemoveInfiniteGemsButtonProps {
   organization: string;
 }
 
-export default function RemoveInfiniteGemsButton({ licenseId, organization: _organization }: RemoveInfiniteGemsButtonProps) {
+export default function RemoveInfiniteGemsButton({ licenseId }: RemoveInfiniteGemsButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

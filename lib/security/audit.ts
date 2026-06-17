@@ -1,30 +1,17 @@
 import { prisma } from "@/lib/prisma";
-import type { AuditEvent } from "@/lib/security/audit";
 
-export async function logAudit(
-  action: string,
-  licenseId?: string | null,
-  organization?: string | null,
-  actorRole?: string | null,
-  actorName?: string | null,
-  description?: string | null,
-  actorEmail?: string | null
-) {
-  try {
-    await prisma.auditLog.create({
-      data: {
-        action,
-        licenseId,
-        organization,
-        actorRole,
-        actorName,
-        description,
-        actorEmail,
-      },
-    });
-  } catch {
-    // Swallow audit logging errors
-  }
+export interface AuditEvent {
+  action: string;
+  actorId?: string;
+  actorEmail?: string;
+  actorName?: string;
+  actorRole?: string;
+  targetId?: string;
+  targetType?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 export async function logAuditEvent(event: AuditEvent): Promise<void> {
@@ -43,4 +30,14 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
   } catch {
     // Swallow audit logging errors
   }
+}
+
+export function createAuditEvent(
+  action: string,
+  overrides: Partial<AuditEvent> = {}
+): AuditEvent {
+  return {
+    action,
+    ...overrides,
+  };
 }

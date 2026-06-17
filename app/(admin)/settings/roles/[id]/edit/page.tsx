@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import EditRoleForm from "./role-form";
 import Link from "next/link";
 

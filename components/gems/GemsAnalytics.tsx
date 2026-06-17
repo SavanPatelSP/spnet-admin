@@ -18,11 +18,11 @@ interface Props {
   transactions: Transaction[];
   totalGems: number;
   balanceCount: number;
-  topBalance: number;
-  rewardCount: number;
+  topBalance?: number;
+  rewardCount?: number;
 }
 
-export function GemsAnalytics({ transactions, totalGems, balanceCount, topBalance: _topBalance, rewardCount: _rewardCount }: Props) {
+export function GemsAnalytics({ transactions, totalGems, balanceCount }: Props) {
   const [analytics, setAnalytics] = useState({
     totalGranted: 0,
     totalRevoked: 0,

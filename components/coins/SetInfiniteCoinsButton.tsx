@@ -9,7 +9,7 @@ interface SetInfiniteCoinsButtonProps {
   organization: string;
 }
 
-export default function SetInfiniteCoinsButton({ licenseId, organization: _organization }: SetInfiniteCoinsButtonProps) {
+export default function SetInfiniteCoinsButton({ licenseId }: SetInfiniteCoinsButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

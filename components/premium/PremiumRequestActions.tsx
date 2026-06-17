@@ -59,7 +59,6 @@ export default function PremiumRequestActions(data: PremiumRequestActionsProps) 
         organization={data.organization}
         plan={data.requestedPlan}
         durationDays={data.requestedDurationDays}
-        licenseId={data.licenseId}
       />
       <RejectModal
         open={rejectOpen}
@@ -98,10 +97,10 @@ function fmt(d: Date) {
 }
 
 function ApproveModal({
-  open, onClose, requestId, organization, plan, durationDays, licenseId,
+  open, onClose, requestId, organization, plan, durationDays,
 }: {
   open: boolean; onClose: () => void; requestId: string; organization: string;
-  plan: string; durationDays: number; licenseId: string;
+  plan: string; durationDays: number;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -335,7 +334,7 @@ function ConvertModal({ open, onClose, requestId, licenseId, organization, licen
   const [error, setError] = useState("");
   const [finalPlan, setFinalPlan] = useState(plan);
   const [finalDuration, setFinalDuration] = useState(durationDays);
-  const [subscriptionType, setSubscriptionType] = useState("CUSTOM");
+  const [subscriptionType] = useState("CUSTOM");
   const [notes, setNotes] = useState("");
 
   const startDate = new Date();

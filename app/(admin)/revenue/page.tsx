@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { CreditCard, TrendingUp, DollarSign, BarChart3, Crown, TrendingDown, Users, Activity } from "lucide-react";
+import { CreditCard, TrendingUp, Crown, TrendingDown, Activity } from "lucide-react";
 import { formatDate } from "@/lib/shared";
 
 export default async function RevenuePage() {
@@ -30,7 +30,6 @@ export default async function RevenuePage() {
   );
 
   const totalSubs = premiumSubs.length;
-  const grants = premiumSubs.filter((s) => s.action === "GRANTED").length;
   const revokes = premiumSubs.filter((s) => s.action === "REVOKED").length;
   const extensions = premiumSubs.filter((s) => s.action === "EXTENDED").length;
   const churnRate = totalSubs > 0 ? Math.round((revokes / totalSubs) * 100) : 0;
@@ -51,26 +50,6 @@ export default async function RevenuePage() {
   const conversionRate = activeLicenses > 0
     ? Math.round((premiumLicenses / activeLicenses) * 100)
     : 0;
-
-  const planRows = Object.entries(planDist)
-    .sort(([, a], [, b]) => b - a)
-    .map(([plan, count], i) => ({
-      id: plan,
-      values: { plan, count, share: Math.round((count / licenses.length) * 100) + "%" },
-      cells: [
-        <span key="plan" className="font-medium">{plan}</span>,
-        <span key="count">{count}</span>,
-        <div key="bar" className="flex items-center gap-2">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-700">
-            <div
-              className="h-full rounded-full bg-blue-500"
-              style={{ width: `${(count / Math.max(...Object.values(planDist))) * 100}%` }}
-            />
-          </div>
-          <span className="text-xs text-zinc-500">{Math.round((count / licenses.length) * 100)}%</span>
-        </div>,
-      ],
-    }));
 
   const subRows = premiumSubs.map((s) => ({
     id: s.id,

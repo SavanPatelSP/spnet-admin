@@ -11,7 +11,7 @@ interface Props {
   name: string;
 }
 
-export default function PolicyActions({ id, enabled, name: _name }: Props) {
+export default function PolicyActions({ id, enabled }: Props) {
   const router = useRouter();
 
   async function toggle() {

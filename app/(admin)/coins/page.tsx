@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { Coins, TrendingUp, TrendingDown, RefreshCw, Users, Trophy, Infinity } from "lucide-react";
+import { Coins, TrendingUp, TrendingDown, Infinity } from "lucide-react";
 import { CoinsBalancesTable } from "@/components/coins/CoinsBalancesTable";
 import { CoinHistoryTable } from "@/components/coins/CoinHistoryTable";
 import { CoinsAnalytics } from "@/components/coins/CoinsAnalytics";
@@ -13,7 +13,7 @@ import { EconomyHealthPanel } from "@/components/coins/EconomyHealthPanel";
 import { SourceSinkTracking } from "@/components/coins/SourceSinkTracking";
 
 export default async function CoinsPage() {
-  const [balances, transactions, licenseCount] = await Promise.all([
+  const [balances, transactions] = await Promise.all([
     prisma.coinBalance.findMany({
       include: { license: { select: { organization: true, key: true, plan: true, status: true } } },
       orderBy: { balance: "desc" },

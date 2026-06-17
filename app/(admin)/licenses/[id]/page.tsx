@@ -17,14 +17,14 @@ import LicenseTrialManager from "@/components/licenses/LicenseTrialManager";
 import LicenseUsageDashboard from "@/components/licenses/LicenseUsageDashboard";
 import LicenseEventsTimeline from "@/components/licenses/LicenseEventsTimeline";
 import LicenseValidateForm from "@/components/licenses/LicenseValidateForm";
-import { KeyRound, CalendarDays, Monitor, FileText, ShieldCheck } from "lucide-react";
+import { KeyRound, CalendarDays, Monitor, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function LicenseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [license, auditLogs, _eventsCount] = await Promise.all([
+  const [license, auditLogs] = await Promise.all([
     prisma.license.findUnique({
       where: { id },
       include: {
