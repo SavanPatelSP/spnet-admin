@@ -3,8 +3,9 @@ import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { generateKey, parseExpiryDate } from "@/lib/shared";
-import { DEFAULT_PLAN, DEFAULT_MAX_DEVICES, AUDIT_ACTIONS } from "@/lib/constants";
+import { DEFAULT_PLAN, DEFAULT_MAX_DEVICES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
+import { createInvoiceForLicense } from "@/lib/invoices";
 
 export async function POST(req: Request) {
   try {
@@ -39,6 +40,15 @@ export async function POST(req: Request) {
       session.user.name,
       `Created ${license.plan} license for ${license.organization}`
     );
+
+    try {
+      const price = PLAN_PRICES[license.plan] ?? 0;
+      if (price > 0) {
+        await createInvoiceForLicense(license.id, license.plan, price);
+      }
+    } catch {
+      // Invoice generation is best-effort; do not fail license creation.
+    }
 
     return Response.json(license);
   } catch (error) {

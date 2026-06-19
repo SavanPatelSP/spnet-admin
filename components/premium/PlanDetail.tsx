@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { cn } from "@/lib/shared";
+import { cn, formatPrice } from "@/lib/shared";
 import { Modal } from "@/components/ui/Modal";
 import {
   PLAN_META,
@@ -12,6 +12,8 @@ import {
   getNextPlan,
   getPrevPlan,
   getPlanComparison,
+  getPlanYearlyPrice,
+  getPlanLifetimePrice,
 } from "@/lib/premium";
 import { UpgradePath } from "./UpgradePath";
 import { ChevronDown, ChevronRight, Check, X, ArrowRight } from "lucide-react";
@@ -89,14 +91,22 @@ export function PlanDetail({ plan, open, onClose, price }: PlanDetailProps) {
               )}
             </div>
             <p className="mt-1 text-sm text-zinc-500">{meta.description}</p>
-            <div className="mt-2 flex items-center gap-3">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="text-xs text-zinc-600">
                 Tier {getPlanIndex(plan) + 1} of {ALL_PLANS.length}
               </span>
               {price !== undefined && (
-                <span className="text-sm font-semibold text-zinc-200">
-                  ${price}<span className="text-xs font-normal text-zinc-500">/mo</span>
-                </span>
+                <>
+                  <span className="text-sm font-semibold text-zinc-200">
+                    {formatPrice(price, "$")}<span className="text-xs font-normal text-zinc-500">/mo</span>
+                  </span>
+                  <span className="text-xs text-zinc-500">
+                    {formatPrice(getPlanYearlyPrice(plan), "$")}/yr
+                  </span>
+                  <span className="text-xs text-zinc-500">
+                    {formatPrice(getPlanLifetimePrice(plan), "$")} lifetime
+                  </span>
+                </>
               )}
             </div>
           </div>

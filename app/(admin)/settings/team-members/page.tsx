@@ -6,7 +6,8 @@ import TeamMembersDataTable from "@/components/settings/TeamMembersDataTable";
 import CreateTeamMemberModal from "@/components/settings/team-members/CreateTeamMemberModal";
 import OwnershipPanel from "@/components/settings/team-members/OwnershipPanel";
 import SecurityEventsPanel from "@/components/settings/team-members/SecurityEventsPanel";
-import { Users, UserCheck, UserX, Shield } from "lucide-react";
+import { Users, UserCheck, UserX, Shield, Plus } from "lucide-react";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,15 @@ export default async function TeamMembersPage() {
               <h2 className="text-2xl font-bold">Invite Team Member</h2>
               <p className="mt-1 text-sm text-zinc-500">Create new administrators and assign platform roles.</p>
             </div>
-            <CreateTeamMemberModal />
+            <div className="flex items-center gap-2">
+              <CreateTeamMemberModal />
+              <Link
+                href="/settings/team-members/create-license"
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+              >
+                <Plus size={14} /> Member + License
+              </Link>
+            </div>
           </div>
         </div>
 

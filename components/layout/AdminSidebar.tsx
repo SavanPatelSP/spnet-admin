@@ -4,133 +4,68 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/shared";
 import { APP_NAME } from "@/lib/constants";
-
-
-import {
-  LayoutDashboard,
-  KeyRound,
-  Crown,
-  Sparkles,
-  Coins,
-  Gem,
-  Users,
-  UserCog,
-  UserCheck,
-  UserPlus,
-  Building2,
-  BarChart3,
-  CreditCard,
-  FileText,
-  ClipboardList,
-  Shield,
-  Megaphone,
-  FileEdit,
-  Settings,
-  LifeBuoy,
-  Activity,
-  ChevronLeft,
-  ChevronRight,
-  FileWarning,
-  Monitor,
-  Server,
-  Lock,
-  Clock,
-  type LucideIcon,
-} from "lucide-react";
+import { SIDEBAR_PAGES } from "@/lib/sidebar";
+import { APP_VERSION, APP_BUILD } from "@/lib/constants";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
-
-interface SidebarItem {
-  icon: LucideIcon;
-  label: string;
-  href: string;
-  permission?: string;
-}
-
-interface SidebarGroup {
-  label: string;
-  items: SidebarItem[];
-}
 
 interface AdminSidebarProps {
   permissions: string[];
 }
 
-const groups: SidebarGroup[] = [
+const groups = [
   {
     label: "Operations",
-    items: [
-      { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-      { icon: KeyRound, label: "Licenses", href: "/licenses", permission: "View Licenses" },
-      { icon: Crown, label: "Premium", href: "/premium", permission: "View Premium" },
-      { icon: Sparkles, label: "Plan Overview", href: "/premium/plan-overview" },
-      { icon: Coins, label: "Coins", href: "/coins", permission: "View Coin Balances" },
-      { icon: Gem, label: "Gems", href: "/gems", permission: "View Gem Balances" },
-    ],
+    pageKeys: ["dashboard", "licenses", "premium", "plan-overview", "coins", "gems", "offers"],
   },
   {
     label: "Administration",
-    items: [
-      { icon: Users, label: "Users", href: "/users", permission: "View Users" },
-      { icon: UserCheck, label: "User Lifecycle", href: "/users/lifecycle", permission: "User Lifecycle Management" },
-      { icon: UserCog, label: "Roles", href: "/settings/roles", permission: "View Roles" },
-      { icon: UserPlus, label: "Team Members", href: "/settings/team-members", permission: "View Team Members" },
-      { icon: Building2, label: "Organizations", href: "/organizations", permission: "View Organizations" },
-      { icon: Monitor, label: "Devices", href: "/devices", permission: "View Devices" },
-    ],
+    pageKeys: ["users", "roles", "team-members", "organizations", "devices", "session-operations"],
   },
   {
     label: "Insights",
-    items: [
-      { icon: BarChart3, label: "Analytics", href: "/analytics", permission: "View Analytics" },
-      { icon: CreditCard, label: "Revenue", href: "/revenue", permission: "View Revenue" },
-      { icon: FileText, label: "Reports", href: "/reports", permission: "View Reports" },
-    ],
+    pageKeys: ["analytics", "revenue", "reports"],
   },
   {
     label: "Security",
-    items: [
-      { icon: ClipboardList, label: "Audit Logs", href: "/audit-logs", permission: "View Audit Logs" },
-      { icon: Shield, label: "Security", href: "/security", permission: "View Security Policies" },
-      { icon: FileWarning, label: "Moderation", href: "/moderation", permission: "Moderate Content" },
-      { icon: Clock, label: "Sessions", href: "/sessions", permission: "Manage Sessions" },
-    ],
+    pageKeys: ["audit-logs", "security", "moderation"],
   },
   {
     label: "Communication",
-    items: [
-      { icon: Megaphone, label: "Broadcasts", href: "/broadcasts", permission: "View Broadcasts" },
-      { icon: FileEdit, label: "Content", href: "/content", permission: "View Content" },
-    ],
+    pageKeys: ["broadcasts", "content"],
   },
   {
     label: "Support",
-    items: [
-      { icon: LifeBuoy, label: "Support / Tickets", href: "/support", permission: "View Tickets" },
-    ],
+    pageKeys: ["support"],
   },
   {
     label: "Settings",
-    items: [
-      { icon: Settings, label: "General", href: "/settings", permission: "Access Settings" },
-      { icon: ClipboardList, label: "Audit", href: "/settings/audit", permission: "View Audit Logs" },
-      { icon: KeyRound, label: "Licensing", href: "/settings/licensing", permission: "View Licenses" },
-      { icon: Lock, label: "Security", href: "/settings/security", permission: "View Security Policies" },
-      { icon: Server, label: "System", href: "/settings/system", permission: "Edit System Settings" },
-      { icon: Activity, label: "System Health", href: "/system-health" },
+    pageKeys: [
+      "settings",
+      "invoices",
+      "settings-audit",
+      "settings-licensing",
+      "settings-security",
+      "settings-system",
+      "system-health",
     ],
   },
 ];
 
-function filterItems(items: SidebarItem[], permissions: string[]): SidebarItem[] {
-  return items.filter((item) => {
-    if (!item.permission) return true;
-    return permissions.includes(item.permission);
+const pageMap = new Map(SIDEBAR_PAGES.map((p) => [p.key, p]));
+
+function filterVisiblePages(permissions: string[]) {
+  return SIDEBAR_PAGES.filter((p) => {
+    if (!p.permission) return true;
+    return permissions.includes(p.permission);
   });
 }
+
 
 export default function AdminSidebar({ permissions }: AdminSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const visiblePages = new Set(filterVisiblePages(permissions).map((p) => p.key));
 
   return (
     <aside
@@ -153,8 +88,10 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
       </div>
       <nav className="flex-1 overflow-y-auto p-4">
         {groups.map((group) => {
-          const visibleItems = filterItems(group.items, permissions);
-          if (visibleItems.length === 0) return null;
+          const items = group.pageKeys
+            .map((key) => pageMap.get(key))
+            .filter((p): p is NonNullable<typeof p> => !!p && visiblePages.has(p.key));
+          if (items.length === 0) return null;
 
           return (
             <div key={group.label} className="mb-6">
@@ -164,7 +101,7 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
                 </p>
               )}
               <div className="space-y-1">
-                {visibleItems.map((item) => {
+                {items.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
@@ -193,7 +130,7 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
       </nav>
       <div className="border-t border-zinc-800 p-4">
         <p className={cn("text-center text-xs text-zinc-600")}>
-          {collapsed ? `v1.1.0` : `${APP_NAME} Admin v1.1.0 (200)`}
+          {collapsed ? `${APP_VERSION}` : `${APP_NAME} Admin ${APP_VERSION} (${APP_BUILD})`}
         </p>
       </div>
     </aside>

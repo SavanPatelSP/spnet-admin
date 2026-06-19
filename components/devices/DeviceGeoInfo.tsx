@@ -5,14 +5,13 @@ import { Globe, MapPin, Monitor } from "lucide-react";
 interface Props {
   country?: string;
   city?: string;
-  region?: string;
   isp?: string;
   os?: string;
   browser?: string;
   deviceType?: string;
 }
 
-export function DeviceGeoInfo({ country, city, region, isp, os, browser, deviceType }: Props) {
+export function DeviceGeoInfo({ country, city, isp, os, browser, deviceType }: Props) {
   const sections = [
     {
       title: "Location",
@@ -21,7 +20,6 @@ export function DeviceGeoInfo({ country, city, region, isp, os, browser, deviceT
       items: [
         { label: "Country", value: country },
         { label: "City", value: city },
-        { label: "Region", value: region },
       ],
     },
     {
@@ -44,7 +42,7 @@ export function DeviceGeoInfo({ country, city, region, isp, os, browser, deviceT
     },
   ];
 
-  const hasData = country || city || region || isp || os || browser || deviceType;
+  const hasData = country || city || isp || os || browser || deviceType;
 
   if (!hasData) {
     return (

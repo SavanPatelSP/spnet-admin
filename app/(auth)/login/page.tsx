@@ -7,7 +7,9 @@ import {
   KeyRound, Eye, EyeOff, AlertCircle, Shield, CheckCircle,
   Lock, Server, Activity, Fingerprint, Clock,
 } from "lucide-react";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, APP_VERSION } from "@/lib/constants";
+
+/* eslint-disable react-hooks/set-state-in-effect */
 
 const SECURITY_FEATURES = [
   { icon: Shield, label: "Protected Access", desc: "Role-based access control with granular permissions" },
@@ -20,6 +22,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const urlError = searchParams.get("error");
+  const expired = searchParams.get("expired") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +31,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [focused, setFocused] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   useEffect(() => {
     if (urlError) {
@@ -38,6 +43,47 @@ function LoginForm() {
       );
     }
   }, [urlError]);
+
+  useEffect(() => {
+    const COOLDOWN_KEY = "loginCooldownUntil";
+    const now = Date.now();
+    if (expired) {
+      const until = now + 10 * 60 * 1000;
+      localStorage.setItem(COOLDOWN_KEY, String(until));
+      setCooldownUntil(until);
+    } else {
+      const stored = localStorage.getItem(COOLDOWN_KEY);
+      if (stored) {
+        const until = Number(stored);
+        if (until > now) setCooldownUntil(until);
+        else localStorage.removeItem(COOLDOWN_KEY);
+      }
+    }
+  }, [expired]);
+
+  useEffect(() => {
+    if (!cooldownUntil) {
+      setCooldownRemaining(0);
+      return;
+    }
+    const COOLDOWN_KEY = "loginCooldownUntil";
+    function tick() {
+      if (!cooldownUntil) return;
+      const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+      setCooldownRemaining(remaining);
+      if (remaining === 0) {
+        localStorage.removeItem(COOLDOWN_KEY);
+        setCooldownUntil(null);
+      }
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [cooldownUntil]);
+
+  const cooldownActive = cooldownRemaining > 0;
+  const cooldownMinutes = Math.floor(cooldownRemaining / 60);
+  const cooldownSeconds = cooldownRemaining % 60;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +169,7 @@ function LoginForm() {
             <div className="flex items-center gap-2">
               <Clock size={12} className="text-zinc-600" />
               <span className="text-zinc-500">Version</span>
-              <span className="font-medium text-zinc-300">v1.1.0</span>
+              <span className="font-medium text-zinc-300">{APP_VERSION}</span>
             </div>
             <div className="flex items-center gap-2">
               <Server size={12} className="text-zinc-600" />
@@ -156,7 +202,20 @@ function LoginForm() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
+            {cooldownActive && (
+              <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-center">
+                <p className="text-sm font-semibold text-yellow-400">Session expired.</p>
+                <p className="mt-1 text-xs text-yellow-400/80">
+                  You may login again in{" "}
+                  <span className="font-mono font-bold">
+                    {String(cooldownMinutes).padStart(2, "0")}:{String(cooldownSeconds).padStart(2, "0")}
+                  </span>
+                </p>
+                <p className="mt-2 text-[10px] text-yellow-400/60">Thanks, SP NET INC</p>
+              </div>
+            )}
+
+            {error && !cooldownActive && (
               <div className="flex items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/40 p-4">
                 <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
                 <div>
@@ -179,6 +238,7 @@ function LoginForm() {
                 required
                 autoFocus
                 autoComplete="username"
+                disabled={cooldownActive}
                 onFocus={() => setFocused("email")}
                 onBlur={() => setFocused(null)}
                 className={`w-full rounded-xl border bg-zinc-800/50 px-4 py-2.5 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-500 ${
@@ -202,6 +262,7 @@ function LoginForm() {
                   placeholder="Enter your password"
                   required
                   autoComplete="current-password"
+                  disabled={cooldownActive}
                   onFocus={() => setFocused("password")}
                   onBlur={() => setFocused(null)}
                   className={`w-full rounded-xl border bg-zinc-800/50 px-4 py-2.5 pr-10 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-500 ${
@@ -236,6 +297,7 @@ function LoginForm() {
                   placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
                   required
                   autoComplete="off"
+                  disabled={cooldownActive}
                   onFocus={() => setFocused("licenseKey")}
                   onBlur={() => setFocused(null)}
                   className={`w-full rounded-xl border bg-zinc-800/50 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-500 font-mono tracking-wider ${
@@ -249,7 +311,7 @@ function LoginForm() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || cooldownActive}
               className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all duration-200 hover:from-blue-500 hover:to-blue-400 hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (

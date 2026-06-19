@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/shared";
-import { getPlanIndex, ALL_PLANS } from "@/lib/premium";
+import { cn, formatPrice } from "@/lib/shared";
+import { getPlanIndex, ALL_PLANS, getPlanYearlyPrice, getPlanLifetimePrice } from "@/lib/premium";
 import type { PlanMeta } from "@/lib/premium";
 import { Sparkles, ArrowRight, Check } from "lucide-react";
 
@@ -74,9 +74,16 @@ export function PlanCard({ plan, meta, highlights, price, onViewDetails, onCompa
       </div>
 
       {price !== undefined && (
-        <div className="mb-4">
-          <span className="text-2xl font-bold text-zinc-100">${price}</span>
-          <span className="ml-1 text-sm text-zinc-500">/mo</span>
+        <div className="mb-4 space-y-1">
+          <div>
+            <span className="text-2xl font-bold text-zinc-100">{formatPrice(price, "$")}</span>
+            <span className="ml-1 text-sm text-zinc-500">/mo</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+            <span>{formatPrice(getPlanYearlyPrice(plan), "$")}/yr</span>
+            <span className="text-zinc-700">|</span>
+            <span>{formatPrice(getPlanLifetimePrice(plan), "$")} lifetime</span>
+          </div>
         </div>
       )}
 

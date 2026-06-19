@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("Edit Users");
     const body = await req.json();
-    const { id } = body;
+    const { id, password } = body;
 
     if (!id) {
       return Response.json({ error: "Member ID is required" }, { status: 400 });
@@ -25,13 +25,14 @@ export async function POST(req: Request) {
       return Response.json({ error: "Team member not found" }, { status: 404 });
     }
 
-    const tempPassword = generateTempPassword();
+    const tempPassword = password || generateTempPassword();
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
     await prisma.teamMember.update({
       where: { id },
       data: {
         password: hashedPassword,
+        isFirstLogin: !password,
         failedLoginAttempts: 0,
         lockedUntil: null,
       },

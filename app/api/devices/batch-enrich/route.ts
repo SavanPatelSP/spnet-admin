@@ -26,7 +26,6 @@ export async function POST() {
           where: { id: activation.id },
           data: {
             country: geo.country,
-            region: geo.region,
             city: geo.city,
             isp: geo.isp,
           },

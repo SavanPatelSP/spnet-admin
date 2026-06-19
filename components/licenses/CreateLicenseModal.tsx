@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, PLANS, LICENSE_STATUSES, DEFAULT_PLAN, DEFAULT_MAX_DEVICES, PLAN_PRICES } from "@/lib/constants";
+import { formatPrice } from "@/lib/shared";
 import { Building2, Cpu, Calendar, FileText, CheckCircle, Shield, Eye, Timer, DollarSign } from "lucide-react";
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
@@ -67,13 +68,13 @@ export default function CreateLicenseModal() {
     const perMonth = price;
     if (useDuration && computedEndDate) {
       const months = Math.max(1, Math.round((computedEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)));
-      return { perMonth, total: perMonth * months, label: `$${perMonth}/mo for ${months}mo`, billingValue: perMonth * months };
+      return { perMonth, total: perMonth * months, label: `${formatPrice(perMonth, "$")}/mo for ${months}mo`, billingValue: perMonth * months };
     }
     if (expiresAt) {
       const months = Math.max(1, Math.round((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)));
-      return { perMonth, total: perMonth * months, label: `$${perMonth}/mo for ${months}mo`, billingValue: perMonth * months };
+      return { perMonth, total: perMonth * months, label: `${formatPrice(perMonth, "$")}/mo for ${months}mo`, billingValue: perMonth * months };
     }
-    return { perMonth, total: perMonth * 12, label: `$${perMonth}/mo (annual)`, billingValue: perMonth * 12 };
+    return { perMonth, total: perMonth * 12, label: `${formatPrice(perMonth, "$")}/mo (annual)`, billingValue: perMonth * 12 };
   }, [plan, useDuration, computedEndDate, expiresAt]);
 
   async function createLicense() {
@@ -327,12 +328,12 @@ export default function CreateLicenseModal() {
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2.5">
                 <span className="text-[10px] text-zinc-500">License Cost</span>
                 <p className="text-sm font-semibold text-zinc-100">
-                  {licenseCost.perMonth === 0 ? "Free" : `$${licenseCost.perMonth}/mo`}
+                  {licenseCost.perMonth === 0 ? "Free" : `${formatPrice(licenseCost.perMonth, "$")}/mo`}
                 </p>
               </div>
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2.5">
                 <span className="text-[10px] text-zinc-500">Billing Value</span>
-                <p className="text-sm font-semibold text-green-400">${licenseCost.billingValue.toLocaleString()}</p>
+                <p className="text-sm font-semibold text-green-400">{formatPrice(licenseCost.billingValue, "$")}</p>
               </div>
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2.5">
                 <span className="text-[10px] text-zinc-500">Selected Plan</span>
@@ -341,7 +342,7 @@ export default function CreateLicenseModal() {
               <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2.5">
                 <span className="text-[10px] text-green-400">Total Cost</span>
                 <p className="text-lg font-bold text-green-400">
-                  {licenseCost.total === 0 ? "Free" : `$${licenseCost.total.toLocaleString()}`}
+                  {licenseCost.total === 0 ? "Free" : formatPrice(licenseCost.total, "$")}
                 </p>
               </div>
             </div>
@@ -410,11 +411,11 @@ export default function CreateLicenseModal() {
               </div>
               <div className="rounded-lg bg-zinc-800/50 px-3 py-2">
                 <span className="text-xs text-zinc-500">Cost</span>
-                <p className="font-medium text-green-400">{licenseCost.total === 0 ? "Free" : `$${licenseCost.total.toLocaleString()}`}</p>
+                <p className="font-medium text-green-400">{licenseCost.total === 0 ? "Free" : formatPrice(licenseCost.total, "$")}</p>
               </div>
               <div className="rounded-lg bg-zinc-800/50 px-3 py-2">
                 <span className="text-xs text-zinc-500">Billing Value</span>
-                <p className="font-medium text-green-400">${licenseCost.billingValue.toLocaleString()}</p>
+                <p className="font-medium text-green-400">{formatPrice(licenseCost.billingValue, "$")}</p>
               </div>
             </div>
 
@@ -454,11 +455,11 @@ export default function CreateLicenseModal() {
                 </div>
                 <div className="flex">
                   <span className="w-28 text-zinc-500">Cost</span>
-                  <span className="text-green-400">{licenseCost.total === 0 ? "Free" : `$${licenseCost.total.toLocaleString()}`}</span>
+                  <span className="text-green-400">{licenseCost.total === 0 ? "Free" : formatPrice(licenseCost.total, "$")}</span>
                 </div>
                 <div className="flex">
                   <span className="w-28 text-zinc-500">Billing</span>
-                  <span className="text-green-400">${licenseCost.billingValue.toLocaleString()}</span>
+                  <span className="text-green-400">{formatPrice(licenseCost.billingValue, "$")}</span>
                 </div>
                 <div className="flex">
                   <span className="w-28 text-zinc-500">Notes</span>

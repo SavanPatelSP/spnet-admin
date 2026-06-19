@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
+import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
+import { createInvoiceForPremium } from "@/lib/invoices";
 
 export async function POST(req: Request) {
   try {
@@ -68,6 +69,15 @@ export async function POST(req: Request) {
       `Granted ${plan} premium for ${license.organization} (${subType}${isLifetime ? "" : ", " + (durationDays || 365) + " days"})`,
       session.user.email
     );
+
+    try {
+      const price = PLAN_PRICES[plan] ?? 0;
+      if (price > 0) {
+        await createInvoiceForPremium(licenseId, plan, price, subscription.id);
+      }
+    } catch {
+      // Invoice generation is best-effort; do not fail the grant.
+    }
 
     return Response.json(subscription);
   } catch (error) {

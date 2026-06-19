@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "System Administration" };
 
 import { prisma } from "@/lib/prisma";
+import { APP_VERSION, APP_BUILD } from "@/lib/constants";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import {
@@ -153,7 +154,7 @@ export default async function SystemPage() {
           </div>
           <div className="rounded-xl bg-zinc-800/50 px-4 py-3">
             <p className="text-xs text-zinc-500">Version</p>
-            <p className="mt-1 text-sm font-medium text-zinc-100">v1.1.0 (200)</p>
+            <p className="mt-1 text-sm font-medium text-zinc-100">{APP_VERSION} ({APP_BUILD})</p>
           </div>
           <div className="rounded-xl bg-zinc-800/50 px-4 py-3">
             <p className="text-xs text-zinc-500">Node.js</p>

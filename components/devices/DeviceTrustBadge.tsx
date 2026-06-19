@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/shared";
+import { useToast } from "@/components/ui/Toast";
 import { Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 import { ActionButton } from "@/components/ui/ActionButton";
 
@@ -11,6 +12,7 @@ interface Props {
   trustScore: number;
   size?: "sm" | "md" | "lg";
   activationId?: string;
+  onUpdated?: () => void;
 }
 
 const sizeStyles = {
@@ -19,8 +21,9 @@ const sizeStyles = {
   lg: "px-4 py-2 text-base",
 };
 
-export function DeviceTrustBadge({ trustScore, size = "md", activationId }: Props) {
+export function DeviceTrustBadge({ trustScore, size = "md", activationId, onUpdated }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [score, setScore] = useState(trustScore);
   const [saving, setSaving] = useState(false);
@@ -52,13 +55,22 @@ export function DeviceTrustBadge({ trustScore, size = "md", activationId }: Prop
     if (!activationId) return;
     setSaving(true);
     try {
-      await fetch(API_ROUTES.DEVICES.UPDATE_TRUST, {
-        method: "POST",
+      const res = await fetch(API_ROUTES.DEVICES.UPDATE_TRUST, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activationId, trustScore: score }),
+        body: JSON.stringify({ id: activationId, trustScore: score }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || "Failed to update trust score", "error");
+        return;
+      }
       setExpanded(false);
       router.refresh();
+      onUpdated?.();
+      toast(`Trust score updated to ${score}`, "success");
+    } catch {
+      toast("Failed to update trust score", "error");
     } finally {
       setSaving(false);
     }

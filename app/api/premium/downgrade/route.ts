@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
+import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
+import { createInvoiceForPremiumAction } from "@/lib/invoices";
 
 export async function POST(req: Request) {
   try {
@@ -71,6 +72,17 @@ export async function POST(req: Request) {
       `Downgraded ${license.organization} from ${license.plan} to ${newPlan}`,
       session.user.email
     );
+
+    try {
+      const currentPrice = PLAN_PRICES[license.plan] || 0;
+      const targetPrice = PLAN_PRICES[newPlan] || 0;
+      const price = currentPrice - targetPrice;
+      if (price > 0) {
+        await createInvoiceForPremiumAction(licenseId, "DOWNGRADED", newPlan, price, result.id);
+      }
+    } catch {
+      // Invoice generation is best-effort.
+    }
 
     return Response.json(result);
   } catch (error) {

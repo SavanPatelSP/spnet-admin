@@ -1,5 +1,7 @@
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "SP NET GRAM";
 export const APP_DESCRIPTION = "Admin Panel";
+export const APP_VERSION = "v1.2.0";
+export const APP_BUILD = "300";
 
 export const LICENSE_KEY_PREFIX = process.env.LICENSE_KEY_PREFIX || "SPNET";
 
@@ -44,10 +46,10 @@ export interface CoinPackage {
 }
 
 export const COIN_PACKAGES: CoinPackage[] = [
-  { label: "Starter", amount: 1000, price: 99, currency: "$", description: "Entry level" },
-  { label: "Growth", amount: 5000, price: 399, currency: "$", description: "Standard package" },
-  { label: "Pro", amount: 10000, price: 699, currency: "$", description: "Professional package" },
-  { label: "Enterprise", amount: 50000, price: 2999, currency: "$", description: "Enterprise package" },
+  { label: "Starter", amount: 1000, price: 9.9, currency: "$", description: "Entry-level coin pack for testing and light engagement" },
+  { label: "Growth", amount: 5000, price: 39.9, currency: "$", description: "Higher-volume pack suitable for small teams" },
+  { label: "Pro", amount: 10000, price: 69.9, currency: "$", description: "Professional-grade pack with meaningful per-coin savings" },
+  { label: "Enterprise", amount: 50000, price: 249.9, currency: "$", description: "Maximum-volume pack with the best overall value" },
 ];
 
 export interface GemPackage {
@@ -59,10 +61,10 @@ export interface GemPackage {
 }
 
 export const GEM_PACKAGES: GemPackage[] = [
-  { label: "Starter", amount: 10, price: 99, currency: "$", description: "Quick engagement" },
-  { label: "Growth", amount: 50, price: 399, currency: "$", description: "Standard reward" },
-  { label: "Pro", amount: 100, price: 699, currency: "$", description: "Premium reward" },
-  { label: "Enterprise", amount: 500, price: 2999, currency: "$", description: "Enterprise grant" },
+  { label: "Starter", amount: 10, price: 9.9, currency: "$", description: "Entry-level gem pack for quick engagement and small rewards" },
+  { label: "Growth", amount: 50, price: 39.9, currency: "$", description: "Mid-volume pack with improved value per gem" },
+  { label: "Pro", amount: 100, price: 69.9, currency: "$", description: "Premium reward pack with full purchasing power unlocks" },
+  { label: "Enterprise", amount: 500, price: 249.9, currency: "$", description: "Enterprise-scale grant pack with maximum efficiency" },
 ];
 
 export interface LicenseTier {
@@ -139,6 +141,7 @@ export const LICENSE_TIERS: LicenseTier[] = [
 
 export type CurrencyCode = "$" | "₹" | "€" | "£";
 export const DEFAULT_CURRENCY: CurrencyCode = "$";
+export const DEVICE_PRICE_PER_MONTH = 2;
 
 export function getCurrencySymbol(preferred?: CurrencyCode): CurrencyCode {
   return preferred || DEFAULT_CURRENCY;
@@ -181,6 +184,9 @@ export const API_ROUTES = {
     TRUST_HISTORY: "/api/devices/trust/history",
     ENRICH_GEO: "/api/devices/enrich-geo",
     BATCH_ENRICH: "/api/devices/batch-enrich",
+    ACTIVATE: "/api/devices/activate",
+    DEACTIVATE: "/api/devices/deactivate",
+    SUSPEND: "/api/devices/suspend",
   },
   ACTIVATIONS: {
     DELETE: "/api/activations/delete",
@@ -229,6 +235,15 @@ export const API_ROUTES = {
     SESSIONS_REVOKE: "/api/team-members/sessions/revoke",
     LOGIN_HISTORY: "/api/team-members/login-history",
     LIFECYCLE: "/api/team-members/lifecycle",
+    INVITE: "/api/team-members/invite",
+    VERIFY_INVITE: "/api/team-members/verify-invite",
+    SETUP_PASSWORD: "/api/team-members/setup-password",
+    RESET_PASSWORD: "/api/team-members/reset-password",
+    GENERATE_PASSWORD_LINK: "/api/team-members/generate-password-link",
+    TEMP_PASSWORD: "/api/team-members/temp-password",
+    ACTIVATE: "/api/team-members/activate",
+    SUSPEND: "/api/team-members/suspend",
+    CREATE_WITH_LICENSE: "/api/team-members/create-with-license",
   },
   PREMIUM: {
     GRANT: "/api/premium/grant",
@@ -273,6 +288,22 @@ export const API_ROUTES = {
     SET: "/api/gems/set",
     SET_INFINITE: "/api/gems/set-infinite",
     REMOVE_INFINITE: "/api/gems/remove-infinite",
+  },
+  OFFERS: {
+    LIST: "/api/offers",
+    DETAIL: (id: string) => `/api/offers/${id}`,
+  },
+  INVOICES: {
+    LIST: "/api/invoices",
+    DETAIL: (id: string) => `/api/invoices/${id}`,
+    UPDATE: (id: string) => `/api/invoices/${id}`,
+    DELETE: (id: string) => `/api/invoices/${id}`,
+    SHARE: "/api/invoices/share",
+    ANALYTICS: "/api/invoices/analytics",
+  },
+  SESSIONS: {
+    EXTEND: "/api/sessions/extend",
+    FORCE_LOGOUT: "/api/sessions/force-logout",
   },
   CONTENT: {
     LIST: "/api/content/list",
@@ -352,6 +383,9 @@ export const AUDIT_ACTIONS = {
   PREMIUM_REQUEST_REJECTED: "PREMIUM_REQUEST_REJECTED",
   PREMIUM_REQUEST_MODIFIED: "PREMIUM_REQUEST_MODIFIED",
   PREMIUM_GRANTED_FROM_REQUEST: "PREMIUM_GRANTED_FROM_REQUEST",
+  PROMOTION_CREATED: "PROMOTION_CREATED",
+  PROMOTION_UPDATED: "PROMOTION_UPDATED",
+  PROMOTION_DELETED: "PROMOTION_DELETED",
   COINS_ADDED: "COINS_ADDED",
   COINS_REMOVED: "COINS_REMOVED",
   COINS_REFUNDED: "COINS_REFUNDED",
@@ -389,6 +423,12 @@ export const AUDIT_ACTIONS = {
   PASSWORD_POLICY_UPDATED: "PASSWORD_POLICY_UPDATED",
   SESSION_REVOKED: "SESSION_REVOKED",
   BULK_INVITE_SENT: "BULK_INVITE_SENT",
+  INVITE_SENT: "INVITE_SENT",
+  INVITE_RESENT: "INVITE_RESENT",
+  PASSWORD_SETUP_LINK_GENERATED: "PASSWORD_SETUP_LINK_GENERATED",
+  TEMP_PASSWORD_GENERATED: "TEMP_PASSWORD_GENERATED",
+  ACCOUNT_ACTIVATED: "ACCOUNT_ACTIVATED",
+  ACCOUNT_SUSPENDED: "ACCOUNT_SUSPENDED",
   USER_LIFECYCLE_ARCHIVED: "USER_LIFECYCLE_ARCHIVED",
   USER_LIFECYCLE_RESTORED: "USER_LIFECYCLE_RESTORED",
 
@@ -397,6 +437,10 @@ export const AUDIT_ACTIONS = {
   DEVICE_BLACKLISTED: "DEVICE_BLACKLISTED",
   DEVICE_WHITELISTED: "DEVICE_WHITELISTED",
   DEVICE_FINGERPRINT_REGISTERED: "DEVICE_FINGERPRINT_REGISTERED",
+
+  SESSION_EXTENDED: "SESSION_EXTENDED",
+  SESSION_POLICY_OVERRIDDEN: "SESSION_POLICY_OVERRIDDEN",
+  FORCE_LOGOUT: "FORCE_LOGOUT",
 
   // License Management
   LICENSE_FEATURE_FLAG_UPDATED: "LICENSE_FEATURE_FLAG_UPDATED",
@@ -489,6 +533,7 @@ export const PERMISSION_GROUPS = {
   "Billing & Revenue": [
     "View Revenue",
     "Manage Billing",
+    "Manage Invoices",
     "Compliance Reporting",
   ],
   Settings: [
@@ -542,6 +587,11 @@ export const PERMISSION_GROUPS = {
     "gems.set-infinite",
     "gems.remove-infinite",
   ],
+  "Page Access": [
+    "page:dashboard",
+    "page:plan-overview",
+    "page:system-health",
+  ],
   "Coins Management": [
     "View Coin Balances",
     "Add Coins",
@@ -592,8 +642,10 @@ export const AUTH_SECRET = process.env.NEXTAUTH_SECRET || "";
 export const AUTH = {
   MAX_LOGIN_ATTEMPTS: Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS) || 5,
   LOCKOUT_DURATION_MINUTES: Number(process.env.AUTH_LOCKOUT_DURATION_MINUTES) || 15,
-  SESSION_MAX_AGE_SECONDS: Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS) || 86400,
+  SESSION_MAX_AGE_SECONDS: Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS) || 3600,
 } as const;
+
+export const SESSION_EXTENSION_PRICE_PER_MINUTE = Number(process.env.SESSION_EXTENSION_PRICE_PER_MINUTE) || 0;
 
 export const RATE_LIMIT = {
   LOGIN_WINDOW_MS: Number(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 60_000,

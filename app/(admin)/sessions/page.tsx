@@ -5,18 +5,22 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Active Sessions" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission, getAuthSession } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { SessionsTable } from "@/components/sessions/SessionsTable";
 import { Clock, Activity, Users, AlertTriangle } from "lucide-react";
 
 export default async function SessionsPage() {
+  await requirePermission("Manage Sessions");
+  const authSession = await getAuthSession();
+  const currentUserRole = authSession?.user.role || "";
   const [sessions, expiredCount] = await Promise.all([
     prisma.session.findMany({
       orderBy: { createdAt: "desc" },
       take: 200,
       include: {
-        teamMember: { select: { name: true, email: true } },
+        teamMember: { select: { name: true, email: true, role: { select: { name: true } } } },
       },
     }),
     prisma.session.count({
@@ -41,7 +45,7 @@ export default async function SessionsPage() {
         <StatCard title="Total Sessions" value={sessions.length} icon={AlertTriangle} color="purple" />
       </StatCardGrid>
 
-      <SessionsTable sessions={sessions} />
+      <SessionsTable sessions={sessions} currentUserRole={currentUserRole} />
     </div>
   );
 }

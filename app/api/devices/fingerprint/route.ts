@@ -22,23 +22,26 @@ export async function POST(req: Request) {
       return Response.json({ error: "Activation not found" }, { status: 404 });
     }
 
-    const confidenceScore = body.confidenceScore !== undefined ? parseInt(body.confidenceScore) : 75;
     const now = new Date();
 
     const fingerprint = await prisma.deviceFingerprint.upsert({
-      where: { activationId: body.activationId },
+      where: { fingerprint: body.fingerprint },
       update: {
-        fingerprint: body.fingerprint,
-        confidenceScore: Math.max(0, Math.min(100, confidenceScore)),
-        lastSeen: now,
+        lastSeenAt: now,
+        activationCount: { increment: 1 },
       },
       create: {
-        activationId: body.activationId,
         fingerprint: body.fingerprint,
-        confidenceScore: Math.max(0, Math.min(100, confidenceScore)),
-        firstSeen: now,
-        lastSeen: now,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        activationCount: 1,
+        licenseIds: JSON.stringify([activation.licenseId]),
       },
+    });
+
+    await prisma.activation.update({
+      where: { id: body.activationId },
+      data: { deviceFingerprintId: fingerprint.id },
     });
 
     await logAudit(

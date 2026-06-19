@@ -20,7 +20,9 @@ export async function GET(req: Request) {
         license: {
           select: { id: true, key: true, organization: true, plan: true, status: true, maxDevices: true, expiresAt: true },
         },
-        fingerprint: true,
+        deviceFingerprint: {
+          select: { id: true, fingerprint: true, firstSeenAt: true, lastSeenAt: true, activationCount: true, licenseIds: true },
+        },
       },
     });
 

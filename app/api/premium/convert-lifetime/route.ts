@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, AUDIT_ACTIONS } from "@/lib/constants";
+import { PREMIUM_PLANS, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
+import { createInvoiceForPremiumAction } from "@/lib/invoices";
 
 export async function POST(req: Request) {
   try {
@@ -67,6 +68,16 @@ export async function POST(req: Request) {
       `Converted ${license.organization} premium to lifetime`,
       session.user.email
     );
+
+    try {
+      const planPrice = PLAN_PRICES[license.plan] || 0;
+      const price = planPrice > 0 ? planPrice * 120 : 0; // 10-year equivalent lifetime value
+      if (price > 0) {
+        await createInvoiceForPremiumAction(licenseId, "CONVERTED_TO_LIFETIME", license.plan, price, result.id);
+      }
+    } catch {
+      // Invoice generation is best-effort.
+    }
 
     return Response.json(result);
   } catch (error) {

@@ -22,13 +22,13 @@ export async function POST(req: Request) {
       return Response.json({ error: "Activation not found" }, { status: 404 });
     }
 
-    if (activation.isBlacklisted) {
+    if (activation.status === "BLACKLISTED") {
       return Response.json({ success: true, message: "Device is already blacklisted" });
     }
 
     await prisma.activation.update({
       where: { id: body.id },
-      data: { isBlacklisted: true },
+      data: { status: "BLACKLISTED" },
     });
 
     await logAudit(
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       `Blacklisted device ${activation.deviceName || activation.deviceId}`
     );
 
-    return Response.json({ success: true, data: { id: body.id, isBlacklisted: true } });
+    return Response.json({ success: true, data: { id: body.id, status: "BLACKLISTED" } });
   } catch (error) {
     return handleApiError(error);
   }

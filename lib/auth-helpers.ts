@@ -14,6 +14,9 @@ export type AuthSession = {
     licenseStatus: string | null;
     licensePlan: string | null;
     permissions: string[];
+    sessionRecordId: string | null;
+    sessionCreatedAt: string | null;
+    sessionExpiresAt: string | null;
   };
 };
 

@@ -6,7 +6,7 @@ import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requireApiPermission("Manage Devices");
+    const session = await requireApiPermission("Update Device Trust");
     const body = await req.json();
 
     if (!body.id) {

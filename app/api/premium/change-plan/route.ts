@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
+import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES, PLAN_TIERS } from "@/lib/constants";
+import { createInvoiceForPremiumAction } from "@/lib/invoices";
 
 export async function POST(req: Request) {
   try {
@@ -49,6 +50,10 @@ export async function POST(req: Request) {
     const finalPlan = planChanged ? newPlan : license.plan;
     const finalType = typeChanged ? newSubscriptionType : (latestSubscription?.subscriptionType || "MONTHLY");
 
+    const currentIndex = PLAN_TIERS.indexOf(license.plan as never);
+    const targetIndex = PLAN_TIERS.indexOf(finalPlan as never);
+    const direction = planChanged ? (targetIndex > currentIndex ? "UPGRADE" : "DOWNGRADE") : "CHANGE_PLAN";
+
     const changes: string[] = [];
     if (planChanged) changes.push(`plan: ${license.plan} → ${newPlan}`);
     if (typeChanged) changes.push(`type: ${latestSubscription?.subscriptionType} → ${newSubscriptionType}`);
@@ -58,7 +63,7 @@ export async function POST(req: Request) {
         licenseId,
         plan: finalPlan,
         subscriptionType: finalType,
-        action: "PLAN_CHANGED",
+        action: direction === "UPGRADE" ? "UPGRADED" : direction === "DOWNGRADE" ? "DOWNGRADED" : "PLAN_CHANGED",
         startDate: new Date(),
         endDate: license.expiresAt,
         grantedBy: session.user.name,
@@ -84,6 +89,23 @@ export async function POST(req: Request) {
       `Changed premium for ${license.organization}: ${changes.join(", ")}`,
       session.user.email
     );
+
+    try {
+      const currentPrice = PLAN_PRICES[license.plan] || 0;
+      const targetPrice = PLAN_PRICES[finalPlan] || 0;
+      const price = targetPrice - currentPrice;
+      if (price !== 0) {
+        await createInvoiceForPremiumAction(
+          licenseId,
+          direction,
+          finalPlan,
+          Math.abs(price),
+          subscription.id,
+        );
+      }
+    } catch {
+      // Invoice generation is best-effort.
+    }
 
     return Response.json(subscription);
   } catch (error) {

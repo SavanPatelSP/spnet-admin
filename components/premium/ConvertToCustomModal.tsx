@@ -4,13 +4,9 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, PREMIUM_PLANS } from "@/lib/constants";
-import { daysUntil } from "@/lib/shared";
+import { API_ROUTES, PREMIUM_PLANS, PLAN_PRICES } from "@/lib/constants";
+import { daysUntil, formatPrice } from "@/lib/shared";
 import { Calendar, AlertTriangle, DollarSign } from "lucide-react";
-
-const PLAN_PRICES: Record<string, number> = {
-  PLUS: 9, PRO: 29, BUSINESS: 99, ENTERPRISE: 299,
-};
 
 const DURATION_UNITS = ["days", "weeks", "months", "years"] as const;
 
@@ -80,8 +76,8 @@ export default function ConvertToCustomModal({
     return {
       total,
       perMonth: planPrice,
-      short: `$${total.toFixed(2)} for ${duration} ${durationUnit}`,
-      rate: `$${planPrice}/mo`,
+      short: `${formatPrice(total, "$")} for ${duration} ${durationUnit}`,
+      rate: `${formatPrice(planPrice, "$")}/mo`,
     };
   }, [targetPlan, planPrice, duration, durationUnit, durationDays]);
 

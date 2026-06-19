@@ -22,6 +22,8 @@ export async function GET() {
     const [
       totalDevices,
       blacklistedCount,
+      suspendedCount,
+      inactiveCount,
       trustAgg,
       byOs,
       byBrowser,
@@ -31,7 +33,9 @@ export async function GET() {
       ...trustCounts
     ] = await Promise.all([
       prisma.activation.count(),
-      prisma.activation.count({ where: { isBlacklisted: true } }),
+      prisma.activation.count({ where: { status: "BLACKLISTED" } }),
+      prisma.activation.count({ where: { status: "SUSPENDED" } }),
+      prisma.activation.count({ where: { status: "INACTIVE" } }),
       prisma.activation.aggregate({ _avg: { trustScore: true } }),
       prisma.activation.groupBy({
         by: ["os"],
@@ -71,6 +75,8 @@ export async function GET() {
       data: {
         totalDevices,
         blacklisted: blacklistedCount,
+        suspended: suspendedCount,
+        inactive: inactiveCount,
         averageTrustScore: Math.round((trustAgg._avg.trustScore || 0) * 100) / 100,
         byOs: byOs.map((o) => ({ os: o.os, count: o._count.id })),
         byBrowser: byBrowser.map((b) => ({ browser: b.browser, count: b._count.id })),

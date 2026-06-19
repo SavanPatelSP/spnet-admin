@@ -1,0 +1,75 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard,
+  KeyRound,
+  Crown,
+  Sparkles,
+  Coins,
+  Gem,
+  Percent,
+  Users,
+  UserCog,
+  UserCheck,
+  UserPlus,
+  Building2,
+  BarChart3,
+  CreditCard,
+  FileText,
+  ClipboardList,
+  Shield,
+  Megaphone,
+  FileEdit,
+  Settings,
+  LifeBuoy,
+  Activity,
+  FileWarning,
+  Monitor,
+  Server,
+  Lock,
+  Clock,
+  Receipt,
+  Star,
+  Inbox,
+} from "lucide-react";
+
+export interface SidebarPage {
+  key: string;
+  label: string;
+  href: string;
+  permission?: string;
+  icon: LucideIcon;
+}
+
+export const SIDEBAR_PAGES: SidebarPage[] = [
+  { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { key: "licenses", label: "Licenses", href: "/licenses", permission: "View Licenses", icon: KeyRound },
+  { key: "premium", label: "Premium", href: "/premium", permission: "View Premium", icon: Crown },
+  { key: "plan-overview", label: "Plan Overview", href: "/premium/plan-overview", icon: Sparkles },
+  { key: "premium-requests", label: "Premium Requests", href: "/premium-requests", icon: Inbox },
+  { key: "coins", label: "Coins", href: "/coins", permission: "View Coin Balances", icon: Coins },
+  { key: "gems", label: "Gems", href: "/gems", permission: "View Gem Balances", icon: Gem },
+  { key: "offers", label: "Offers & Promotions", href: "/offers", permission: "Manage Billing", icon: Percent },
+  { key: "invoices", label: "Invoices", href: "/invoices", permission: "Manage Invoices", icon: Receipt },
+  { key: "users", label: "Users", href: "/users", permission: "View Users", icon: Users },
+  { key: "owner", label: "Owner", href: "/owner", icon: Star },
+  { key: "roles", label: "Roles", href: "/settings/roles", permission: "View Roles", icon: UserCog },
+  { key: "team-members", label: "Team Members", href: "/settings/team-members", permission: "View Team Members", icon: UserPlus },
+  { key: "organizations", label: "Organizations", href: "/organizations", permission: "View Organizations", icon: Building2 },
+  { key: "devices", label: "Devices", href: "/devices", permission: "View Devices", icon: Monitor },
+  { key: "session-operations", label: "Session Operations", href: "/sessions", permission: "Manage Sessions", icon: Clock },
+  { key: "analytics", label: "Analytics", href: "/analytics", permission: "View Analytics", icon: BarChart3 },
+  { key: "revenue", label: "Revenue", href: "/revenue", permission: "View Revenue", icon: CreditCard },
+  { key: "reports", label: "Reports", href: "/reports", permission: "View Reports", icon: FileText },
+  { key: "audit-logs", label: "Audit Logs", href: "/audit-logs", permission: "View Audit Logs", icon: ClipboardList },
+  { key: "security", label: "Security", href: "/security", permission: "View Security Policies", icon: Shield },
+  { key: "moderation", label: "Moderation", href: "/moderation", permission: "Moderate Content", icon: FileWarning },
+  { key: "broadcasts", label: "Broadcasts", href: "/broadcasts", permission: "View Broadcasts", icon: Megaphone },
+  { key: "content", label: "Content", href: "/content", permission: "View Content", icon: FileEdit },
+  { key: "support", label: "Support / Tickets", href: "/support", permission: "View Tickets", icon: LifeBuoy },
+  { key: "settings", label: "Settings", href: "/settings", permission: "Access Settings", icon: Settings },
+  { key: "settings-audit", label: "Audit", href: "/settings/audit", permission: "View Audit Logs", icon: ClipboardList },
+  { key: "settings-licensing", label: "Licensing", href: "/settings/licensing", permission: "View Licenses", icon: KeyRound },
+  { key: "settings-security", label: "Security", href: "/settings/security", permission: "View Security Policies", icon: Lock },
+  { key: "settings-system", label: "System", href: "/settings/system", permission: "Edit System Settings", icon: Server },
+  { key: "system-health", label: "System Health", href: "/system-health", icon: Activity },
+];

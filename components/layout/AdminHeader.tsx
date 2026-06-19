@@ -2,6 +2,7 @@
 
 import { Bell } from "lucide-react";
 import { SessionStatus } from "@/components/auth/SessionStatus";
+import { SessionCountdown } from "@/components/auth/SessionCountdown";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -14,6 +15,7 @@ export default function AdminHeader() {
         </div>
 
         <div className="flex items-center gap-3">
+          <SessionCountdown />
           <Tooltip content="Notifications">
             <button className="relative rounded-2xl border border-zinc-800 bg-zinc-900 p-2.5 transition-colors hover:bg-zinc-800">
               <Bell size={18} />

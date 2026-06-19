@@ -22,7 +22,9 @@ export default async function DevicesPage() {
   const uniqueLicenses = new Set(activations.map((a) => a.licenseId)).size;
   const uniqueIPs = new Set(activations.map((a) => a.ipAddress).filter(Boolean)).size;
   const uniqueOrgs = new Set(activations.map((a) => a.license.organization)).size;
-  const blacklisted = activations.filter((a) => a.isBlacklisted).length;
+  const blacklisted = activations.filter((a) => a.status === "BLACKLISTED").length;
+  const suspended = activations.filter((a) => a.status === "SUSPENDED").length;
+  const inactive = activations.filter((a) => a.status === "INACTIVE").length;
   const avgTrustScore = totalDevices > 0
     ? Math.round(activations.reduce((sum, a) => sum + a.trustScore, 0) / totalDevices)
     : 0;
@@ -38,11 +40,11 @@ export default async function DevicesPage() {
     os: a.os,
     browser: a.browser,
     country: a.country,
-    isBlacklisted: a.isBlacklisted,
+    status: a.status as "ACTIVE" | "INACTIVE" | "SUSPENDED" | "BLACKLISTED",
     licenseId: a.license.id,
     licenseKey: a.license.key,
     organization: a.license.organization,
-    lastSeen: a.lastSeen,
+    lastSeenAt: a.lastSeenAt,
     createdAt: a.createdAt,
   }));
 
@@ -54,15 +56,17 @@ export default async function DevicesPage() {
         actions={<DevicesExportButton />}
       />
 
-      <StatCardGrid columns={4}>
+      <StatCardGrid columns={5}>
         <StatCard title="Total Devices" value={totalDevices} icon={Monitor} color="blue" />
         <StatCard title="Licensed Products" value={uniqueLicenses} icon={KeyRound} color="green" />
         <StatCard title="Unique IPs" value={uniqueIPs} icon={Globe} color="purple" />
         <StatCard title="Organizations" value={uniqueOrgs} icon={Fingerprint} color="yellow" />
         <StatCard title="Blacklisted" value={blacklisted} icon={Ban} color="red" />
+        <StatCard title="Suspended" value={suspended} icon={Ban} color="yellow" />
         <StatCard title="Avg Trust Score" value={`${avgTrustScore}%`} icon={TrendingUp} color={avgTrustScore >= 60 ? "green" : avgTrustScore >= 30 ? "yellow" : "red"} />
         <StatCard title="OS Types" value={osTypes} icon={Laptop} color="blue" />
         <StatCard title="Countries" value={countries} icon={Flag} color="purple" />
+        <StatCard title="Inactive" value={inactive} icon={Monitor} color="default" />
       </StatCardGrid>
 
       <DeviceAnalyticsPanel />

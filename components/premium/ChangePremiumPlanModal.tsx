@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, PLAN_TIERS, PLAN_PRICES, SUBSCRIPTION_TYPES } from "@/lib/constants";
 import { getPlanFeatureList } from "@/lib/premium";
-import { daysUntil } from "@/lib/shared";
+import { daysUntil, formatPrice } from "@/lib/shared";
 import { ArrowUp, ArrowDown, Check, Minus, ArrowRight, RefreshCw, Calendar } from "lucide-react";
 
 interface Props {
@@ -86,7 +86,7 @@ export default function ChangePremiumPlanModal({
   const customBilling = useMemo(() => {
     if (!isCustomSubscription || customDurationDays <= 0) return null;
     const total = (targetPrice / 30) * customDurationDays;
-    return { total, perMonth: targetPrice, label: `$${total.toFixed(2)} for ${customDuration} ${customDurationUnit}`, rate: `$${targetPrice}/mo` };
+    return { total, perMonth: targetPrice, label: `${formatPrice(total, "$")} for ${customDuration} ${customDurationUnit}`, rate: `${formatPrice(targetPrice, "$")}/mo` };
   }, [targetPrice, isCustomSubscription, customDuration, customDurationUnit, customDurationDays]);
 
   const currentFeatures = useMemo(() => getPlanFeatureList(currentPlan), [currentPlan]);
@@ -190,7 +190,7 @@ export default function ChangePremiumPlanModal({
               <div className="text-zinc-500">Remaining</div>
               <div className={remainingDays < 0 ? "text-red-400" : "text-zinc-100"}>{remainingDays < 0 ? "Expired" : `${remainingDays} days`}</div>
               <div className="text-zinc-500">Monthly Price</div>
-              <div className="text-zinc-100">${currentPrice.toLocaleString()}/mo</div>
+              <div className="text-zinc-100">{formatPrice(currentPrice, "$")}/mo</div>
             </div>
           </div>
 
@@ -217,7 +217,7 @@ export default function ChangePremiumPlanModal({
                     const isDowngrade = pIndex < currentIndex;
                     return (
                       <option key={p} value={p} disabled={isCurrent}>
-                        {p} &mdash; ${PLAN_PRICES[p]}/mo
+                        {p} &mdash; {formatPrice(PLAN_PRICES[p], "$")}/mo
                         {isCurrent ? " (current)" : ""}
                         {isUpgrade ? " ↑" : ""}
                         {isDowngrade ? " ↓" : ""}
@@ -277,12 +277,12 @@ export default function ChangePremiumPlanModal({
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className="text-xs text-zinc-500">Current Price</span>
-                      <p className="font-medium text-zinc-300">${currentPrice.toLocaleString()}/mo</p>
+                      <p className="font-medium text-zinc-300">{formatPrice(currentPrice, "$")}/mo</p>
                     </div>
                     <div>
                       <span className="text-xs text-zinc-500">New Price</span>
                       <p className={`font-medium ${direction === "upgrade" ? "text-green-400" : direction === "downgrade" ? "text-red-400" : "text-zinc-300"}`}>
-                        {customBilling ? customBilling.label : `$${targetPrice.toLocaleString()}/mo`}
+                        {customBilling ? customBilling.label : `${formatPrice(targetPrice, "$")}/mo`}
                       </p>
                     </div>
                   </div>
@@ -294,7 +294,7 @@ export default function ChangePremiumPlanModal({
                         : "bg-red-500/10 text-red-300"
                     }`}>
                       <span className="font-medium">Impact: </span>
-                      {direction === "upgrade" ? "+" : ""}${priceDiff.toLocaleString()}/mo
+                      {direction === "upgrade" ? "+" : ""}{formatPrice(priceDiff, "$")}/mo
                     </div>
                   )}
 
@@ -506,7 +506,7 @@ export default function ChangePremiumPlanModal({
               <div className="flex">
                 <span className="w-28 text-zinc-500">Impact</span>
                 <span className={priceDiff > 0 ? "text-green-400" : priceDiff < 0 ? "text-red-400" : "text-zinc-300"}>
-                  {priceDiff === 0 ? "$0" : `${priceDiff > 0 ? "+" : ""}$${priceDiff.toLocaleString()}/mo`}
+                  {priceDiff === 0 ? "$0" : `${priceDiff > 0 ? "+" : ""}${formatPrice(priceDiff, "$")}/mo`}
                 </span>
               </div>
               <div className="flex">

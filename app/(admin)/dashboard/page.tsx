@@ -13,7 +13,7 @@ import {
 import Link from "next/link";
 import { EXPIRING_SOON_DAYS, PREMIUM_PLANS, PLAN_PRICES } from "@/lib/constants";
 import { ALL_PLANS, PLAN_META } from "@/lib/premium";
-import { daysUntil, formatDate, formatNumber, cn } from "@/lib/shared";
+import { daysUntil, formatDate, formatNumber, formatPrice, cn } from "@/lib/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -203,7 +203,7 @@ export default async function DashboardPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-zinc-600">Tier {meta?.tier !== undefined ? meta.tier + 1 : "—"} · {price !== undefined ? `$${price}/mo` : "—"}</p>
+                        <p className="text-[10px] text-zinc-600">Tier {meta?.tier !== undefined ? meta.tier + 1 : "—"} · {price !== undefined ? `${formatPrice(price, "$")}/mo` : "—"}</p>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">

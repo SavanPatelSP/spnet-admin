@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/shared";
+import { cn, formatPrice } from "@/lib/shared";
 import { COIN_PACKAGES, type CoinPackage } from "@/lib/constants";
 import { CoinPackageComparison } from "./CoinPackageComparison";
-import { Coins, Package, ShoppingCart, Check, ArrowRight, ChevronDown, ChevronRight, DollarSign } from "lucide-react";
+import { Coins, Package, Check, ArrowRight } from "lucide-react";
 
 function fmt(n: number) { return n.toLocaleString(); }
 
@@ -17,21 +17,26 @@ const colorMap: Record<string, { text: string; border: string; bg: string; badge
 
 const COLORS = ["yellow", "amber", "orange", "blue"];
 
-const BENEFITS: Record<string, string[]> = {
-  Starter: ["Basic access to platform tools", "Entry-level engagement", "Ideal for testing and evaluation"],
-  Growth: ["All Starter benefits", "Standard operational capacity", "Suitable for small teams", "Better value per coin"],
-  Pro: ["All Growth benefits", "Professional-grade capacity", "Priority operations", "Best value in mid-range"],
-  Enterprise: ["Maximum coin capacity", "Enterprise-scale operations", "Highest efficiency", "Best overall value"],
+const POSITIONING: Record<string, string> = {
+  Starter: "Entry-level coin package — ideal for testing and light engagement",
+  Growth: "Mid-range coin package — higher volume for growing usage",
+  Pro: "Professional coin package — best value in the mid-range",
+  Enterprise: "Maximum-volume coin package — best overall value",
 };
 
-function CoinPackageCard({ pkg, index, onViewDetails }: { pkg: CoinPackage; index: number; onViewDetails: () => void }) {
-  const colorKey = COLORS[index % COLORS.length];
-  const c = colorMap[colorKey] || colorMap.yellow;
-  const benefits = BENEFITS[pkg.label] || [];
+function getPkgColor(pkg: CoinPackage) {
+  const idx = COIN_PACKAGES.findIndex((p) => p.label === pkg.label);
+  const key = COLORS[idx >= 0 ? idx % COLORS.length : 0];
+  return colorMap[key] || colorMap.yellow;
+}
+
+function CoinPackageCard({ pkg, index, onViewDetails, onCompare }: { pkg: CoinPackage; index: number; onViewDetails: () => void; onCompare: () => void }) {
+  const c = getPkgColor(pkg);
+  const idx = COIN_PACKAGES.findIndex((p) => p.label === pkg.label);
 
   return (
-    <div className={cn("group relative flex flex-col rounded-2xl border bg-zinc-900 p-6 transition-all duration-300 hover:-translate-y-0.5", c.border, "hover:shadow-lg")}>
-      <div className="mb-4 flex items-start justify-between">
+    <div className={cn("group relative flex flex-col rounded-2xl border bg-zinc-900 p-5 transition-all duration-300 hover:-translate-y-0.5", c.border, "hover:shadow-lg")}>
+      <div className="mb-3 flex items-start justify-between">
         <div className="flex items-center gap-2.5">
           <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", c.bg)}>
             <Package size={20} className={c.text} />
@@ -44,17 +49,24 @@ function CoinPackageCard({ pkg, index, onViewDetails }: { pkg: CoinPackage; inde
           </div>
         </div>
         <div className="text-right">
-          <div className={cn("text-lg font-bold", c.text)}>{pkg.currency}{pkg.price.toLocaleString()}</div>
+          <div className={cn("text-lg font-bold", c.text)}>{formatPrice(pkg.price, pkg.currency)}</div>
           <div className="text-[10px] text-zinc-600">{(pkg.price / pkg.amount).toFixed(4)} per coin</div>
         </div>
       </div>
 
-      {pkg.description && (
-        <p className="mb-4 text-sm leading-relaxed text-zinc-500">{pkg.description}</p>
-      )}
+      <div className="mb-1 flex items-center gap-1 text-xs text-zinc-600">
+        <span>Pack {idx + 1} of {COIN_PACKAGES.length}</span>
+        <ArrowRight size={10} />
+      </div>
 
-      <div className="mb-5 space-y-2">
-        {benefits.slice(0, 3).map((b) => (
+      <p className="mb-3 text-sm leading-relaxed text-zinc-500">{pkg.description}</p>
+
+      <div className="mb-4 space-y-1.5">
+        {[
+          idx > 0 ? `${fmt(pkg.amount - COIN_PACKAGES[idx - 1].amount)} more coins than ${COIN_PACKAGES[idx - 1].label}` : "Entry point into the coin economy",
+          `${(pkg.price / pkg.amount).toFixed(4)} cost per coin`,
+          POSITIONING[pkg.label],
+        ].slice(0, 3).map((b) => (
           <div key={b} className="flex items-start gap-2">
             <Check size={14} className="mt-0.5 shrink-0 text-green-500" />
             <span className="text-xs leading-relaxed text-zinc-400">{b}</span>
@@ -62,12 +74,18 @@ function CoinPackageCard({ pkg, index, onViewDetails }: { pkg: CoinPackage; inde
         ))}
       </div>
 
-      <div className="mt-auto flex gap-2">
+      <div className="mt-auto flex flex-wrap gap-2">
         <button
           onClick={onViewDetails}
           className={cn("flex-1 rounded-xl py-2 text-xs font-medium transition-colors", c.bg, c.text, "hover:opacity-80")}
         >
           View Details
+        </button>
+        <button
+          onClick={onCompare}
+          className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
+        >
+          Compare
         </button>
       </div>
     </div>
@@ -75,33 +93,26 @@ function CoinPackageCard({ pkg, index, onViewDetails }: { pkg: CoinPackage; inde
 }
 
 function CoinPackageDetail({ pkg, onClose }: { pkg: CoinPackage; onClose: () => void }) {
-  const benefits = BENEFITS[pkg.label] || [
-    "Access to platform economy features",
-    "Engagement and reward capabilities",
-    "Standard operational support",
-  ];
+  const idx = COIN_PACKAGES.findIndex((p) => p.label === pkg.label);
+  const c = getPkgColor(pkg);
 
   return (
     <div className="space-y-6">
-      <div className={cn("flex items-start gap-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-5")}>
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-yellow-500/10">
-          <Package size={28} className="text-yellow-400" />
+      <div className={cn("flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-start", c.border, c.bg)}>
+        <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-xl", c.bg)}>
+          <Package size={28} className={c.text} />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-zinc-100">{pkg.label}</h2>
-            <span className="rounded-md bg-yellow-500/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-yellow-300">
+            <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider", c.badge)}>
               {fmt(pkg.amount)} Coins
             </span>
           </div>
           <p className="mt-1 text-sm text-zinc-500">{pkg.description}</p>
-          <div className="mt-2 flex items-center gap-3">
-            <span className="text-sm font-semibold text-zinc-200">
-              {pkg.currency}{pkg.price.toLocaleString()}
-            </span>
-            <span className="text-xs text-zinc-500">
-              {(pkg.price / pkg.amount).toFixed(4)} per coin
-            </span>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-zinc-200">{formatPrice(pkg.price, pkg.currency)}</span>
+            <span className="text-xs text-zinc-500">{(pkg.price / pkg.amount).toFixed(4)} per coin</span>
           </div>
         </div>
         <button
@@ -112,53 +123,43 @@ function CoinPackageDetail({ pkg, onClose }: { pkg: CoinPackage; onClose: () => 
         </button>
       </div>
 
-      <div>
-        <h3 className="mb-3 text-sm font-bold text-zinc-300">Benefits</h3>
-        <ul className="space-y-2">
-          {benefits.map((b) => (
-            <li key={b} className="flex items-start gap-2 text-sm text-zinc-400">
-              <Check size={16} className="mt-0.5 shrink-0 text-green-500" />
-              {b}
-            </li>
-          ))}
-        </ul>
-      </div>
-
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
         <h3 className="mb-4 text-sm font-bold text-zinc-300">Package Details</h3>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <div className="text-zinc-500">Package Name</div>
           <div className="font-medium text-zinc-200">{pkg.label}</div>
           <div className="text-zinc-500">Coin Amount</div>
           <div className="font-medium text-yellow-400">{fmt(pkg.amount)}</div>
-          <div className="text-zinc-500">Value</div>
-          <div className="font-medium text-zinc-200">{pkg.currency}{pkg.price.toLocaleString()}</div>
+          <div className="text-zinc-500">Price</div>
+          <div className="font-medium text-zinc-200">{formatPrice(pkg.price, pkg.currency)}</div>
           <div className="text-zinc-500">Unit Price</div>
           <div className="text-zinc-400">{(pkg.price / pkg.amount).toFixed(4)} per coin</div>
-          <div className="text-zinc-500">Package Position</div>
-          <div className="text-zinc-400">Tier {COIN_PACKAGES.findIndex((p) => p.amount === pkg.amount) + 1} of {COIN_PACKAGES.length}</div>
+          <div className="text-zinc-500">Pack Position</div>
+          <div className="text-zinc-400">Pack {idx + 1} of {COIN_PACKAGES.length}</div>
+          <div className="text-zinc-500">Value Proposition</div>
+          <div className="text-zinc-300">{POSITIONING[pkg.label]}</div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
-        <h3 className="mb-4 text-sm font-bold text-zinc-300">Comparison</h3>
+        <h3 className="mb-4 text-sm font-bold text-zinc-300">Upgrade Progression</h3>
         <div className="space-y-3">
-          {COIN_PACKAGES.map((other) => {
-            if (other.amount === pkg.amount) return null;
+          {COIN_PACKAGES.map((other, i) => {
+            if (other.label === pkg.label) return null;
             const ratio = other.amount / pkg.amount;
             const valueRatio = other.price / pkg.price;
             return (
-              <div key={other.label} className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+              <div key={other.label} className="flex flex-col gap-1 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <Package size={14} className="text-zinc-500" />
                   <span className="text-sm text-zinc-300">{other.label}</span>
                   <span className="text-xs text-zinc-500">({fmt(other.amount)} coins)</span>
                 </div>
-                <div className="text-xs text-zinc-500">
+                <span className="text-xs text-zinc-500">
                   {ratio > 1
                     ? `${ratio.toFixed(1)}x the coins at ${valueRatio.toFixed(1)}x the price`
                     : `${(1 / ratio).toFixed(1)}x fewer coins at ${(1 / valueRatio).toFixed(1)}x the price`}
-                </div>
+                </span>
               </div>
             );
           })}
@@ -176,7 +177,7 @@ export function CoinPackageOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-500/10">
             <Coins size={20} className="text-yellow-400" />
@@ -221,14 +222,15 @@ export function CoinPackageOverview() {
                 pkg={pkg}
                 index={i}
                 onViewDetails={() => setSelected(pkg)}
+                onCompare={() => { setSelected(null); setViewMode("compare"); }}
               />
             ))}
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 sm:p-6">
             <h3 className="mb-4 text-sm font-bold text-zinc-300">Package Comparison</h3>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800">
                     <th className="pb-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">Package</th>
@@ -253,7 +255,7 @@ export function CoinPackageOverview() {
                           </div>
                         </td>
                         <td className="py-3 text-right text-zinc-300">{fmt(pkg.amount)}</td>
-                        <td className="py-3 text-right font-medium text-zinc-200">{pkg.currency}{pkg.price.toLocaleString()}</td>
+                        <td className="py-3 text-right font-medium text-zinc-200">{formatPrice(pkg.price, pkg.currency)}</td>
                         <td className="hidden py-3 text-right text-zinc-500 sm:table-cell">{(pkg.price / pkg.amount).toFixed(4)}</td>
                         <td className="py-3 text-right">
                           <span className={cn(

@@ -213,3 +213,26 @@ export function getPlanUpgradePath(plan: string): { current: string; next: strin
   const comparison = getPlanComparison(plan, next);
   return { current: plan, next, gained: comparison.added };
 }
+
+import { PLAN_PRICES } from "./constants";
+
+export function getPlanMonthlyPrice(plan: string): number {
+  return PLAN_PRICES[plan as keyof typeof PLAN_PRICES] ?? 0;
+}
+
+export function getPlanYearlyPrice(plan: string): number {
+  return getPlanMonthlyPrice(plan) * 12;
+}
+
+export function getPlanLifetimePrice(plan: string): number {
+  return getPlanMonthlyPrice(plan) * 120;
+}
+
+export function getPlanPricing(plan: string): { monthly: number; yearly: number; lifetime: number } {
+  const monthly = getPlanMonthlyPrice(plan);
+  return {
+    monthly,
+    yearly: monthly * 12,
+    lifetime: monthly * 120,
+  };
+}

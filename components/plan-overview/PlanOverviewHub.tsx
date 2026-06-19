@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Crown, Coins, Gem, KeyRound, ArrowLeft, Sparkles } from "lucide-react";
+import { Crown, Coins, Gem, KeyRound, ArrowLeft, Sparkles, Percent } from "lucide-react";
 import { CategoryCard } from "./CategoryCard";
 import { PlanOverview } from "@/components/premium/PlanOverview";
 import { CoinPackageOverview } from "./CoinPackageOverview";
 import { GemPackageOverview } from "./GemPackageOverview";
 import { LicensePackageOverview } from "./LicensePackageOverview";
+import { OffersPromotionsPage } from "@/components/offers/OffersPromotionsPage";
 
-type Category = "landing" | "premium" | "coins" | "gems" | "licenses";
+type Category = "landing" | "premium" | "coins" | "gems" | "licenses" | "offers";
 
 const categories = [
   {
@@ -17,7 +18,7 @@ const categories = [
     title: "Premium Plans",
     description: "Explore subscription tiers from Free to SP's exclusive plan.",
     planCount: 8,
-    summary: "Free · Basic · Student · Plus · Pro · Business · Enterprise · SP's Plan",
+    summary: "Free · Basic · Student · Plus · Pro · Business · Enterprise · SP's Plan — $0 to $599/mo",
     color: "purple",
   },
   {
@@ -26,7 +27,7 @@ const categories = [
     title: "Coin Packages",
     description: "Virtual currency packages for platform economy operations.",
     planCount: 4,
-    summary: "Starter · Growth · Pro · Enterprise — from ₹99 to ₹2,999",
+    summary: "Starter · Growth · Pro · Enterprise — $9.90 to $249.90",
     color: "yellow",
   },
   {
@@ -35,17 +36,26 @@ const categories = [
     title: "Gem Packages",
     description: "Premium gem packages with purchasing power for Premium and Licenses.",
     planCount: 4,
-    summary: "Starter · Growth · Pro · Enterprise — 10 to 500 gems",
+    summary: "Starter · Growth · Pro · Enterprise — $9.90 to $249.90",
     color: "blue",
   },
   {
     id: "licenses" as Category,
     icon: KeyRound,
     title: "License Packages",
-    description: "License templates with tiered features, device limits, and durations.",
-    planCount: 0,
-    summary: "Configured via templates — plan, devices, duration, features",
+    description: "Five license tiers from Starter to Ultimate with features, limits, and durations.",
+    planCount: 5,
+    summary: "Starter · Professional · Business · Enterprise · Ultimate — $9 to $599/mo",
     color: "green",
+  },
+  {
+    id: "offers" as Category,
+    icon: Percent,
+    title: "Offers & Promotions",
+    description: "Create promo codes, coupons, campaigns, and limited-time offers across products.",
+    planCount: 4,
+    summary: "Promo Codes · Coupons · Campaigns · Limited-Time Offers",
+    color: "red",
   },
 ];
 
@@ -112,6 +122,21 @@ export function PlanOverviewHub() {
     );
   }
 
+  if (category === "offers") {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => setCategory("landing")}
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-zinc-200"
+        >
+          <ArrowLeft size={14} />
+          Back to Plan Overview
+        </button>
+        <OffersPromotionsPage />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -124,7 +149,7 @@ export function PlanOverviewHub() {
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {categories.map((cat) => (
           <CategoryCard
             key={cat.id}

@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, ALL_PERMISSIONS, RISK_LEVELS } from "@/lib/constants";
+import { API_ROUTES, ALL_PERMISSIONS, PERMISSION_GROUPS, RISK_LEVELS } from "@/lib/constants";
+import { SIDEBAR_PAGES } from "@/lib/sidebar";
 import type { RoleWithPermissions } from "@/types/common";
 
 interface Props {
@@ -20,6 +21,9 @@ export default function EditRoleForm({ role }: Props) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const visiblePagesCount = SIDEBAR_PAGES.filter((p) => p.permission && selectedPermissions.has(p.permission)).length;
+  const restrictedPagesCount = SIDEBAR_PAGES.length - visiblePagesCount;
 
   function togglePermission(p: string) {
     setSelectedPermissions((prev) => {
@@ -98,30 +102,71 @@ export default function EditRoleForm({ role }: Props) {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Permissions</h2>
-          <span className="text-sm text-zinc-500">{selectedPermissions.size} of {ALL_PERMISSIONS.length} selected</span>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4">
+          <p className="text-sm text-zinc-500">Total Permissions</p>
+          <p className="mt-1 font-medium">{selectedPermissions.size} of {ALL_PERMISSIONS.length}</p>
         </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4">
+          <p className="text-sm text-zinc-500">Visible Pages</p>
+          <p className="mt-1 font-medium text-green-400">{visiblePagesCount}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4">
+          <p className="text-sm text-zinc-500">Restricted Pages</p>
+          <p className="mt-1 font-medium text-red-400">{restrictedPagesCount}</p>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {ALL_PERMISSIONS.map((permission) => (
-            <label
-              key={permission}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${
-                selectedPermissions.has(permission)
-                  ? "border-blue-500/50 bg-blue-500/10"
-                  : "border-zinc-800 bg-zinc-950/30 hover:bg-zinc-800"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={selectedPermissions.has(permission)}
-                onChange={() => togglePermission(permission)}
-                className="h-4 w-4"
-              />
-              <span className="text-sm">{permission}</span>
-            </label>
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+        <h2 className="mb-4 text-xl font-bold">Visible Sidebar Pages</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {SIDEBAR_PAGES.map((page) => {
+            const hasPermission = !!page.permission;
+            const isSelected = page.permission ? selectedPermissions.has(page.permission) : true;
+            return (
+              <label
+                key={page.key}
+                className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${
+                  isSelected
+                    ? "border-blue-500/50 bg-blue-500/10"
+                    : "border-zinc-800 bg-zinc-950/30 hover:bg-zinc-800"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  disabled={!hasPermission}
+                  onChange={() => page.permission && togglePermission(page.permission)}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm">{page.label}</span>
+                {!hasPermission && <span className="ml-auto text-[10px] text-zinc-500">always visible</span>}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+        <h2 className="mb-4 text-xl font-bold">Permission Assignment</h2>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
+            <div key={group} className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-5">
+              <h3 className="mb-4 font-semibold">{group}</h3>
+              <div className="space-y-3">
+                {permissions.map((permission) => (
+                  <label key={permission} className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3 transition-colors hover:bg-zinc-800">
+                    <input
+                      type="checkbox"
+                      checked={selectedPermissions.has(permission)}
+                      onChange={() => togglePermission(permission)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm">{permission}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>

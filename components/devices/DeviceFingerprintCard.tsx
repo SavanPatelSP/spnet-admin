@@ -7,10 +7,12 @@ import { Fingerprint, Shield } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 interface FingerprintData {
+  id: string;
   fingerprint: string;
-  confidenceScore: number;
-  firstSeen: string;
-  lastSeen: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  activationCount: number;
+  licenseIds?: string | null;
 }
 
 interface Props {
@@ -30,7 +32,7 @@ export function DeviceFingerprintCard({ activationId, initialFingerprint }: Prop
         const res = await fetch(`${API_ROUTES.DEVICES.DETAIL}?id=${activationId}`);
         if (!res.ok) throw new Error("Failed to load fingerprint");
         const data = await res.json();
-        setFingerprint(data.fingerprint ?? null);
+        setFingerprint(data.data?.deviceFingerprint ?? null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load fingerprint");
       } finally {
@@ -58,8 +60,7 @@ export function DeviceFingerprintCard({ activationId, initialFingerprint }: Prop
     );
   }
 
-  const confidencePercent = Math.min(100, Math.max(0, fingerprint.confidenceScore));
-  const gaugeColor = confidencePercent >= 80 ? "bg-green-500" : confidencePercent >= 50 ? "bg-yellow-500" : "bg-red-500";
+  const licenseIdList = fingerprint.licenseIds ? JSON.parse(fingerprint.licenseIds) as string[] : [];
 
   return (
     <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5">
@@ -79,28 +80,19 @@ export function DeviceFingerprintCard({ activationId, initialFingerprint }: Prop
         </div>
 
         <div>
-          <p className="text-xs text-zinc-500">Confidence Score</p>
-          <div className="mt-1 flex items-center gap-3">
-            <div className="flex-1">
-              <div className="h-2 rounded-full bg-zinc-800">
-                <div
-                  className={cn("h-2 rounded-full transition-all", gaugeColor)}
-                  style={{ width: `${confidencePercent}%` }}
-                />
-              </div>
-            </div>
-            <span className={cn("text-sm font-medium", gaugeColor.replace("bg-", "text-"))}>
-              {confidencePercent}%
-            </span>
-          </div>
+          <p className="text-xs text-zinc-500">Cross-License Appearances</p>
+          <p className="mt-0.5 text-sm font-medium text-zinc-200">
+            {fingerprint.activationCount} activation{fingerprint.activationCount === 1 ? "" : "s"}
+            {licenseIdList.length > 0 && ` across ${licenseIdList.length} license${licenseIdList.length === 1 ? "" : "s"}`}
+          </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2 text-xs text-zinc-500">
         <Shield size={12} />
-        <span>First seen: {formatDate(fingerprint.firstSeen)}</span>
+        <span>First seen: {formatDate(fingerprint.firstSeenAt)}</span>
         <span className="text-zinc-700">|</span>
-        <span>Last seen: {formatDate(fingerprint.lastSeen)}</span>
+        <span>Last seen: {formatDate(fingerprint.lastSeenAt)}</span>
       </div>
     </div>
   );

@@ -51,6 +51,8 @@ export default function CreateTeamMemberModal({
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
   const [notes, setNotes] = useState("");
+  const [sendInvite, setSendInvite] = useState(true);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"all" | "granted" | "restricted">("all");
@@ -166,11 +168,28 @@ export default function CreateTeamMemberModal({
         setError(data.error || "Failed to create team member");
         return;
       }
+
+      if (sendInvite && data.data?.id) {
+        const inviteRes = await fetch(API_ROUTES.TEAM_MEMBERS.INVITE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: data.data.id }),
+        });
+        const inviteData = await inviteRes.json();
+        if (inviteRes.ok && inviteData.success) {
+          setInviteLink(inviteData.inviteLink);
+          router.refresh();
+          setLoading(false);
+          return;
+        }
+      }
+
       setOpen(false);
       setName("");
       setEmail("");
       setRoleId("");
       setNotes("");
+      setInviteLink(null);
       router.refresh();
     } catch {
       setError("Failed to create team member");
@@ -659,10 +678,30 @@ export default function CreateTeamMemberModal({
             )}
           </div>
 
-          {/* Step 4: Notes */}
+          {/* Step 4: Onboarding */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">4</span>
+              <h4 className="text-sm font-semibold text-zinc-100">Onboarding</h4>
+            </div>
+            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-800/50 p-3">
+              <input
+                type="checkbox"
+                checked={sendInvite}
+                onChange={(e) => setSendInvite(e.target.checked)}
+                className="h-4 w-4 rounded border-zinc-600 bg-zinc-700 text-blue-500 focus:ring-blue-500/20"
+              />
+              <div>
+                <p className="text-sm font-medium text-zinc-200">Send invite email</p>
+                <p className="text-xs text-zinc-500">Generate a secure invite link and deliver it to the new member.</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Step 5: Notes */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">5</span>
               <h4 className="text-sm font-semibold text-zinc-100">Notes (optional)</h4>
             </div>
             <textarea
@@ -673,6 +712,32 @@ export default function CreateTeamMemberModal({
               className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
             />
           </div>
+
+          {/* Invite Link Success */}
+          {inviteLink && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+              <h4 className="mb-2 text-sm font-semibold text-emerald-300">Invite Link Generated</h4>
+              <div className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 p-3">
+                <input
+                  readOnly
+                  value={inviteLink}
+                  className="flex-1 bg-transparent text-xs text-zinc-300 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(inviteLink).then(() => alert("Copied to clipboard"))}
+                  className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20"
+                >
+                  Copy
+                </button>
+              </div>
+              <div className="mt-3 flex justify-end gap-2">
+                <ActionButton onClick={() => { setOpen(false); setInviteLink(null); setName(""); setEmail(""); setRoleId(""); }} variant="secondary">
+                  Close
+                </ActionButton>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </>

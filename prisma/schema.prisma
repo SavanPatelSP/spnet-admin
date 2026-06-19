@@ -54,6 +54,7 @@ model License {
   supportTickets SupportTicket[]
   tags         LicenseTag[]
   events       LicenseEvent[]
+  invoices     Invoice[]
 }
 
 model LicenseTag {
@@ -223,34 +224,38 @@ model Activation {
 
   ipAddress  String?
   os         String?
+  osVersion  String?
   browser    String?
   browserVersion String?
   deviceType String?     // DESKTOP, MOBILE, TABLET, SERVER, OTHER
-  manufacturer String?
-  model      String?
+  userAgent  String?
+  latitude   Float?
+  longitude  Float?
 
   country    String?
   city       String?
-  region     String?
   isp        String?
 
   trustScore Int      @default(50)
   isBlacklisted Boolean @default(false)
-  lastSeen   DateTime?
+  lastSeenAt DateTime?
+  status     String @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, BLACKLISTED
+  notes      String?
 
   createdAt  DateTime @default(now())
 
-  fingerprint DeviceFingerprint?
+  deviceFingerprintId String?
+  deviceFingerprint   DeviceFingerprint? @relation(fields: [deviceFingerprintId], references: [id])
 }
 
 model DeviceFingerprint {
   id              String   @id @default(cuid())
-  activationId    String   @unique
-  activation      Activation @relation(fields: [activationId], references: [id], onDelete: Cascade)
-  fingerprint     String
-  confidenceScore Int      @default(75)
-  firstSeen       DateTime @default(now())
-  lastSeen        DateTime @default(now())
+  fingerprint     String   @unique
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  activationCount Int      @default(0)
+  licenseIds      String?  // JSON
+  activations     Activation[]
 }
 
 model AuditLog {
@@ -306,6 +311,11 @@ model TeamMember {
   mfaEnabled  Boolean  @default(false)
 
   passwordChangedAt DateTime?
+
+  inviteToken          String?   @unique
+  inviteTokenExpiresAt DateTime?
+  passwordSetupAt      DateTime?
+  isFirstLogin         Boolean   @default(true)
 
   ssoProvider  String?
   ssoId        String?
@@ -474,4 +484,75 @@ model SecurityPolicy {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Promotion {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  productType     String    // PROMO_CODE, DISCOUNT_COUPON, CAMPAIGN, LIMITED_TIME_OFFER, FREE_TRIAL, UPGRADE_PROMOTION
+  appliesTo       String?   // PREMIUM, COIN, GEM, LICENSE
+  targetPlan      String?   // plan/package label or plan ID when applicable
+  discountType    String    // PERCENTAGE, FIXED
+  discountValue   Float
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  active          Boolean   @default(true)
+  createdBy       String?
+  metadata        String?   // JSON string for subtype-specific fields (perUserLimit, trialLength, fromPlan, campaignPromotions, etc.)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Invoice {
+  id                String    @id @default(cuid())
+  invoiceNumber     String    @unique
+  licenseId         String?
+  license           License?  @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  organization      String?
+  customerName      String?
+  customerEmail     String?
+
+  status            String    @default("PENDING") // DRAFT, PENDING, PAID, OVERDUE, CANCELLED, REFUNDED
+  type              String    @default("SALE")     // SALE, REFUND, CREDIT
+  category          String    @default("OTHER")   // PREMIUM, LICENSE, COIN, GEM, PROMOTION, ORGANIZATION, SESSION, OTHER
+  action            String?                        // e.g. GRANT, EXTEND, CHANGE_PLAN, CREATE, REFUND
+
+  subtotal          Int       @default(0)          // amount in cents
+  discount          Int       @default(0)
+  tax               Int       @default(0)
+  total             Int       @default(0)
+  currency          String    @default("USD")
+
+  lineItems         String?   // JSON string [{ description, quantity, unitPrice, total }]
+
+  issuedAt          DateTime  @default(now())
+  dueAt             DateTime?
+  paidAt            DateTime?
+
+  notes             String?
+
+  actorName         String?
+  actorEmail        String?
+  targetName        String?
+  targetId          String?
+
+  relatedEntityType String?   // e.g. PREMIUM_GRANT, LICENSE_CREATE, COIN_PURCHASE, GEM_PURCHASE, SESSION_EXTEND, PROMOTION
+  relatedEntityId   String?
+
+  shareToken        String?   @unique
+  shareTokenExpiresAt DateTime?
+  isArchived        Boolean   @default(false)
+  archivedAt        DateTime?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([licenseId])
+  @@index([status])
+  @@index([category])
+  @@index([action])
+  @@index([issuedAt])
 }

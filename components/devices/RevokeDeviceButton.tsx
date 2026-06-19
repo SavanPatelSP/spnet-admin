@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { useToast } from "@/components/ui/Toast";
 import { API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -13,17 +14,30 @@ interface Props {
 
 export default function RevokeDeviceButton({ id }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function handleRevoke() {
-    const response = await fetch(API_ROUTES.DEVICES.REVOKE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (response.ok) {
+    setLoading(true);
+    try {
+      const response = await fetch(API_ROUTES.DEVICES.REVOKE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast(data.error || "Failed to revoke device", "error");
+        return;
+      }
       setOpen(false);
       router.refresh();
+      toast("Device revoked", "success");
+    } catch {
+      toast("Failed to revoke device", "error");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -41,6 +55,7 @@ export default function RevokeDeviceButton({ id }: Props) {
         description="This will remove the device activation. The device will no longer be able to use this license."
         confirmLabel="Revoke Device"
         variant="danger"
+        loading={loading}
       />
     </>
   );

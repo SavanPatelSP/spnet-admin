@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     }
 
     const activeCount = await prisma.activation.count({
-      where: { licenseId: license.id, isBlacklisted: false },
+      where: { licenseId: license.id, status: { in: ["ACTIVE"] } },
     });
 
     if (activeCount >= license.maxDevices) {
@@ -71,6 +71,14 @@ export async function POST(req: Request) {
       where: { licenseId: license.id, deviceId: body.deviceId },
     });
 
+    if (existing && existing.status === "BLACKLISTED") {
+      return Response.json({ valid: false, reason: "Device is blacklisted" });
+    }
+
+    if (existing && existing.status === "SUSPENDED") {
+      return Response.json({ valid: false, reason: "Device is suspended" });
+    }
+
     const now = new Date();
     const activation = existing
       ? await prisma.activation.update({
@@ -82,9 +90,8 @@ export async function POST(req: Request) {
             browser: body.browser ?? existing.browser,
             browserVersion: body.browserVersion ?? existing.browserVersion,
             deviceType: body.deviceType ?? existing.deviceType,
-            manufacturer: body.manufacturer ?? existing.manufacturer,
-            model: body.model ?? existing.model,
-            lastSeen: now,
+            lastSeenAt: now,
+            status: existing.status === "INACTIVE" ? "ACTIVE" : existing.status,
           },
         })
       : await prisma.activation.create({
@@ -97,9 +104,8 @@ export async function POST(req: Request) {
             browser: body.browser,
             browserVersion: body.browserVersion,
             deviceType: body.deviceType,
-            manufacturer: body.manufacturer,
-            model: body.model,
-            lastSeen: now,
+            lastSeenAt: now,
+            status: "ACTIVE",
           },
         });
 

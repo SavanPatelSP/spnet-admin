@@ -29,7 +29,7 @@ const ALL_PERMISSIONS = [
   // Audit & Compliance
   "View Audit Logs", "Export Audit Logs", "Configure Audit Settings",
   // Billing & Revenue
-  "View Revenue", "Manage Billing", "Compliance Reporting",
+  "View Revenue", "Manage Billing", "Manage Invoices", "Compliance Reporting",
   // Settings
   "Access Settings", "Edit System Settings", "Manage Notifications",
   // Analytics
@@ -365,10 +365,10 @@ async function main() {
 
   // Create seed device activations
   const devices = [
-    { deviceId: "DEV-MBP-001", deviceName: "Savan's MacBook Pro", ipAddress: "192.168.1.100", os: "macOS", browser: "Chrome", browserVersion: "120", deviceType: "desktop", manufacturer: "Apple", model: "MacBook Pro M3", trustScore: 95 },
-    { deviceId: "DEV-WIN-001", deviceName: "Admin Windows PC", ipAddress: "192.168.1.101", os: "Windows 11", browser: "Edge", browserVersion: "120", deviceType: "desktop", manufacturer: "Dell", model: "XPS 15", trustScore: 88 },
-    { deviceId: "DEV-PHONE-001", deviceName: "Admin iPhone", ipAddress: "10.0.0.50", os: "iOS 18", browser: "Safari", browserVersion: "18", deviceType: "mobile", manufacturer: "Apple", model: "iPhone 16 Pro", trustScore: 75 },
-    { deviceId: "DEV-LNX-001", deviceName: "Build Server", ipAddress: "10.0.1.200", os: "Ubuntu 24.04", browser: "Firefox", browserVersion: "130", deviceType: "server", manufacturer: "HP", model: "ProLiant DL380", trustScore: 100 },
+    { deviceId: "DEV-MBP-001", deviceName: "Savan's MacBook Pro", ipAddress: "192.168.1.100", os: "macOS", browser: "Chrome", browserVersion: "120", deviceType: "desktop", trustScore: 95 },
+    { deviceId: "DEV-WIN-001", deviceName: "Admin Windows PC", ipAddress: "192.168.1.101", os: "Windows 11", browser: "Edge", browserVersion: "120", deviceType: "desktop", trustScore: 88 },
+    { deviceId: "DEV-PHONE-001", deviceName: "Admin iPhone", ipAddress: "10.0.0.50", os: "iOS 18", browser: "Safari", browserVersion: "18", deviceType: "mobile", trustScore: 75 },
+    { deviceId: "DEV-LNX-001", deviceName: "Build Server", ipAddress: "10.0.1.200", os: "Ubuntu 24.04", browser: "Firefox", browserVersion: "130", deviceType: "server", trustScore: 100 },
   ];
   for (const dev of devices) {
     await prisma.activation.upsert({
@@ -384,10 +384,9 @@ async function main() {
         browser: dev.browser,
         browserVersion: dev.browserVersion,
         deviceType: dev.deviceType,
-        manufacturer: dev.manufacturer,
-        model: dev.model,
         trustScore: dev.trustScore,
-        lastSeen: new Date(),
+        status: "ACTIVE",
+        lastSeenAt: new Date(),
       },
     });
   }
@@ -406,10 +405,9 @@ async function main() {
       browser: "Chrome",
       browserVersion: "121",
       deviceType: "desktop",
-      manufacturer: "Lenovo",
-      model: "ThinkPad X1",
       trustScore: 82,
-      lastSeen: new Date(),
+      status: "ACTIVE",
+      lastSeenAt: new Date(),
     },
   });
 

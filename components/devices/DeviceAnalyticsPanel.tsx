@@ -16,6 +16,8 @@ import { CustomTooltip, TrendTooltip } from "@/components/charts/CustomTooltip";
 interface AnalyticsData {
   totalDevices: number;
   blacklisted: number;
+  suspended: number;
+  inactive: number;
   averageTrustScore: number;
   byOs: { os: string; count: number }[];
   byBrowser: { browser: string; count: number }[];
@@ -495,8 +497,8 @@ export function DeviceAnalyticsPanel() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-2 h-8 w-16" />
@@ -569,10 +571,12 @@ export function DeviceAnalyticsPanel() {
         </div>
       </div>
 
-      <StatCardGrid columns={3}>
+      <StatCardGrid columns={4}>
         <StatCard title="Total Devices" value={data.totalDevices.toLocaleString()} icon={Monitor} color="blue" />
         <StatCard title="Blacklisted" value={data.blacklisted.toLocaleString()} icon={BarChart3} color="red"
           subtitle={`${data.totalDevices > 0 ? ((data.blacklisted / data.totalDevices) * 100).toFixed(1) : 0}% of total`} />
+        <StatCard title="Suspended" value={data.suspended.toLocaleString()} icon={BarChart3} color="yellow"
+          subtitle={`${data.totalDevices > 0 ? ((data.suspended / data.totalDevices) * 100).toFixed(1) : 0}% of total`} />
         <StatCard title="Avg Trust Score" value={`${Math.round(data.averageTrustScore)}%`} icon={TrendingUp}
           color={data.averageTrustScore >= 60 ? "green" : data.averageTrustScore >= 30 ? "yellow" : "red"} />
       </StatCardGrid>

@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import { cn } from "@/lib/shared";
+import { cn, formatPrice } from "@/lib/shared";
 import {
   ALL_PLANS,
   PLAN_META,
   PLAN_FEATURES_BY_CATEGORY,
   getPlanCategories,
   getPlanIndex,
+  getPlanYearlyPrice,
+  getPlanLifetimePrice,
+  getPlanComparison,
 } from "@/lib/premium";
-import { Check, X, ArrowRight, Search } from "lucide-react";
+import { Check, X, ArrowRight, Search, TrendingUp } from "lucide-react";
 
 interface PlanComparisonProps {
   firstPlan: string;
@@ -84,11 +87,42 @@ function PlanHeader({ plan, price }: { plan: string; price?: number }) {
         )}
       </div>
       {price !== undefined && (
-        <div>
-          <span className="text-2xl font-bold text-zinc-100">${price}</span>
-          <span className="ml-1 text-sm text-zinc-500">/mo</span>
+        <div className="space-y-1">
+          <div>
+            <span className="text-2xl font-bold text-zinc-100">{formatPrice(price, "$")}</span>
+            <span className="ml-1 text-sm text-zinc-500">/mo</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+            <span>{formatPrice(getPlanYearlyPrice(plan), "$")}/yr</span>
+            <span className="text-zinc-700">|</span>
+            <span>{formatPrice(getPlanLifetimePrice(plan), "$")} lifetime</span>
+          </div>
         </div>
       )}
+      <p className="text-xs text-zinc-500">{meta.description}</p>
+    </div>
+  );
+}
+
+function FeatureRow({ feature, hasFirst, hasSecond, isDiff }: { feature: string; hasFirst: boolean; hasSecond: boolean; isDiff: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-lg px-3 py-2 text-xs sm:grid sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-3",
+        isDiff ? (hasSecond ? "bg-green-950/20" : "bg-red-950/20") : "bg-zinc-900/30"
+      )}
+    >
+      <span className={cn(isDiff ? (hasSecond ? "text-green-300" : "text-red-300 line-through") : "text-zinc-400")}>
+        {feature}
+      </span>
+      <div className="flex items-center justify-between sm:justify-center">
+        <span className="text-zinc-500 sm:hidden">Plan A</span>
+        {hasFirst ? <Check size={14} className="text-green-500" /> : <X size={14} className="text-zinc-600" />}
+      </div>
+      <div className="flex items-center justify-between sm:justify-center">
+        <span className="text-zinc-500 sm:hidden">Plan B</span>
+        {hasSecond ? <Check size={14} className="text-green-500" /> : <X size={14} className="text-zinc-600" />}
+      </div>
     </div>
   );
 }
@@ -115,10 +149,19 @@ export function PlanComparison({ firstPlan, secondPlan, pricing, onSelectFirst, 
     });
   }, [firstPlan, secondPlan]);
 
-  const meta1 = PLAN_META[firstPlan];
-  const meta2 = PLAN_META[secondPlan];
-  const colors1 = colorConfig[meta1.color] || colorConfig.zinc;
-  const colors2 = colorConfig[meta2.color] || colorConfig.zinc;
+  const { added: allAdded } = getPlanComparison(firstPlan, secondPlan);
+  const firstPrice = pricing[firstPlan] ?? 0;
+  const secondPrice = pricing[secondPlan] ?? 0;
+  const idx1 = getPlanIndex(firstPlan);
+  const idx2 = getPlanIndex(secondPlan);
+
+  const metricRows = [
+    { label: "Monthly Price", first: formatPrice(firstPrice, "$"), second: formatPrice(secondPrice, "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
+    { label: "Yearly Price", first: formatPrice(getPlanYearlyPrice(firstPlan), "$"), second: formatPrice(getPlanYearlyPrice(secondPlan), "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
+    { label: "Lifetime Price", first: formatPrice(getPlanLifetimePrice(firstPlan), "$"), second: formatPrice(getPlanLifetimePrice(secondPlan), "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
+    { label: "Tier Position", first: `Tier ${idx1 + 1}`, second: `Tier ${idx2 + 1}`, better: idx1 > idx2 ? 1 : idx1 < idx2 ? -1 : 0 },
+    { label: "Audience", first: PLAN_META[firstPlan].description, second: PLAN_META[secondPlan].description, better: 0 },
+  ];
 
   return (
     <div className="space-y-6">
@@ -132,52 +175,74 @@ export function PlanComparison({ firstPlan, secondPlan, pricing, onSelectFirst, 
         <PlanHeader plan={secondPlan} price={pricing[secondPlan]} />
       </div>
 
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
+        <h4 className="mb-4 text-sm font-bold uppercase tracking-wider text-zinc-400">Pricing & Position</h4>
+        <div className="space-y-2">
+          {metricRows.map(({ label, first: fv, second: sv, better }) => (
+            <div key={label} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-lg px-3 py-2 text-xs">
+              <span className="font-medium text-zinc-400">{label}</span>
+              <span className={cn("text-right font-medium", better === 1 ? "text-green-400" : better === -1 ? "text-zinc-300" : "text-zinc-400")}>
+                {fv}
+              </span>
+              <span className={cn("text-right font-medium", better === -1 ? "text-green-400" : better === 1 ? "text-zinc-300" : "text-zinc-400")}>
+                {sv}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-4">
+        <h4 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Features by Category</h4>
         {categoryData.map(({ category, common, added, removed }) => {
           if (common.length === 0 && added.length === 0 && removed.length === 0) return null;
           return (
             <div key={category} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-              <h4 className="mb-3 text-sm font-bold uppercase tracking-wider text-zinc-400">{category}</h4>
+              <h5 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-500">{category}</h5>
               <div className="space-y-2">
                 {common.map((f) => (
-                  <div key={f} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 text-xs">
-                    <span className="text-zinc-400">{f}</span>
-                    <div className="flex items-center gap-1 text-zinc-500">
-                      <Check size={12} className="text-zinc-500" />
-                    </div>
-                    <div className="flex items-center gap-1 text-zinc-500">
-                      <Check size={12} className="text-zinc-500" />
-                    </div>
-                  </div>
+                  <FeatureRow key={f} feature={f} hasFirst={true} hasSecond={true} isDiff={false} />
                 ))}
                 {added.map((f) => (
-                  <div key={f} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-lg bg-green-950/20 px-2 py-1 text-xs">
-                    <span className="text-green-300">{f}</span>
-                    <div className="flex items-center gap-1 text-zinc-600">
-                      <X size={12} />
-                    </div>
-                    <div className="flex items-center gap-1 text-green-500">
-                      <Check size={12} />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-green-500">Added</span>
-                    </div>
-                  </div>
+                  <FeatureRow key={f} feature={f} hasFirst={false} hasSecond={true} isDiff={true} />
                 ))}
                 {removed.map((f) => (
-                  <div key={f} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-lg bg-red-950/20 px-2 py-1 text-xs">
-                    <span className="text-red-300 line-through">{f}</span>
-                    <div className="flex items-center gap-1 text-red-500">
-                      <Check size={12} />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-red-500">Has</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-zinc-600">
-                      <X size={12} />
-                    </div>
-                  </div>
+                  <FeatureRow key={f} feature={f} hasFirst={true} hasSecond={false} isDiff={true} />
                 ))}
               </div>
             </div>
           );
         })}
+      </div>
+
+      <div className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-900/30 p-5">
+        <h4 className="mb-3 text-sm font-bold text-zinc-300">Upgrade Path</h4>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+          <span className="font-medium text-zinc-200">{PLAN_META[firstPlan].label}</span>
+          <ArrowRight size={14} className="text-green-500" />
+          <span className="text-zinc-500">
+            {secondPrice > firstPrice
+              ? `${formatPrice(secondPrice - firstPrice, "$")}/mo more for tier ${idx2 + 1}`
+              : secondPrice < firstPrice
+              ? `${formatPrice(firstPrice - secondPrice, "$")}/mo savings by downgrading`
+              : "Same monthly price"}
+          </span>
+          <span className="font-medium text-zinc-200">{PLAN_META[secondPlan].label}</span>
+        </div>
+        {allAdded.length > 0 && (
+          <div className="mt-3">
+            <p className="mb-1 text-xs font-medium text-green-400">Upgrading adds:</p>
+            <ul className="space-y-1">
+              {allAdded.slice(0, 5).map((f) => (
+                <li key={f} className="flex items-start gap-1.5 text-xs text-zinc-400">
+                  <Check size={12} className="mt-0.5 shrink-0 text-green-500" />
+                  {f}
+                </li>
+              ))}
+              {allAdded.length > 5 && <li className="text-xs text-zinc-500">+{allAdded.length - 5} more</li>}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

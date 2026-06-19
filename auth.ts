@@ -61,6 +61,9 @@ declare module "next-auth" {
       licenseStatus: string | null;
       licensePlan: string | null;
       permissions: string[];
+      sessionRecordId: string | null;
+      sessionCreatedAt: string | null;
+      sessionExpiresAt: string | null;
     } & DefaultSession["user"];
   }
 }
@@ -74,6 +77,9 @@ declare module "@auth/core/jwt" {
     licenseStatus: string | null;
     licensePlan: string | null;
     permissions: string[];
+    sessionRecordId: string | null;
+    sessionCreatedAt: string | null;
+    sessionExpiresAt: string | null;
   }
 }
 
@@ -303,13 +309,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           // Create Session record
           const sessionToken = crypto.randomUUID();
-          await prisma.session.create({
+          const sessionCreatedAt = new Date();
+          const sessionExpiresAt = new Date(sessionCreatedAt.getTime() + AUTH.SESSION_MAX_AGE_SECONDS * 1000);
+          const sessionRecord = await prisma.session.create({
             data: {
               teamMemberId: member.id,
               token: sessionToken,
               ipAddress,
               userAgent,
-              expiresAt: new Date(Date.now() + AUTH.SESSION_MAX_AGE_SECONDS * 1000),
+              expiresAt: sessionExpiresAt,
             },
           });
 
@@ -357,7 +365,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 ipAddress,
                 os,
                 browser,
-                lastSeen: new Date(),
+                lastSeenAt: new Date(),
                 trustScore: Math.min(100, existingActivation.trustScore + 5),
               },
             });
@@ -372,7 +380,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 browser,
                 country: "Unknown",
                 trustScore: 50,
-                isBlacklisted: false,
+                status: "ACTIVE",
               },
             });
           }
@@ -398,6 +406,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             licenseStatus: license.status,
             licensePlan: license.plan,
             permissions,
+            sessionRecordId: sessionRecord.id,
+            sessionCreatedAt: sessionCreatedAt.toISOString(),
+            sessionExpiresAt: sessionExpiresAt.toISOString(),
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -417,6 +428,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.licenseStatus = (user as { licenseStatus: string | null }).licenseStatus;
         token.licensePlan = (user as { licensePlan: string | null }).licensePlan;
         token.permissions = (user as { permissions: string[] }).permissions;
+        token.sessionRecordId = (user as { sessionRecordId: string | null }).sessionRecordId;
+        token.sessionCreatedAt = (user as { sessionCreatedAt: string | null }).sessionCreatedAt;
+        token.sessionExpiresAt = (user as { sessionExpiresAt: string | null }).sessionExpiresAt;
       } else if (token.licenseId) {
         // Validating license on every token read (each session access)
         try {
@@ -442,6 +456,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch {
           return null;
         }
+
+        // Server-driven session validation
+        if (token.sessionRecordId) {
+          try {
+            const { prisma } = await import("@/lib/prisma");
+            const sessionRecord = await prisma.session.findUnique({
+              where: { id: token.sessionRecordId as string },
+              select: { id: true, createdAt: true, expiresAt: true },
+            });
+
+            if (!sessionRecord || sessionRecord.expiresAt < new Date()) {
+              if (sessionRecord) {
+                await prisma.session.delete({ where: { id: sessionRecord.id } }).catch(() => {});
+              }
+              return null;
+            }
+
+            token.sessionCreatedAt = sessionRecord.createdAt.toISOString();
+            token.sessionExpiresAt = sessionRecord.expiresAt.toISOString();
+          } catch {
+            return null;
+          }
+        }
       }
       return token;
     },
@@ -453,6 +490,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.licenseStatus = token.licenseStatus;
       session.user.licensePlan = token.licensePlan;
       session.user.permissions = token.permissions || [];
+      session.user.sessionRecordId = token.sessionRecordId || null;
+      session.user.sessionCreatedAt = token.sessionCreatedAt || null;
+      session.user.sessionExpiresAt = token.sessionExpiresAt || null;
       return session;
     },
   },

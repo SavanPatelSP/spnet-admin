@@ -10,7 +10,7 @@ import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
 import { PREMIUM_PLANS, PLAN_PRICES } from "@/lib/constants";
 import { CreditCard, TrendingUp, Crown, TrendingDown, Activity, Minus, AlertTriangle } from "lucide-react";
-import { formatDate } from "@/lib/shared";
+import { formatDate, formatPrice } from "@/lib/shared";
 
 export default async function RevenuePage() {
   const [licenses, premiumSubs, allPremiumSubs] = await Promise.all([
@@ -159,7 +159,7 @@ export default async function RevenuePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
             <p className="text-xs text-red-400 mb-1">Lost Revenue (Revoked)</p>
-            <p className="text-2xl font-bold text-red-300">${revokedRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-red-300">{formatPrice(revokedRevenue, "$")}</p>
             <p className="text-[10px] text-red-400/60">Annualized value of revoked subscriptions</p>
           </div>
           <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">

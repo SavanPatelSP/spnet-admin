@@ -6,12 +6,15 @@ import { DataTable } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { formatDate } from "@/lib/shared";
 import { API_ROUTES } from "@/lib/constants";
-import { Clock, XCircle } from "lucide-react";
+import { SessionExtendModal } from "./SessionExtendModal";
+import { SessionForceLogoutModal } from "./SessionForceLogoutModal";
+import { SessionPolicyOverrideModal } from "./SessionPolicyOverrideModal";
+import { Clock, XCircle, LogOut, ArrowUpCircle, Search, Crown } from "lucide-react";
 
 interface SessionRow {
   id: string;
   teamMemberId: string;
-  teamMember: { name: string; email: string } | null;
+  teamMember: { name: string; email: string; role: { name: string } | null } | null;
   token: string;
   ipAddress: string | null;
   userAgent: string | null;
@@ -19,20 +22,46 @@ interface SessionRow {
   createdAt: Date;
 }
 
-export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
+export function SessionsTable({ sessions, currentUserRole }: { sessions: SessionRow[]; currentUserRole?: string }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [userFilter, setUserFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
+  const [ipFilter, setIpFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [extendTarget, setExtendTarget] = useState<SessionRow | null>(null);
+  const [logoutTarget, setLogoutTarget] = useState<SessionRow | null>(null);
+  const [overrideTarget, setOverrideTarget] = useState<SessionRow | null>(null);
+
+  const canOverridePolicy = currentUserRole === "OWNER" || currentUserRole === "SUPER_ADMIN";
 
   const users = useMemo(
     () => [...new Set(sessions.map((s) => s.teamMember?.email).filter((e): e is string => !!e))].sort(),
     [sessions]
   );
 
+  const roles = useMemo(
+    () => [...new Set(sessions.map((s) => s.teamMember?.role?.name).filter((r): r is string => !!r))].sort(),
+    [sessions]
+  );
+
   const filtered = useMemo(() => {
-    if (!userFilter) return sessions;
-    return sessions.filter((s) => s.teamMember?.email === userFilter);
-  }, [sessions, userFilter]);
+    const q = search.trim().toLowerCase();
+    return sessions.filter((s) => {
+      const isActive = s.expiresAt > new Date();
+      if (statusFilter === "active" && !isActive) return false;
+      if (statusFilter === "expired" && isActive) return false;
+      if (userFilter && s.teamMember?.email !== userFilter) return false;
+      if (roleFilter && s.teamMember?.role?.name !== roleFilter) return false;
+      if (ipFilter && !(s.ipAddress || "").toLowerCase().includes(ipFilter.toLowerCase())) return false;
+      if (q) {
+        const text = `${s.teamMember?.name || ""} ${s.teamMember?.email || ""} ${s.userAgent || ""}`.toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [sessions, userFilter, statusFilter, roleFilter, ipFilter, search]);
 
   async function bulkRevoke() {
     if (!confirm(`Revoke ${selectedIds.size} session${selectedIds.size > 1 ? "s" : ""}?`)) return;
@@ -47,24 +76,74 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
     router.refresh();
   }
 
+  function handleExtend(s: SessionRow) {
+    setExtendTarget(s);
+  }
+
+  function handleForceLogout(s: SessionRow) {
+    setLogoutTarget(s);
+  }
+
+  function handleOverride(s: SessionRow) {
+    setOverrideTarget(s);
+  }
+
   return (
+    <>
     <DataTable
       selectable
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}
       filters={
-        <FilterBar
-          filters={[
-            {
-              key: "user",
-              label: "All Users",
-              value: userFilter,
-              onChange: setUserFilter,
-              options: users.map((u) => ({ label: u, value: u })),
-            },
-          ]}
-          onClear={() => setUserFilter("")}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <FilterBar
+            filters={[
+              {
+                key: "user",
+                label: "All Users",
+                value: userFilter,
+                onChange: setUserFilter,
+                options: users.map((u) => ({ label: u, value: u })),
+              },
+              {
+                key: "status",
+                label: "All Statuses",
+                value: statusFilter,
+                onChange: (v) => setStatusFilter(v as "all" | "active" | "expired"),
+                options: [
+                  { label: "Active", value: "active" },
+                  { label: "Expired", value: "expired" },
+                ],
+              },
+              {
+                key: "role",
+                label: "All Roles",
+                value: roleFilter,
+                onChange: setRoleFilter,
+                options: roles.map((r) => ({ label: r, value: r })),
+              },
+            ]}
+            onClear={() => { setUserFilter(""); setStatusFilter("all"); setRoleFilter(""); setIpFilter(""); }}
+          />
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={ipFilter}
+              onChange={(e) => setIpFilter(e.target.value)}
+              placeholder="Filter by IP..."
+              className="h-9 rounded-xl border border-zinc-700 bg-zinc-800 pl-9 pr-3 text-sm text-zinc-200 outline-none focus:border-blue-500"
+            />
+          </div>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search user, device..."
+              className="h-9 rounded-xl border border-zinc-700 bg-zinc-800 pl-9 pr-3 text-sm text-zinc-200 outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
       }
       bulkActions={
         selectedIds.size > 0 && (
@@ -78,11 +157,12 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
       }
       columns={[
         { key: "user", label: "User", sortable: true, searchable: true },
+        { key: "device", label: "Device", sortable: true, className: "hidden lg:table-cell" },
         { key: "ipAddress", label: "IP Address", sortable: true },
         { key: "status", label: "Status", sortable: true },
         { key: "createdAt", label: "Created", sortable: true },
         { key: "expiresAt", label: "Expires", sortable: true },
-        { key: "actions", label: "Actions", className: "w-20" },
+        { key: "actions", label: "Actions", className: "w-40" },
       ]}
       rows={filtered.map((s) => {
         const isActive = s.expiresAt > new Date();
@@ -90,6 +170,7 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
           id: s.id,
           values: {
             user: s.teamMember?.name || s.teamMember?.email || "Unknown",
+            device: s.userAgent || "Unknown",
             ipAddress: s.ipAddress || "",
             status: isActive ? "Active" : "Expired",
             createdAt: s.createdAt.toISOString(),
@@ -100,7 +181,11 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
             <div key="user" className="min-w-0">
               <p className="text-sm font-medium text-zinc-200">{s.teamMember?.name || "Unknown"}</p>
               <p className="text-xs text-zinc-500">{s.teamMember?.email || ""}</p>
+              {s.teamMember?.role?.name && (
+                <span className="mt-1 inline-block rounded-full bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-400">{s.teamMember.role.name}</span>
+              )}
             </div>,
+            <span key="device" className="hidden max-w-[200px] truncate text-xs text-zinc-400 lg:table-cell">{s.userAgent || "-"}</span>,
             <span key="ip" className="font-mono text-xs text-zinc-400">{s.ipAddress || "-"}</span>,
             <span key="status">
               {isActive ? (
@@ -118,26 +203,61 @@ export function SessionsTable({ sessions }: { sessions: SessionRow[] }) {
               <Clock size={10} />
               {formatDate(s.expiresAt)}
             </span>,
-            <button
-              key="actions"
-              onClick={async () => {
-                if (!confirm("Revoke this session?")) return;
-                await fetch(API_ROUTES.TEAM_MEMBERS.SESSIONS_REVOKE, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ sessionId: s.id }),
-                });
-                router.refresh();
-              }}
-              className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
-            >
-              Revoke
-            </button>,
+            <div key="actions" className="flex flex-wrap items-center gap-2">
+              {isActive && (
+                <button
+                  onClick={() => handleExtend(s)}
+                  className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/20"
+                >
+                  <ArrowUpCircle size={12} className="mr-1 inline" />
+                  Extend
+                </button>
+              )}
+              {canOverridePolicy && (
+                <button
+                  onClick={() => handleOverride(s)}
+                  className="rounded-lg bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400 transition-colors hover:bg-purple-500/20"
+                >
+                  <Crown size={12} className="mr-1 inline" />
+                  Override
+                </button>
+              )}
+              <button
+                onClick={() => handleForceLogout(s)}
+                className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
+              >
+                <LogOut size={12} className="mr-1 inline" />
+                Force Logout
+              </button>
+            </div>,
           ],
         };
       })}
       searchPlaceholder="Search by user name or email..."
       emptyMessage="No sessions found."
     />
+
+      {extendTarget && (
+        <SessionExtendModal
+          session={extendTarget}
+          onClose={() => setExtendTarget(null)}
+          onSuccess={() => { setExtendTarget(null); router.refresh(); }}
+        />
+      )}
+      {overrideTarget && (
+        <SessionPolicyOverrideModal
+          session={overrideTarget}
+          onClose={() => setOverrideTarget(null)}
+          onSuccess={() => { setOverrideTarget(null); router.refresh(); }}
+        />
+      )}
+      {logoutTarget && (
+        <SessionForceLogoutModal
+          session={logoutTarget}
+          onClose={() => setLogoutTarget(null)}
+          onSuccess={() => { setLogoutTarget(null); router.refresh(); }}
+        />
+      )}
+    </>
   );
 }

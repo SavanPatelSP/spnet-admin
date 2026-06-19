@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     }
 
     const activeCount = await prisma.activation.count({
-      where: { licenseId, isBlacklisted: false },
+      where: { licenseId, status: { in: ["ACTIVE"] } },
     });
 
     return Response.json({

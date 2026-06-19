@@ -29,7 +29,6 @@ export async function POST(req: Request) {
       where: { id: body.id },
       data: {
         country: geo.country,
-        region: geo.region,
         city: geo.city,
         isp: geo.isp,
       },
@@ -44,7 +43,7 @@ export async function POST(req: Request) {
       `Enriched geo data for device ${activation.deviceName || activation.deviceId}: ${geo.country || "Unknown"}`
     );
 
-    return Response.json({ success: true, data: { country: geo.country, region: geo.region, city: geo.city, isp: geo.isp } });
+    return Response.json({ success: true, data: { country: geo.country, city: geo.city, isp: geo.isp } });
   } catch (error) {
     return handleApiError(error);
   }

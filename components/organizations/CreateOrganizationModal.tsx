@@ -4,7 +4,8 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, PLANS, DEFAULT_MAX_DEVICES, PLAN_PRICES } from "@/lib/constants";
+import { API_ROUTES, PLANS, DEFAULT_MAX_DEVICES, PLAN_PRICES, DEVICE_PRICE_PER_MONTH } from "@/lib/constants";
+import { formatPrice } from "@/lib/shared";
 import { Building2, Calendar, Monitor, FileText, DollarSign } from "lucide-react";
 
 function fmt(d: Date) {
@@ -49,7 +50,7 @@ export default function CreateOrganizationModal({
     : 12;
 
   const annualCost = useMemo(() => {
-    const monthlyDeviceCost = maxDevices * 2;
+    const monthlyDeviceCost = maxDevices * DEVICE_PRICE_PER_MONTH;
     const monthlyPlanCost = finalPrice;
     return (monthlyDeviceCost + monthlyPlanCost) * durationMonths;
   }, [finalPrice, maxDevices, durationMonths]);
@@ -202,11 +203,11 @@ export default function CreateOrganizationModal({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2.5">
                 <span className="text-[10px] text-zinc-500">Plan Price</span>
-                <p className="text-sm font-semibold text-zinc-100">{defaultPrice === 0 ? "Free" : `$${defaultPrice}/mo`}</p>
+                <p className="text-sm font-semibold text-zinc-100">{defaultPrice === 0 ? "Free" : `${formatPrice(defaultPrice, "$")}/mo`}</p>
               </div>
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2.5">
                 <span className="text-[10px] text-zinc-500">Devices ({maxDevices})</span>
-                <p className="text-sm font-semibold text-zinc-100">${(maxDevices * 2).toLocaleString()}/mo</p>
+                <p className="text-sm font-semibold text-zinc-100">{formatPrice(maxDevices * DEVICE_PRICE_PER_MONTH, "$")}/mo</p>
               </div>
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2.5">
                 <span className="text-[10px] text-zinc-500">Billing Period</span>
@@ -214,7 +215,7 @@ export default function CreateOrganizationModal({
               </div>
               <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2.5">
                 <span className="text-[10px] text-green-400">Total Cost</span>
-                <p className="text-lg font-bold text-green-400">${annualCost.toLocaleString()}</p>
+                <p className="text-lg font-bold text-green-400">{formatPrice(annualCost, "$")}</p>
               </div>
             </div>
             <div className="rounded-lg border border-zinc-700 bg-zinc-800/30 p-4">
@@ -231,7 +232,7 @@ export default function CreateOrganizationModal({
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
                       <span className="text-[10px] text-zinc-500">Default Price</span>
-                      <p className="text-sm font-medium text-zinc-300">${defaultPrice}/mo</p>
+                      <p className="text-sm font-medium text-zinc-300">{defaultPrice === 0 ? "Free" : `${formatPrice(defaultPrice, "$")}/mo`}</p>
                     </div>
                     <div>
                       <label className="mb-1 block text-[10px] text-zinc-500">Custom Price ($/mo)</label>
@@ -242,8 +243,8 @@ export default function CreateOrganizationModal({
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-zinc-500">Final Price:</span>
-                    <span className="font-semibold text-green-400">${finalPrice}/mo</span>
-                    <span className="text-zinc-600">(${annualCost.toLocaleString()}/yr)</span>
+                    <span className="font-semibold text-green-400">{finalPrice === 0 ? "Free" : `${formatPrice(finalPrice, "$")}/mo`}</span>
+                    <span className="text-zinc-600">({formatPrice(annualCost, "$")}/yr)</span>
                     {useCustomPricing && defaultPrice !== customPrice && (
                       <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-400">
                         {customPrice > defaultPrice ? "+" : ""}{((customPrice - defaultPrice) / (defaultPrice || 1) * 100).toFixed(0)}% vs default
@@ -302,15 +303,15 @@ export default function CreateOrganizationModal({
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Plan Cost</span>
-                <span className="text-green-400">{finalPrice === 0 ? "Free" : `$${finalPrice}/mo`}</span>
+                <span className="text-green-400">{finalPrice === 0 ? "Free" : `${formatPrice(finalPrice, "$")}/mo`}</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Devices</span>
-                <span className="text-green-400">{maxDevices} &times; $2 = ${(maxDevices * 2).toLocaleString()}/mo</span>
+                <span className="text-green-400">{maxDevices} &times; {formatPrice(DEVICE_PRICE_PER_MONTH, "$")} = {formatPrice(maxDevices * DEVICE_PRICE_PER_MONTH, "$")}/mo</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Total</span>
-                <span className="text-green-400">${annualCost.toLocaleString()} ({durationMonths}mo)</span>
+                <span className="text-green-400">{formatPrice(annualCost, "$")} ({durationMonths}mo)</span>
               </div>
             </div>
           </div>

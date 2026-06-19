@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ALL_PLANS, PLAN_META, PLAN_HIGHLIGHTS, PLAN_FEATURES_BY_CATEGORY, getPlanFeatureList, getPlanIndex, getPrevPlan, getPlanComparison } from "@/lib/premium";
 import { PLAN_PRICES } from "@/lib/constants";
+import { formatPrice } from "@/lib/shared";
 
 interface LicenseOption {
   id: string;
@@ -118,17 +119,17 @@ export default function GrantPremiumModal({
     const perMonth = planPrice;
     if (isLifetime) {
       const total = planPrice * 120;
-      return { total, perMonth, label: `$${total.toLocaleString()} (10-yr equivalent)`, short: `$${total.toLocaleString()}` };
+      return { total, perMonth, label: `${formatPrice(total, "$")} (10-yr equivalent)`, short: formatPrice(total, "$") };
     }
     if (isCustom && customDurationDays > 0) {
       const total = (perMonth / 30) * customDurationDays;
-      return { total, perMonth, label: `$${total.toFixed(2)} for ${customDuration} ${customDurationUnit}`, short: `$${total.toFixed(2)}` };
+      return { total, perMonth, label: `${formatPrice(total, "$")} for ${customDuration} ${customDurationUnit}`, short: formatPrice(total, "$") };
     }
     if (subscriptionType === "YEARLY") {
       const total = perMonth * 12;
-      return { total, perMonth, label: `$${total.toLocaleString()}/yr`, short: `$${total.toLocaleString()}/yr` };
+      return { total, perMonth, label: `${formatPrice(total, "$")}/yr`, short: `${formatPrice(total, "$")}/yr` };
     }
-    return { total: perMonth, perMonth, label: `$${perMonth}/mo`, short: `$${perMonth}/mo` };
+    return { total: perMonth, perMonth, label: `${formatPrice(perMonth, "$")}/mo`, short: `${formatPrice(perMonth, "$")}/mo` };
   }, [planPrice, subscriptionType, isCustom, isLifetime, customDuration, customDurationUnit, customDurationDays]);
 
   const filteredLicenses = useMemo(() => {
@@ -417,7 +418,7 @@ export default function GrantPremiumModal({
                         <p className="mt-0.5 text-[11px] text-zinc-500">{meta.description}</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-bold text-zinc-100">{price === 0 ? "Free" : `$${price}`}</div>
+                        <div className="text-sm font-bold text-zinc-100">{price === 0 ? "Free" : formatPrice(price, "$")}</div>
                         {price > 0 && <div className="text-[10px] text-zinc-500">/mo</div>}
                       </div>
                     </div>
@@ -459,7 +460,7 @@ export default function GrantPremiumModal({
                     <div className="mt-3 pt-2.5 border-t border-zinc-700/40 flex items-center gap-3 text-[10px] text-zinc-500">
                       <span className="flex items-center gap-1"><CheckCircle size={8} className="text-zinc-600" /> {totalFeatures} features</span>
                       <span className="flex items-center gap-1"><Layers size={8} className="text-zinc-600" /> {catCount} categories</span>
-                      {price > 0 && <span className={`flex items-center gap-1 ml-auto font-medium ${isSelected ? "text-green-400" : "text-zinc-400"}`}>${price}/mo</span>}
+                      {price > 0 && <span className={`flex items-center gap-1 ml-auto font-medium ${isSelected ? "text-green-400" : "text-zinc-400"}`}>{formatPrice(price, "$")}/mo</span>}
                     </div>
                   </button>
                 );
