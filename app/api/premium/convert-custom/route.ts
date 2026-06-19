@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("premium.convert-custom");
+    const session = await requireApiPermission("premium.convert-custom");
     const { licenseId, plan, durationDays, startDate: customStartDate, notes } = await req.json();
 
     if (!licenseId || !plan || !durationDays) {
@@ -64,7 +65,6 @@ export async function POST(req: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("Premium convert-custom error:", error);
-    return Response.json({ error: "Failed to convert premium to custom" }, { status: 500 });
+    return handleApiError(error);
   }
 }

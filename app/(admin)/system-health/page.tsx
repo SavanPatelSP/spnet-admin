@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "System Health" };
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -37,19 +41,39 @@ async function getDbStats() {
 
 async function getApiHealth() {
   const checks = [
-    { name: "Licenses API", endpoint: "/api/licenses/create" },
-    { name: "Premium API", endpoint: "/api/premium/grant" },
+    { name: "Licenses API", endpoint: "/api/licenses/list" },
+    { name: "Premium API", endpoint: "/api/premium/history" },
     { name: "Coins API", endpoint: "/api/coins/balance" },
     { name: "Gems API", endpoint: "/api/gems/balance" },
-    { name: "Auth API", endpoint: "/api/auth/[...nextauth]" },
     { name: "Search API", endpoint: "/api/search" },
   ];
 
-  return checks.map((c) => ({
-    ...c,
-    status: "healthy" as const,
-    latency: "-",
-  }));
+  return await Promise.all(
+    checks.map(async (c) => {
+      const start = Date.now();
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`http://localhost:3000${c.endpoint}`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        const latency = Date.now() - start;
+        const status = res.status !== 500 ? ("healthy" as const) : ("degraded" as const);
+        return { ...c, status, latency: `${latency}ms` };
+      } catch (e) {
+        const isServerNotReady = e instanceof Error && (
+          e.message.includes("ECONNREFUSED") || e.message.includes("fetch failed")
+        );
+        const latency = Date.now() - start;
+        return {
+          ...c,
+          status: (isServerNotReady ? "degraded" : "down") as "healthy" | "degraded" | "down",
+          latency: `${latency}ms`,
+        };
+      }
+    })
+  );
 }
 
 const statusConfig = {

@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View Gem Balances");
+    await requireApiPermission("View Gem Balances");
     const { searchParams } = new URL(req.url);
     const licenseId = searchParams.get("licenseId");
 
@@ -21,7 +22,6 @@ export async function GET(req: Request) {
     });
     return Response.json(allBalances);
   } catch (error) {
-    console.error("Gems balance error:", error);
-    return Response.json({ error: "Failed to fetch gem balances" }, { status: 500 });
+    return handleApiError(error);
   }
 }

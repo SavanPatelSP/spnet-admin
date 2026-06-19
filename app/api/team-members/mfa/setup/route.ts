@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Manage MFA");
+    const session = await requireApiPermission("Manage MFA");
     const body = await req.json();
     const { teamMemberId, secret } = body;
 
@@ -35,7 +36,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, message: "MFA setup complete" });
   } catch (error) {
-    console.error("MFA setup error:", error);
-    return Response.json({ success: false, error: "Failed to setup MFA" }, { status: 500 });
+    return handleApiError(error);
   }
 }

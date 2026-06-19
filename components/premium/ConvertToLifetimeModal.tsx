@@ -172,12 +172,12 @@ export default function ConvertToLifetimeModal({
           )}
 
           {/* Step 1: Review Current Subscription */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">1</span>
               <h4 className="text-sm font-semibold text-zinc-100">Review Current Subscription</h4>
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div className="text-zinc-500">Organization</div>
               <div className="font-medium text-zinc-100">{organization}</div>
               <div className="text-zinc-500">License Key</div>
@@ -206,7 +206,7 @@ export default function ConvertToLifetimeModal({
           </div>
 
           {/* Step 2: Benefits */}
-          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5">
+          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-700 text-xs font-bold text-purple-200">2</span>
               <h4 className="text-sm font-semibold text-purple-200">Benefits of Lifetime Conversion</h4>
@@ -222,13 +222,13 @@ export default function ConvertToLifetimeModal({
           </div>
 
           {/* Step 3: Conversion Impact */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">3</span>
               <h4 className="text-sm font-semibold text-zinc-100">Conversion Impact</h4>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3">
               <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
                 <div className="mb-2 text-xs font-medium text-zinc-500">Before</div>
                 <div className="space-y-1.5">
@@ -274,7 +274,7 @@ export default function ConvertToLifetimeModal({
           </div>
 
           {/* Step 4: Reason */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">4</span>
               <h4 className="text-sm font-semibold text-zinc-100">Provide Reason</h4>
@@ -325,7 +325,7 @@ export default function ConvertToLifetimeModal({
           </div>
 
           {/* Step 5: Recent History */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">5</span>
               <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
@@ -340,7 +340,7 @@ export default function ConvertToLifetimeModal({
             ) : (
               <div className="space-y-2">
                 {loadState.data.map((h) => (
-                  <div key={h.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/30 px-3 py-2 text-xs">
+                  <div key={h.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/30 p-2 sm:px-3 sm:py-2 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 font-medium text-zinc-300">{h.action}</span>
                       <span className="text-zinc-500">{h.plan}</span>
@@ -359,7 +359,7 @@ export default function ConvertToLifetimeModal({
           </div>
 
           {/* Audit Preview */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+          <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900 p-3 sm:p-4">
             <div className="mb-2 flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
               <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>

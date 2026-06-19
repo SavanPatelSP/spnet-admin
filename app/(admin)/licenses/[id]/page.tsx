@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -21,6 +22,8 @@ import { KeyRound, CalendarDays, Monitor, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "License Details" };
 
 export default async function LicenseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

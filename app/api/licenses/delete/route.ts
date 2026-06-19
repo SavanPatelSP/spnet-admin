@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Delete Licenses");
+    const session = await requireApiPermission("Delete Licenses");
     const body = await req.json();
     if (!body.id) {
       return Response.json({ error: "License ID is required" }, { status: 400 });
@@ -29,7 +30,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("License delete error:", error);
-    return Response.json({ error: "Failed to delete license" }, { status: 500 });
+    return handleApiError(error);
   }
 }

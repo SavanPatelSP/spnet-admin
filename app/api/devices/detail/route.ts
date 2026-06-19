@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View Devices");
+    await requireApiPermission("View Devices");
 
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
@@ -29,7 +30,6 @@ export async function GET(req: Request) {
 
     return Response.json({ success: true, data: activation });
   } catch (error) {
-    console.error("Device detail error:", error);
-    return Response.json({ error: "Failed to fetch device details" }, { status: 500 });
+    return handleApiError(error);
   }
 }

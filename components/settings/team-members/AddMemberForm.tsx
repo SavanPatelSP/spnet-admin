@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
 
@@ -8,6 +9,7 @@ type Role = { id: string; name: string };
 type License = { id: string; key: string; organization: string };
 
 export default function AddMemberForm() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
@@ -16,7 +18,7 @@ export default function AddMemberForm() {
   useEffect(() => {
     Promise.all([
       fetch(API_ROUTES.ROLES.LIST).then((r) => r.json()),
-      fetch("/api/licenses/list").then((r) => r.json()),
+      fetch(API_ROUTES.LICENSES.LIST).then((r) => r.json()),
     ])
       .then(([rolesData, licensesData]) => {
         setRoles(rolesData);
@@ -54,7 +56,7 @@ export default function AddMemberForm() {
         setError(data.error || "Failed to create member");
         return;
       }
-      location.reload();
+      router.refresh();
     } catch {
       setError("Failed to create member");
     } finally {

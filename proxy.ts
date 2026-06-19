@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { buildCSP, SECURITY_HEADERS } from "@/lib/security/headers";
+import { buildCSP, getSecurityHeaders } from "@/lib/security/headers";
 import { isValidRole } from "@/lib/security/rbac";
 
 const publicRoutes = new Set(["/login", "/unauthorized"]);
@@ -15,6 +15,7 @@ function pathnameFrom(url: string): string {
 }
 
 export const proxy = auth((req) => {
+  const isDev = process.env.NODE_ENV === "development";
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const cspHeader = buildCSP(nonce);
   const pathname = pathnameFrom(req.url);
@@ -25,7 +26,7 @@ export const proxy = auth((req) => {
 
   function addSecurityHeaders(response: NextResponse): NextResponse {
     response.headers.set("Content-Security-Policy", cspHeader);
-    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    for (const [key, value] of Object.entries(getSecurityHeaders(isDev))) {
       response.headers.set(key, value);
     }
     response.headers.set("x-nonce", nonce);

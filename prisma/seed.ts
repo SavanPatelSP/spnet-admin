@@ -4,26 +4,61 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 const ALL_PERMISSIONS = [
+  // License Management
   "Create Licenses", "View Licenses", "Edit Licenses", "Delete Licenses",
   "Regenerate License Keys", "Toggle License Status", "Emergency License Lockdown",
+  "Manage License Features", "Manage License Tags", "Manage License Templates",
+  "Bulk Create Licenses", "Transfer Licenses", "Validate Licenses", "Manage Trials",
+  "View License Usage", "View License Events", "Export Licenses",
+  // Device Management
   "View Devices", "Revoke Devices", "Manage Device Policies",
+  "View Device Fingerprints", "Update Device Trust", "Blacklist Devices",
+  "Whitelist Devices", "View Device Analytics", "Export Device Data", "Validate Devices",
+  // User Management
   "View Users", "Create Users", "Edit Users", "Delete Users",
+  "Manage MFA", "View Login History", "Manage Sessions",
+  "User Lifecycle Management", "Bulk Invite Users", "Export Users",
+  // Team Management
   "View Team Members", "Invite Team Members", "Remove Team Members", "Change Member Roles",
+  // Password Policy
+  "View Password Policy", "Edit Password Policy",
+  // Role Management
   "View Roles", "Create Roles", "Edit Roles", "Delete Roles", "Clone Roles",
+  // Security
   "View Security Policies", "Edit Security Policies", "Toggle Security Policies",
+  // Audit & Compliance
   "View Audit Logs", "Export Audit Logs", "Configure Audit Settings",
+  // Billing & Revenue
   "View Revenue", "Manage Billing", "Compliance Reporting",
+  // Settings
   "Access Settings", "Edit System Settings", "Manage Notifications",
+  // Analytics
   "View Analytics", "Export Analytics Data",
+  // Reports
   "View Reports", "Create Reports", "Schedule Reports", "Export Reports",
+  // Broadcasts
   "View Broadcasts", "Create Broadcasts", "Send Broadcasts", "Delete Broadcasts",
+  // Content Moderation
   "View Content", "Moderate Content", "Delete Content",
+  // Organizations
   "View Organizations", "Create Organizations", "Edit Organizations", "Delete Organizations",
+  // Support
   "View Tickets", "Manage Tickets", "Resolve Tickets",
+  // Gems Management
   "View Gem Balances", "Grant Gems", "Revoke Gems", "View Gem History", "Manage Rewards",
+  "gems.grant", "gems.revoke", "gems.bulk-grant", "gems.bulk-revoke",
+  "gems.set", "gems.set-infinite", "gems.remove-infinite",
+  // Coins Management
   "View Coin Balances", "Add Coins", "Remove Coins", "Refund Coins", "View Coin History",
+  "coins.add", "coins.remove", "coins.refund", "coins.bulk-add", "coins.bulk-remove",
+  "coins.set", "coins.set-infinite", "coins.remove-infinite", "coins.grant",
+  // Premium Management
   "View Premium", "Grant Premium", "Revoke Premium", "Extend Premium",
-  "Change Premium Plan", "View Premium History",
+  "Change Premium Plan", "View Premium History", "Manage Premium Requests",
+  "premium.grant", "premium.revoke", "premium.extend", "premium.change-plan",
+  "premium.bulk-grant", "premium.convert-lifetime", "premium.downgrade",
+  "premium.convert-custom", "premium.requests.view", "premium.requests.approve",
+  "premium.requests.reject", "premium.requests.convert",
 ];
 
 async function assignPermissions(roleId: string, permissions: string[]) {
@@ -325,6 +360,56 @@ async function main() {
       balanceAfter: 500,
       reason: "Initial seed gems",
       performedBy: "System",
+    },
+  });
+
+  // Create seed device activations
+  const devices = [
+    { deviceId: "DEV-MBP-001", deviceName: "Savan's MacBook Pro", ipAddress: "192.168.1.100", os: "macOS", browser: "Chrome", browserVersion: "120", deviceType: "desktop", manufacturer: "Apple", model: "MacBook Pro M3", trustScore: 95 },
+    { deviceId: "DEV-WIN-001", deviceName: "Admin Windows PC", ipAddress: "192.168.1.101", os: "Windows 11", browser: "Edge", browserVersion: "120", deviceType: "desktop", manufacturer: "Dell", model: "XPS 15", trustScore: 88 },
+    { deviceId: "DEV-PHONE-001", deviceName: "Admin iPhone", ipAddress: "10.0.0.50", os: "iOS 18", browser: "Safari", browserVersion: "18", deviceType: "mobile", manufacturer: "Apple", model: "iPhone 16 Pro", trustScore: 75 },
+    { deviceId: "DEV-LNX-001", deviceName: "Build Server", ipAddress: "10.0.1.200", os: "Ubuntu 24.04", browser: "Firefox", browserVersion: "130", deviceType: "server", manufacturer: "HP", model: "ProLiant DL380", trustScore: 100 },
+  ];
+  for (const dev of devices) {
+    await prisma.activation.upsert({
+      where: { id: `seed-act-${dev.deviceId.toLowerCase()}` },
+      update: {},
+      create: {
+        id: `seed-act-${dev.deviceId.toLowerCase()}`,
+        licenseId: ownerLicense.id,
+        deviceId: dev.deviceId,
+        deviceName: dev.deviceName,
+        ipAddress: dev.ipAddress,
+        os: dev.os,
+        browser: dev.browser,
+        browserVersion: dev.browserVersion,
+        deviceType: dev.deviceType,
+        manufacturer: dev.manufacturer,
+        model: dev.model,
+        trustScore: dev.trustScore,
+        lastSeen: new Date(),
+      },
+    });
+  }
+
+  // Add a second device for admin license
+  await prisma.activation.upsert({
+    where: { id: "seed-act-dev-admin-win" },
+    update: {},
+    create: {
+      id: "seed-act-dev-admin-win",
+      licenseId: adminLicense.id,
+      deviceId: "DEV-ADMIN-WIN-002",
+      deviceName: "Admin Secondary Laptop",
+      ipAddress: "192.168.2.50",
+      os: "Windows 11",
+      browser: "Chrome",
+      browserVersion: "121",
+      deviceType: "desktop",
+      manufacturer: "Lenovo",
+      model: "ThinkPad X1",
+      trustScore: 82,
+      lastSeen: new Date(),
     },
   });
 

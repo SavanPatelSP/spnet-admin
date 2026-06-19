@@ -50,6 +50,7 @@ export function ActionButton({ onClick, children, variant = "primary", size = "m
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       disabled={disabled || loading}
       className={cn(

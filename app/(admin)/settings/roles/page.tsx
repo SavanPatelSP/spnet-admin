@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -8,6 +9,8 @@ import { Shield, Users, KeyRound, AlertTriangle } from "lucide-react";
 import { ALL_PERMISSIONS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Roles & Permissions" };
 
 export default async function RolesPage() {
   const roles = await prisma.role.findMany({
@@ -65,7 +68,7 @@ export default async function RolesPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4">
                 <p className="text-xs text-zinc-500">Members</p>
                 <p className="mt-2 text-xl font-bold">{role.members.length}</p>
@@ -98,7 +101,7 @@ export default async function RolesPage() {
 
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
         <h2 className="mb-6 text-xl font-bold">Permission Explorer</h2>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {ALL_PERMISSIONS.map((permission) => (
             <div key={permission} className="rounded-xl border border-zinc-800 bg-zinc-950/30 p-3 text-sm text-zinc-300">
               {permission}

@@ -1,14 +1,16 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Broadcasts" };
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Megaphone, Send, Clock, FileEdit } from "lucide-react";
 import { CreateBroadcastForm } from "./CreateBroadcastForm";
-import { BroadcastActions } from "./BroadcastActions";
-import { formatDate } from "@/lib/shared";
+import { BroadcastHistory } from "@/components/broadcast/BroadcastHistory";
 
 export default async function BroadcastsPage() {
   const broadcasts = await prisma.broadcast.findMany({ orderBy: { createdAt: "desc" } });
@@ -20,35 +22,17 @@ export default async function BroadcastsPage() {
   ).length;
   const totalSent = broadcasts.filter((b) => b.status === "SENT").length;
 
-  const rows = broadcasts.map((b) => ({
+  const historyItems = broadcasts.map((b) => ({
     id: b.id,
-    values: {
-      subject: b.subject,
-      type: b.type,
-      audience: b.audience,
-      status: b.status,
-      sentCount: b.sentCount,
-      scheduledAt: b.scheduledAt ? formatDate(b.scheduledAt) : "-",
-      createdAt: formatDate(b.createdAt),
-    },
-    cells: [
-      <span key="subject" className="font-medium">{b.subject}</span>,
-      <span key="type" className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-        b.type === "CRITICAL" ? "bg-red-500/10 text-red-400" :
-        b.type === "WARNING" ? "bg-yellow-500/10 text-yellow-400" :
-        "bg-blue-500/10 text-blue-400"
-      }`}>{b.type}</span>,
-      <span key="audience" className="text-sm text-zinc-400">{b.audience}</span>,
-      <span key="status" className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-        b.status === "SENT" ? "bg-green-500/10 text-green-400" :
-        b.status === "SCHEDULED" ? "bg-blue-500/10 text-blue-400" :
-        b.status === "DRAFT" ? "bg-zinc-500/10 text-zinc-400" :
-        "bg-red-500/10 text-red-400"
-      }`}>{b.status}</span>,
-      <span key="sent" className="text-sm text-zinc-400">{b.status === "SENT" ? b.sentCount : "-"}</span>,
-      <span key="scheduled" className="text-sm text-zinc-500">{b.scheduledAt ? formatDate(b.scheduledAt) : "-"}</span>,
-      <span key="actions"><BroadcastActions broadcast={b} /></span>,
-    ],
+    subject: b.subject,
+    type: b.type,
+    audience: b.audience,
+    status: b.status,
+    sentCount: b.sentCount,
+    targetCount: b.targetCount,
+    failedCount: b.failedCount,
+    createdAt: b.createdAt.toISOString(),
+    sentAt: b.sentAt?.toISOString() || null,
   }));
 
   return (
@@ -72,26 +56,13 @@ export default async function BroadcastsPage() {
           <h2 className="text-xl font-bold">Broadcast History</h2>
           <span className="text-sm text-zinc-500">{broadcasts.length} total</span>
         </div>
-        {broadcasts.length === 0 ? (
+        {historyItems.length === 0 ? (
           <EmptyState
             title="No broadcasts yet"
             description="Create your first broadcast above."
           />
         ) : (
-          <DataTable
-            columns={[
-              { key: "subject", label: "Subject", sortable: true, searchable: true },
-              { key: "type", label: "Type", sortable: true },
-              { key: "audience", label: "Audience", sortable: true },
-              { key: "status", label: "Status", sortable: true },
-              { key: "sentCount", label: "Sent", sortable: true },
-              { key: "scheduledAt", label: "Scheduled", sortable: true },
-              { key: "actions", label: "Actions" },
-            ]}
-            rows={rows}
-            pageSize={8}
-            searchPlaceholder="Search broadcasts..."
-          />
+          <BroadcastHistory broadcasts={historyItems} />
         )}
       </div>
     </div>

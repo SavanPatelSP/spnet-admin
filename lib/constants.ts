@@ -1,15 +1,15 @@
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "SP-NET";
-export const APP_DESCRIPTION = "Enterprise Control Center";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "SP NET GRAM";
+export const APP_DESCRIPTION = "Admin Panel";
 
 export const LICENSE_KEY_PREFIX = process.env.LICENSE_KEY_PREFIX || "SPNET";
 
-export const PLANS = ["FREE", "BASIC", "PLUS", "PRO", "BUSINESS", "ENTERPRISE"] as const;
+export const PLANS = ["FREE", "BASIC", "STUDENT", "PLUS", "PRO", "BUSINESS", "ENTERPRISE", "SP_PLAN"] as const;
 export type Plan = (typeof PLANS)[number];
 
-export const PLAN_TIERS = ["FREE", "BASIC", "PLUS", "PRO", "BUSINESS", "ENTERPRISE"] as const;
+export const PLAN_TIERS = ["FREE", "BASIC", "STUDENT", "PLUS", "PRO", "BUSINESS", "ENTERPRISE", "SP_PLAN"] as const;
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
-export const PREMIUM_PLANS = ["PLUS", "PRO", "BUSINESS", "ENTERPRISE"] as const;
+export const PREMIUM_PLANS = ["PLUS", "PRO", "BUSINESS", "ENTERPRISE", "SP_PLAN"] as const;
 export type PremiumPlan = (typeof PREMIUM_PLANS)[number];
 
 export const SUBSCRIPTION_TYPES = ["MONTHLY", "YEARLY", "CUSTOM", "LIFETIME"] as const;
@@ -31,6 +31,130 @@ export const EXPIRING_SOON_DAYS = Number(process.env.NEXT_PUBLIC_EXPIRING_SOON_D
 export const AUDIT_RETENTION_DAYS = Number(process.env.NEXT_PUBLIC_AUDIT_RETENTION_DAYS) || 365;
 export const DEFAULT_LOCALE = process.env.NEXT_PUBLIC_DEFAULT_LOCALE || "en-IN";
 
+export const PLAN_PRICES: Record<string, number> = {
+  FREE: 0, BASIC: 4, STUDENT: 6, PLUS: 9, PRO: 29, BUSINESS: 99, ENTERPRISE: 299, SP_PLAN: 599,
+};
+
+export interface CoinPackage {
+  label: string;
+  amount: number;
+  price: number;
+  currency: string;
+  description?: string;
+}
+
+export const COIN_PACKAGES: CoinPackage[] = [
+  { label: "Starter", amount: 1000, price: 99, currency: "$", description: "Entry level" },
+  { label: "Growth", amount: 5000, price: 399, currency: "$", description: "Standard package" },
+  { label: "Pro", amount: 10000, price: 699, currency: "$", description: "Professional package" },
+  { label: "Enterprise", amount: 50000, price: 2999, currency: "$", description: "Enterprise package" },
+];
+
+export interface GemPackage {
+  label: string;
+  amount: number;
+  price: number;
+  currency: string;
+  description?: string;
+}
+
+export const GEM_PACKAGES: GemPackage[] = [
+  { label: "Starter", amount: 10, price: 99, currency: "$", description: "Quick engagement" },
+  { label: "Growth", amount: 50, price: 399, currency: "$", description: "Standard reward" },
+  { label: "Pro", amount: 100, price: 699, currency: "$", description: "Premium reward" },
+  { label: "Enterprise", amount: 500, price: 2999, currency: "$", description: "Enterprise grant" },
+];
+
+export interface LicenseTier {
+  label: string;
+  description: string;
+  price: number;
+  currency: string;
+  maxDevices: number;
+  durationDays: number;
+  features: string[];
+  benefits: string[];
+  organizationCompatibility: string;
+  usageInfo: string;
+  expirationInfo: string;
+}
+
+export const LICENSE_TIERS: LicenseTier[] = [
+  {
+    label: "Starter License",
+    description: "Entry-level license for small teams and individual use.",
+    price: 9, currency: "$",
+    maxDevices: 3, durationDays: 180,
+    features: ["Basic feature access", "Standard encryption", "Community support", "Single organization"],
+    benefits: ["Low-cost entry point", "Simple setup", "6-month duration", "Up to 3 devices"],
+    organizationCompatibility: "Single organization only",
+    usageInfo: "Up to 100 API calls/day, 1 GB storage",
+    expirationInfo: "180 days from activation, non-renewable",
+  },
+  {
+    label: "Professional License",
+    description: "Professional-grade license for growing teams and businesses.",
+    price: 29, currency: "$",
+    maxDevices: 10, durationDays: 365,
+    features: ["Full feature access", "Enhanced encryption", "Priority email support", "Single organization"],
+    benefits: ["Professional toolkit", "Annual duration", "Up to 10 devices", "Priority support"],
+    organizationCompatibility: "Single organization",
+    usageInfo: "Up to 1,000 API calls/day, 10 GB storage",
+    expirationInfo: "365 days from activation, renewable annually",
+  },
+  {
+    label: "Business License",
+    description: "Business-grade license with advanced features and multi-org support.",
+    price: 99, currency: "$",
+    maxDevices: 25, durationDays: 365,
+    features: ["All Professional features", "Advanced encryption", "Dedicated support", "Multi-organization support", "Bulk operations", "SSO/SAML"],
+    benefits: ["Business-grade security", "Multi-org management", "25 device limit", "Dedicated support team"],
+    organizationCompatibility: "Multi-organization (up to 5 orgs)",
+    usageInfo: "Up to 10,000 API calls/day, 50 GB storage",
+    expirationInfo: "365 days from activation, auto-renewable with discounts",
+  },
+  {
+    label: "Enterprise License",
+    description: "Enterprise license for large organizations with custom requirements.",
+    price: 299, currency: "$",
+    maxDevices: 100, durationDays: 365,
+    features: ["All Business features", "Enterprise encryption", "24/7 dedicated support", "Unlimited organizations", "Custom integrations", "Compliance reporting", "Audit logs"],
+    benefits: ["Enterprise security suite", "Unlimited scalability", "100 device limit", "24/7 account management", "Custom development"],
+    organizationCompatibility: "Unlimited organizations",
+    usageInfo: "Unlimited API calls, Unlimited storage",
+    expirationInfo: "365 days from activation, auto-renewable, custom terms available",
+  },
+  {
+    label: "Ultimate License",
+    description: "Maximum-tier license with unlimited everything and priority infrastructure.",
+    price: 599, currency: "$",
+    maxDevices: -1, durationDays: 365,
+    features: ["All Enterprise features", "Maximum encryption", "Concierge support", "Unlimited organizations", "Custom development pipeline", "Priority infrastructure", "Executive reviews", "White-label branding"],
+    benefits: ["Unlimited devices", "Unlimited organizations", "Priority infrastructure", "Direct engineering access", "Executive sponsorship"],
+    organizationCompatibility: "Unlimited organizations with custom terms",
+    usageInfo: "Unlimited everything — no rate limits",
+    expirationInfo: "365 days from activation, auto-renewable, custom terms and SLA",
+  },
+];
+
+export type CurrencyCode = "$" | "₹" | "€" | "£";
+export const DEFAULT_CURRENCY: CurrencyCode = "$";
+
+export function getCurrencySymbol(preferred?: CurrencyCode): CurrencyCode {
+  return preferred || DEFAULT_CURRENCY;
+}
+
+export const ROLE_PRICES: Record<string, number> = {
+  OWNER: 1000,
+  SUPER_ADMIN: 500,
+  ADMIN: 250,
+  MANAGER: 250,
+  SUPERVISOR: 150,
+  MODERATOR: 100,
+  SUPPORT: 50,
+  VIEWER: 10,
+};
+
 export const SECURITY_POLICY_DAYS: Record<string, number> = {
   HIGH: Number(process.env.SECURITY_POLICY_HIGH_DAYS) || 7,
   STANDARD: Number(process.env.SECURITY_POLICY_STANDARD_DAYS) || 14,
@@ -51,6 +175,12 @@ export const API_ROUTES = {
     ANALYTICS: "/api/devices/analytics",
     VALIDATE: "/api/devices/validate",
     EXPORT: "/api/devices/export",
+    TRUST_INCREASE: "/api/devices/trust/increase",
+    TRUST_DECREASE: "/api/devices/trust/decrease",
+    TRUST_RESET: "/api/devices/trust/reset",
+    TRUST_HISTORY: "/api/devices/trust/history",
+    ENRICH_GEO: "/api/devices/enrich-geo",
+    BATCH_ENRICH: "/api/devices/batch-enrich",
   },
   ACTIVATIONS: {
     DELETE: "/api/activations/delete",
@@ -94,6 +224,7 @@ export const API_ROUTES = {
     BULK_INVITE: "/api/team-members/bulk-invite",
     MFA_SETUP: "/api/team-members/mfa/setup",
     MFA_DISABLE: "/api/team-members/mfa/disable",
+    MFA_LIST: "/api/team-members/mfa/list",
     SESSIONS_LIST: "/api/team-members/sessions/list",
     SESSIONS_REVOKE: "/api/team-members/sessions/revoke",
     LOGIN_HISTORY: "/api/team-members/login-history",
@@ -143,12 +274,19 @@ export const API_ROUTES = {
     SET_INFINITE: "/api/gems/set-infinite",
     REMOVE_INFINITE: "/api/gems/remove-infinite",
   },
+  CONTENT: {
+    LIST: "/api/content/list",
+    DETAIL: (id: string) => `/api/content/${id}`,
+    PUBLISH: (id: string) => `/api/content/${id}/publish`,
+    REVIEW: (id: string) => `/api/content/${id}/review`,
+  },
   BROADCASTS: {
     LIST: "/api/broadcasts",
     CREATE: "/api/broadcasts",
     UPDATE: (id: string) => `/api/broadcasts/${id}`,
     DELETE: (id: string) => `/api/broadcasts/${id}`,
     SEND: (id: string) => `/api/broadcasts/${id}/send`,
+    TARGETS: "/api/broadcast/targets",
   },
   SUPPORT: {
     LIST: "/api/support",
@@ -164,6 +302,9 @@ export const API_ROUTES = {
     RESOLVE_REPORT: (id: string) => `/api/moderation/reports/${id}/resolve`,
     ACTIONS: "/api/moderation/actions",
     ACTION: (id: string) => `/api/moderation/actions/${id}`,
+  },
+  AUDIT: {
+    LIST: "/api/settings/audit/list",
   },
   SEARCH: "/api/search",
 } as const;

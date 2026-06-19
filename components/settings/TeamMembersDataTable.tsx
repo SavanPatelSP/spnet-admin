@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { downloadCSV } from "@/lib/export";
 import { API_ROUTES } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/shared";
@@ -37,6 +38,11 @@ export default function TeamMembersDataTable({ members, roles }: TeamMembersData
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [bulkSuspendOpen, setBulkSuspendOpen] = useState(false);
+  const [bulkReactivateOpen, setBulkReactivateOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkError, setBulkError] = useState("");
 
   const filtered = useMemo(() => {
     let f = members;
@@ -57,40 +63,72 @@ export default function TeamMembersDataTable({ members, roles }: TeamMembersData
   }
 
   async function bulkSuspend() {
-    for (const id of selectedIds) {
-      await fetch(API_ROUTES.TEAM_MEMBERS.UPDATE_STATUS, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: "SUSPENDED" }),
-      });
+    setBulkLoading(true);
+    setBulkError("");
+    try {
+      await Promise.allSettled(
+        Array.from(selectedIds).map((id) =>
+          fetch(API_ROUTES.TEAM_MEMBERS.UPDATE_STATUS, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status: "SUSPENDED" }),
+          })
+        )
+      );
+      setSelectedIds(new Set());
+      setBulkSuspendOpen(false);
+      router.refresh();
+    } catch {
+      setBulkError("Network error during bulk operation");
+    } finally {
+      setBulkLoading(false);
     }
-    setSelectedIds(new Set());
-    router.refresh();
   }
 
   async function bulkReactivate() {
-    for (const id of selectedIds) {
-      await fetch(API_ROUTES.TEAM_MEMBERS.UPDATE_STATUS, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: "ACTIVE" }),
-      });
+    setBulkLoading(true);
+    setBulkError("");
+    try {
+      await Promise.allSettled(
+        Array.from(selectedIds).map((id) =>
+          fetch(API_ROUTES.TEAM_MEMBERS.UPDATE_STATUS, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status: "ACTIVE" }),
+          })
+        )
+      );
+      setSelectedIds(new Set());
+      setBulkReactivateOpen(false);
+      router.refresh();
+    } catch {
+      setBulkError("Network error during bulk operation");
+    } finally {
+      setBulkLoading(false);
     }
-    setSelectedIds(new Set());
-    router.refresh();
   }
 
   async function bulkDelete() {
-    if (!confirm(`Delete ${selectedIds.size} team member${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`)) return;
-    for (const id of selectedIds) {
-      await fetch(API_ROUTES.TEAM_MEMBERS.DELETE, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
+    setBulkLoading(true);
+    setBulkError("");
+    try {
+      await Promise.allSettled(
+        Array.from(selectedIds).map((id) =>
+          fetch(API_ROUTES.TEAM_MEMBERS.DELETE, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          })
+        )
+      );
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+      router.refresh();
+    } catch {
+      setBulkError("Network error during bulk operation");
+    } finally {
+      setBulkLoading(false);
     }
-    setSelectedIds(new Set());
-    router.refresh();
   }
 
   return (
@@ -138,13 +176,13 @@ export default function TeamMembersDataTable({ members, roles }: TeamMembersData
         bulkActions={
           selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
-              <button onClick={bulkSuspend} className="rounded-xl bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-500">
+              <button onClick={() => setBulkSuspendOpen(true)} className="rounded-xl bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-500">
                 Suspend {selectedIds.size}
               </button>
-              <button onClick={bulkReactivate} className="rounded-xl bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-500">
+              <button onClick={() => setBulkReactivateOpen(true)} className="rounded-xl bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-500">
                 Reactivate {selectedIds.size}
               </button>
-              <button onClick={bulkDelete} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
+              <button onClick={() => setBulkDeleteOpen(true)} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
                 Delete {selectedIds.size}
               </button>
             </div>
@@ -219,6 +257,40 @@ export default function TeamMembersDataTable({ members, roles }: TeamMembersData
         }))}
         searchPlaceholder="Search by name or email..."
         emptyMessage="No team members found."
+      />
+
+      <ConfirmDialog
+        open={bulkSuspendOpen}
+        onClose={() => { setBulkSuspendOpen(false); setBulkError(""); }}
+        onConfirm={bulkSuspend}
+        title="Bulk Suspend Members"
+        description={`Suspend ${selectedIds.size} team member${selectedIds.size > 1 ? "s" : ""}? They will lose access until reactivated.`}
+        confirmLabel={`Suspend ${selectedIds.size}`}
+        variant="danger"
+        loading={bulkLoading}
+        error={bulkError}
+      />
+      <ConfirmDialog
+        open={bulkReactivateOpen}
+        onClose={() => { setBulkReactivateOpen(false); setBulkError(""); }}
+        onConfirm={bulkReactivate}
+        title="Bulk Reactivate Members"
+        description={`Reactivate ${selectedIds.size} team member${selectedIds.size > 1 ? "s" : ""}?`}
+        confirmLabel={`Reactivate ${selectedIds.size}`}
+        variant="primary"
+        loading={bulkLoading}
+        error={bulkError}
+      />
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onClose={() => { setBulkDeleteOpen(false); setBulkError(""); }}
+        onConfirm={bulkDelete}
+        title="Bulk Delete Members"
+        description={`Delete ${selectedIds.size} team member${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`}
+        confirmLabel={`Delete ${selectedIds.size}`}
+        variant="danger"
+        loading={bulkLoading}
+        error={bulkError}
       />
     </div>
   );

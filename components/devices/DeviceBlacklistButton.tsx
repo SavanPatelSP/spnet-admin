@@ -10,7 +10,7 @@ import { Ban, CheckCircle } from "lucide-react";
 interface Props {
   activationId: string;
   isBlacklisted: boolean;
-  onToggle: () => void;
+  onToggle?: () => void;
 }
 
 export function DeviceBlacklistButton({ activationId, isBlacklisted, onToggle }: Props) {
@@ -28,7 +28,7 @@ export function DeviceBlacklistButton({ activationId, isBlacklisted, onToggle }:
       });
       if (res.ok) {
         setOpen(false);
-        onToggle();
+        onToggle?.();
         router.refresh();
       }
     } finally {
@@ -45,7 +45,7 @@ export function DeviceBlacklistButton({ activationId, isBlacklisted, onToggle }:
         body: JSON.stringify({ activationId }),
       });
       if (res.ok) {
-        onToggle();
+        onToggle?.();
         router.refresh();
       }
     } finally {

@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await requirePermission("premium.requests.convert");
+    await requireApiPermission("premium.requests.convert");
     const existing = await prisma.premiumRequest.findUnique({ where: { id } });
     if (!existing) return Response.json({ error: "Premium request not found" }, { status: 404 });
 
@@ -18,7 +19,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       hint: "POST to /api/premium/requests/:id/approve to complete the conversion",
     });
   } catch (error) {
-    console.error("Premium request convert error:", error);
-    return Response.json({ error: "Failed to prepare conversion" }, { status: 500 });
+    return handleApiError(error);
   }
 }

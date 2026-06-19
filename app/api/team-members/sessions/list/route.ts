@@ -1,32 +1,49 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("Manage Sessions");
+    const session = await requireApiPermission("Manage Sessions");
     const url = new URL(req.url);
     const teamMemberId = url.searchParams.get("teamMemberId");
+    const days = url.searchParams.get("days");
 
-    if (!teamMemberId) {
-      return Response.json({ error: "teamMemberId query parameter is required" }, { status: 400 });
+    if (teamMemberId) {
+      const member = await prisma.teamMember.findUnique({ where: { id: teamMemberId } });
+      if (!member) {
+        return Response.json({ error: "Team member not found" }, { status: 404 });
+      }
+      const activeSessions = await prisma.session.findMany({
+        where: {
+          teamMemberId,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      return Response.json({ sessions: activeSessions });
     }
 
-    const member = await prisma.teamMember.findUnique({ where: { id: teamMemberId } });
-    if (!member) {
-      return Response.json({ error: "Team member not found" }, { status: 404 });
+    const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 500, 1), 500);
+
+    const where: Record<string, unknown> = {};
+    if (days) {
+      const since = new Date();
+      since.setDate(since.getDate() - Number(days));
+      where.createdAt = { gte: since };
     }
 
-    const activeSessions = await prisma.session.findMany({
-      where: {
-        teamMemberId,
-        expiresAt: { gt: new Date() },
-      },
+    const allSessions = await prisma.session.findMany({
+      where: where as any,
       orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        teamMember: { select: { name: true, email: true } },
+      },
     });
 
-    return Response.json({ sessions: activeSessions });
+    return Response.json({ sessions: allSessions });
   } catch (error) {
-    console.error("Session list error:", error);
-    return Response.json({ error: "Failed to list sessions" }, { status: 500 });
+    return handleApiError(error);
   }
 }

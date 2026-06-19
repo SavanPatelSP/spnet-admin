@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Organizations" };
 
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth-helpers";
@@ -6,6 +10,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import CreateOrganizationModal from "@/components/organizations/CreateOrganizationModal";
 import {
   Building2, Crown,
   TrendingUp, Monitor,
@@ -92,10 +97,15 @@ export default async function OrganizationsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Organizations"
-        description="View all organizations and their license portfolios."
-      />
+      <div className="flex items-start justify-between">
+        <PageHeader
+          title="Organizations"
+          description="View all organizations and their license portfolios."
+        />
+        <div className="pt-2">
+          <CreateOrganizationModal />
+        </div>
+      </div>
 
       <StatCardGrid columns={4}>
         <StatCard title="Total Organizations" value={totalOrgs} icon={Building2} color="blue" subtitle={`${formatNumber(totalLicenses)} licenses`} />

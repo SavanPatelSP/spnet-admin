@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Gems Management" };
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -9,13 +13,14 @@ import { DEFAULT_LOCALE } from "@/lib/constants";
 import { GemsAnalytics } from "@/components/gems/GemsAnalytics";
 import GemsBalancesTable from "@/components/gems/GemsBalancesTable";
 import AntiAbusePanel from "@/components/gems/AntiAbusePanel";
+import GemsPageActions from "@/components/gems/GemsPageActions";
 import DeleteRewardButton from "@/components/gems/DeleteRewardButton";
 import RewardCampaignEditor from "@/components/gems/RewardCampaignEditor";
 import { TopGemHolders } from "@/components/gems/TopGemHolders";
 import { GemDistributionChart } from "@/components/gems/GemDistributionChart";
 
 export default async function GemsPage() {
-  const [balances, transactions, rewards] = await Promise.all([
+  const [balances, transactions, rewards, allLicenses] = await Promise.all([
     prisma.gemBalance.findMany({
       include: { license: { select: { organization: true, key: true, plan: true, status: true } } },
       orderBy: { balance: "desc" },
@@ -29,7 +34,10 @@ export default async function GemsPage() {
       take: 250,
     }),
     prisma.gemReward.findMany({ orderBy: { name: "asc" } }),
-    prisma.license.count(),
+    prisma.license.findMany({
+      select: { id: true, key: true, organization: true, plan: true, status: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const totalGems = balances.reduce((sum, b) => sum + b.balance, 0);
@@ -52,11 +60,24 @@ export default async function GemsPage() {
     id: r.id, name: r.name, amount: r.amount, description: r.description, category: r.category,
   }));
 
+  const balanceMap = new Map(balances.map((b) => [b.licenseId, b.balance]));
+  const searchLicenses = allLicenses.map((l) => ({
+    licenseId: l.id,
+    organization: l.organization,
+    key: l.key,
+    balance: balanceMap.get(l.id) || 0,
+  }));
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Gems Management"
         description="Manage gem balances, grant rewards, and monitor transactions."
+      />
+
+      <GemsPageActions
+        licenses={searchLicenses}
+        rewards={rewardOptions}
       />
 
       <StatCardGrid columns={4}>
@@ -141,7 +162,7 @@ export default async function GemsPage() {
                   {r.budget && <span className="text-zinc-500">Budget: {r.budget} gems</span>}
                   {r.startDate && (
                     <span className="text-zinc-500">
-                      {new Date(r.startDate).toLocaleDateString()} - {r.endDate ? new Date(r.endDate).toLocaleDateString() : "∞"}
+                      {new Date(r.startDate).toLocaleDateString("en-US")} - {r.endDate ? new Date(r.endDate).toLocaleDateString("en-US") : "∞"}
                     </span>
                   )}
                 </div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/shared";
 
@@ -8,6 +9,7 @@ interface StatCardProps {
   trend?: { value: string; direction: "up" | "down" | "neutral"; label?: string };
   color?: "blue" | "green" | "yellow" | "red" | "purple" | "default";
   subtitle?: string;
+  href?: string;
   className?: string;
 }
 
@@ -41,9 +43,9 @@ const trendIconMap = {
   neutral: "→",
 };
 
-export function StatCard({ title, value, icon: Icon, trend, color = "default", subtitle, className }: StatCardProps) {
-  return (
-    <div className={cn("rounded-3xl border border-zinc-800 bg-zinc-900 p-6 transition-all hover:border-zinc-700", className)}>
+export function StatCard({ title, value, icon: Icon, trend, color = "default", subtitle, href, className }: StatCardProps) {
+  const inner = (
+    <>
       <div className="flex items-start justify-between">
         <p className="text-sm text-zinc-500">{title}</p>
         {Icon && (
@@ -66,20 +68,32 @@ export function StatCard({ title, value, icon: Icon, trend, color = "default", s
           {subtitle && <span className="text-xs text-zinc-600">{subtitle}</span>}
         </div>
       )}
-    </div>
+    </>
   );
+
+  const classes = cn(
+    "rounded-3xl border border-zinc-800 bg-zinc-900 p-6 transition-all hover:border-zinc-700",
+    href && "cursor-pointer hover:bg-zinc-800/50",
+    className,
+  );
+
+  if (href) {
+    return <Link href={href} className={classes}>{inner}</Link>;
+  }
+
+  return <div className={classes}>{inner}</div>;
 }
 
 export function StatCardGrid({ children, columns = 4 }: { children: React.ReactNode; columns?: number }) {
   return (
     <div
       className={cn(
-        "grid gap-4",
-        columns === 2 && "md:grid-cols-2",
-        columns === 3 && "md:grid-cols-3",
-        columns === 4 && "md:grid-cols-4",
-        columns === 5 && "md:grid-cols-5",
-        columns === 6 && "md:grid-cols-6",
+        "grid grid-cols-1 gap-4",
+        columns === 2 && "sm:grid-cols-2",
+        columns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
+        columns === 4 && "sm:grid-cols-2 lg:grid-cols-4",
+        columns === 5 && "sm:grid-cols-2 lg:grid-cols-5",
+        columns === 6 && "sm:grid-cols-3 lg:grid-cols-6",
       )}
     >
       {children}

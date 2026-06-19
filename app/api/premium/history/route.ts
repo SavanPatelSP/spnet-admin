@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View Premium History");
+    await requireApiPermission("View Premium History");
 
     const { searchParams } = new URL(req.url);
     const licenseId = searchParams.get("licenseId");
@@ -22,7 +23,6 @@ export async function GET(req: Request) {
 
     return Response.json(records);
   } catch (error) {
-    console.error("Premium history error:", error);
-    return Response.json({ error: "Failed to fetch premium history" }, { status: 500 });
+    return handleApiError(error);
   }
 }

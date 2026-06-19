@@ -2,6 +2,10 @@
 
 import { Crown, Layers, Infinity } from "lucide-react";
 import { PREMIUM_PLANS } from "@/lib/constants";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart as RePieChart, Pie, Cell,
+} from "recharts";
 
 interface PremiumAnalyticsProps {
   planBreakdown: Record<string, number>;
@@ -10,27 +14,35 @@ interface PremiumAnalyticsProps {
   premiumLicenses: { plan: string }[];
 }
 
+const PLAN_COLORS: Record<string, string> = {
+  PLUS: "#3b82f6",
+  PRO: "#a855f7",
+  BUSINESS: "#f59e0b",
+  ENTERPRISE: "#ef4444",
+  STUDENT: "#22c55e",
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  MONTHLY: "#3b82f6",
+  YEARLY: "#22c55e",
+  LIFETIME: "#a855f7",
+  CUSTOM: "#06b6d4",
+};
+
 export function PremiumAnalytics({
   planBreakdown,
   subscriptionTypeBreakdown,
   totalPremium,
 }: PremiumAnalyticsProps) {
   const planOrder = PREMIUM_PLANS.filter((p) => planBreakdown[p]);
-  const maxPlanCount = Math.max(...Object.values(planBreakdown), 1);
+  const planData = planOrder.map((plan) => ({
+    name: plan,
+    value: planBreakdown[plan] || 0,
+  }));
 
-  const typeColors: Record<string, string> = {
-    MONTHLY: "bg-blue-500",
-    YEARLY: "bg-green-500",
-    LIFETIME: "bg-purple-500",
-    CUSTOM: "bg-cyan-500",
-  };
-
-  const typeTextColors: Record<string, string> = {
-    MONTHLY: "text-blue-400",
-    YEARLY: "text-green-400",
-    LIFETIME: "text-purple-400",
-    CUSTOM: "text-cyan-400",
-  };
+  const typeData = Object.entries(subscriptionTypeBreakdown)
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, value]) => ({ name, value }));
 
   const lifetimeCount = subscriptionTypeBreakdown.LIFETIME || 0;
   const nonLifetime = totalPremium - lifetimeCount;
@@ -42,33 +54,33 @@ export function PremiumAnalytics({
           <Layers size={16} className="text-yellow-400" />
           <h3 className="font-semibold text-zinc-100">Plan Distribution</h3>
         </div>
-        {planOrder.length === 0 ? (
+        {planData.length === 0 ? (
           <p className="text-sm text-zinc-500">No premium plans active</p>
         ) : (
           <div className="space-y-3">
-            {planOrder.map((plan) => {
-              const count = planBreakdown[plan] || 0;
-              const pct = Math.round((count / totalPremium) * 100);
-              return (
-                <div key={plan}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <Crown size={13} className="text-yellow-400" />
-                      <span className="text-zinc-300">{plan}</span>
-                    </div>
-                    <span className="text-zinc-500">
-                      {count} <span className="text-xs text-zinc-600">({pct}%)</span>
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-yellow-500 transition-all"
-                      style={{ width: `${(count / maxPlanCount) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+            <ResponsiveContainer width="100%" height={planData.length * 40 + 20}>
+              <BarChart data={planData} layout="vertical" margin={{ left: 70, right: 20, top: 5, bottom: 5 }}>
+                <XAxis type="number" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "#d4d4d8", fontSize: 11 }} axisLine={false} tickLine={false} width={65} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "8px", fontSize: "12px" }}
+                  labelStyle={{ color: "#d4d4d8" }}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  {planData.map((entry) => (
+                    <Cell key={entry.name} fill={PLAN_COLORS[entry.name] || "#71717a"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap gap-2">
+              {planData.map((entry) => (
+                <span key={entry.name} className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PLAN_COLORS[entry.name] || "#71717a" }} />
+                  {entry.name}: {entry.value} ({totalPremium > 0 ? Math.round((entry.value / totalPremium) * 100) : 0}%)
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -78,31 +90,33 @@ export function PremiumAnalytics({
           <Layers size={16} className="text-blue-400" />
           <h3 className="font-semibold text-zinc-100">Subscription Type Distribution</h3>
         </div>
-        {Object.keys(subscriptionTypeBreakdown).length === 0 ? (
+        {typeData.length === 0 ? (
           <p className="text-sm text-zinc-500">No subscription data</p>
         ) : (
           <div className="space-y-3">
-            {Object.entries(subscriptionTypeBreakdown)
-              .sort(([, a], [, b]) => b - a)
-              .map(([type, count]) => {
-                const pct = Math.round((count / totalPremium) * 100);
-                return (
-                  <div key={type}>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className={typeTextColors[type] || "text-zinc-300"}>{type}</span>
-                      <span className="text-zinc-500">
-                        {count} <span className="text-xs text-zinc-600">({pct}%)</span>
-                      </span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                      <div
-                        className={`h-full rounded-full transition-all ${typeColors[type] || "bg-zinc-500"}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <ResponsiveContainer width="100%" height={typeData.length * 40 + 20}>
+              <BarChart data={typeData} layout="vertical" margin={{ left: 70, right: 20, top: 5, bottom: 5 }}>
+                <XAxis type="number" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "#d4d4d8", fontSize: 11 }} axisLine={false} tickLine={false} width={65} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "8px", fontSize: "12px" }}
+                  labelStyle={{ color: "#d4d4d8" }}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  {typeData.map((entry) => (
+                    <Cell key={entry.name} fill={TYPE_COLORS[entry.name] || "#71717a"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap gap-2">
+              {typeData.map((entry) => (
+                <span key={entry.name} className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TYPE_COLORS[entry.name] || "#71717a" }} />
+                  {entry.name}: {entry.value}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -124,12 +138,17 @@ export function PremiumAnalytics({
           </div>
         </div>
         {totalPremium > 0 && (
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800">
-            <div
-              className="h-full rounded-full bg-purple-500 transition-all"
-              style={{ width: `${(lifetimeCount / totalPremium) * 100}%` }}
-            />
-          </div>
+          <ResponsiveContainer width="100%" height={32}>
+            <RePieChart>
+              <Pie data={[
+                { name: "Lifetime", value: lifetimeCount },
+                { name: "Term-based", value: nonLifetime },
+              ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={14} innerRadius={0}>
+                <Cell fill="#a855f7" />
+                <Cell fill="#27272a" />
+              </Pie>
+            </RePieChart>
+          </ResponsiveContainer>
         )}
         <p className="mt-3 text-center text-xs text-zinc-600">
           {lifetimeCount} of {totalPremium} premium licenses are lifetime (

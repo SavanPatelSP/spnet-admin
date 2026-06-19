@@ -1,13 +1,16 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import TeamMembersDataTable from "@/components/settings/TeamMembersDataTable";
-import AddMemberForm from "@/components/settings/team-members/AddMemberForm";
+import CreateTeamMemberModal from "@/components/settings/team-members/CreateTeamMemberModal";
 import OwnershipPanel from "@/components/settings/team-members/OwnershipPanel";
 import SecurityEventsPanel from "@/components/settings/team-members/SecurityEventsPanel";
 import { Users, UserCheck, UserX, Shield } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Team Members" };
 
 export default async function TeamMembersPage() {
   const [totalMembers, activeMembers, totalRoles, members, auditEvents] = await Promise.all([
@@ -67,13 +70,15 @@ export default async function TeamMembersPage() {
         <StatCard title="Active Roles" value={totalRoles} icon={Shield} color="purple" />
       </StatCardGrid>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6 lg:col-span-2">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold">Invite Team Member</h2>
-            <p className="mt-1 text-sm text-zinc-500">Create new administrators and assign platform roles.</p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Invite Team Member</h2>
+              <p className="mt-1 text-sm text-zinc-500">Create new administrators and assign platform roles.</p>
+            </div>
+            <CreateTeamMemberModal />
           </div>
-          <AddMemberForm />
         </div>
 
         <OwnershipPanel
@@ -82,7 +87,7 @@ export default async function TeamMembersPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <TeamMembersDataTable members={memberRows} roles={roleList} />
         </div>

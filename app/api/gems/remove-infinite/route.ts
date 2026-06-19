@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("gems.remove-infinite");
+    const session = await requireApiPermission("gems.remove-infinite");
     const { licenseId } = await req.json();
 
     if (!licenseId) {
@@ -57,7 +58,6 @@ export async function POST(req: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("Gems remove-infinite error:", error);
-    return Response.json({ error: "Failed to remove infinite gems" }, { status: 500 });
+    return handleApiError(error);
   }
 }

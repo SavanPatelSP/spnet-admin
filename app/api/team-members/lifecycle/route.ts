@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requirePermission("User Lifecycle Management");
+    const session = await requireApiPermission("User Lifecycle Management");
     const body = await req.json();
     const { teamMemberId, action, department, phone, avatarUrl } = body;
 
@@ -82,7 +83,6 @@ export async function PUT(req: Request) {
 
     return Response.json({ success: false, error: "action must be 'ARCHIVE' or 'RESTORE', or provide profile fields to update" }, { status: 400 });
   } catch (error) {
-    console.error("Lifecycle error:", error);
-    return Response.json({ success: false, error: "Failed to process lifecycle action" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { PREMIUM_PLANS, PREMIUM_REQUEST_STATUSES, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("premium.requests.view");
+    await requireApiPermission("premium.requests.view");
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const licenseId = searchParams.get("licenseId");
@@ -24,14 +25,13 @@ export async function GET(req: Request) {
 
     return Response.json(requests);
   } catch (error) {
-    console.error("Premium requests list error:", error);
-    return Response.json({ error: "Failed to fetch premium requests" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Grant Premium");
+    const session = await requireApiPermission("Grant Premium");
     const { licenseId, requestedPlan, requestedDurationDays, reason, notes, organization } = await req.json();
 
     if (!licenseId || !requestedPlan || !requestedDurationDays) {
@@ -71,7 +71,6 @@ export async function POST(req: Request) {
 
     return Response.json(premiumRequest, { status: 201 });
   } catch (error) {
-    console.error("Premium request create error:", error);
-    return Response.json({ error: "Failed to create premium request" }, { status: 500 });
+    return handleApiError(error);
   }
 }

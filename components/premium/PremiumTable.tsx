@@ -17,6 +17,8 @@ import ConvertToLifetimeModal from "@/components/premium/ConvertToLifetimeModal"
 import BulkGrantPremiumModal from "@/components/premium/BulkGrantPremiumModal";
 import BulkExtendModal from "@/components/premium/BulkExtendModal";
 import BulkConvertLifetimeModal from "@/components/premium/BulkConvertLifetimeModal";
+import ConvertToCustomModal from "@/components/premium/ConvertToCustomModal";
+import RevokePremiumModal from "@/components/premium/RevokePremiumModal";
 
 interface LicenseRow {
   id: string;
@@ -250,40 +252,21 @@ function PremiumRowActions({
   currentExpiry: Date;
 }) {
   const [extendOpen, setExtendOpen] = useState(false);
-  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertLifetimeOpen, setConvertLifetimeOpen] = useState(false);
+  const [convertCustomOpen, setConvertCustomOpen] = useState(false);
   const [changePlanOpen, setChangePlanOpen] = useState(false);
-  const [revokeLoading, setRevokeLoading] = useState(false);
-
-  async function handleRevoke() {
-    setRevokeLoading(true);
-    try {
-      const res = await fetch("/api/premium/revoke", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ licenseId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || "Failed to revoke premium");
-        return;
-      }
-      window.location.reload();
-    } catch {
-      alert("Failed to revoke premium");
-    } finally {
-      setRevokeLoading(false);
-    }
-  }
+  const [revokeOpen, setRevokeOpen] = useState(false);
 
   const isLifetime = currentSubscriptionType === "LIFETIME";
 
   const items: { label: string; onClick: () => void; variant?: "default" | "danger" | "primary" }[] = [
     { label: "Extend", onClick: () => setExtendOpen(true) },
+    { label: "Convert to Custom", onClick: () => setConvertCustomOpen(true) },
     ...(!isLifetime
-      ? [{ label: "Convert to Lifetime", onClick: () => setConvertOpen(true) }]
+      ? [{ label: "Convert to Lifetime", onClick: () => setConvertLifetimeOpen(true) }]
       : []),
     { label: "Change Plan", onClick: () => setChangePlanOpen(true) },
-    { label: revokeLoading ? "Revoking..." : "Revoke", onClick: handleRevoke, variant: "danger" as const },
+    { label: "Revoke", onClick: () => setRevokeOpen(true), variant: "danger" as const },
   ];
 
   return (
@@ -297,8 +280,18 @@ function PremiumRowActions({
         currentPlan={currentPlan}
         currentSubscriptionType={currentSubscriptionType || "MONTHLY"}
         currentExpiry={currentExpiry}
-        open={convertOpen}
-        onClose={() => setConvertOpen(false)}
+        open={convertLifetimeOpen}
+        onClose={() => setConvertLifetimeOpen(false)}
+      />
+      <ConvertToCustomModal
+        licenseId={licenseId}
+        licenseKey={licenseKey}
+        organization={organization}
+        currentPlan={currentPlan}
+        currentSubscriptionType={currentSubscriptionType || "MONTHLY"}
+        currentExpiry={currentExpiry}
+        open={convertCustomOpen}
+        onClose={() => setConvertCustomOpen(false)}
       />
       <ChangePremiumPlanModal
         licenseId={licenseId}
@@ -308,6 +301,16 @@ function PremiumRowActions({
         organization={organization}
         open={changePlanOpen}
         onClose={() => setChangePlanOpen(false)}
+      />
+      <RevokePremiumModal
+        licenseId={licenseId}
+        licenseKey={licenseKey}
+        organization={organization}
+        currentPlan={currentPlan}
+        currentSubscriptionType={currentSubscriptionType || "MONTHLY"}
+        currentExpiry={currentExpiry}
+        open={revokeOpen}
+        onClose={() => setRevokeOpen(false)}
       />
     </>
   );

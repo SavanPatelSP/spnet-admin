@@ -258,6 +258,14 @@ model AuditLog {
 
   action        String
 
+  severity      String   @default("Medium")
+
+  entityType    String?
+
+  entityId      String?
+
+  metadata      String?
+
   licenseId     String?
 
   organization  String?

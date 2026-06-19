@@ -14,22 +14,32 @@ interface Props {
 export default function DeleteRoleButton({ roleId }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function deleteRole() {
-    const response = await fetch(API_ROUTES.ROLES.DELETE, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: roleId }),
-    });
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(API_ROUTES.ROLES.DELETE, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: roleId }),
+      });
 
-    if (!response.ok) {
-      const data = await response.json();
-      alert(data.error || "Failed to delete role");
-      return;
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "Failed to delete role");
+        return;
+      }
+
+      setOpen(false);
+      router.refresh();
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
     }
-
-    setOpen(false);
-    router.refresh();
   }
 
   return (
@@ -40,12 +50,14 @@ export default function DeleteRoleButton({ roleId }: Props) {
 
       <ConfirmDialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => { setOpen(false); setError(""); }}
         onConfirm={deleteRole}
         title="Delete Role"
         description="This will permanently delete this role. Members assigned to this role may lose permissions."
         confirmLabel="Delete Role"
         variant="danger"
+        loading={loading}
+        error={error}
       />
     </>
   );

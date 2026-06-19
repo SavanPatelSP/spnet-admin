@@ -104,7 +104,7 @@ export default function EditRoleForm({ role }: Props) {
           <span className="text-sm text-zinc-500">{selectedPermissions.size} of {ALL_PERMISSIONS.length} selected</span>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {ALL_PERMISSIONS.map((permission) => (
             <label
               key={permission}

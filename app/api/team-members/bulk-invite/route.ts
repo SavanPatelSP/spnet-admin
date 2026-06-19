@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 import bcrypt from "bcryptjs";
@@ -11,7 +12,7 @@ function generateTempPassword(): string {
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Bulk Invite Users");
+    const session = await requireApiPermission("Bulk Invite Users");
     const body = await req.json();
     const { invites } = body;
 
@@ -60,7 +61,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, data: results });
   } catch (error) {
-    console.error("Bulk invite error:", error);
-    return Response.json({ success: false, error: "Failed to process bulk invite" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission("View Tickets");
+    await requireApiPermission("View Tickets");
     const { id } = await params;
     const ticket = await prisma.supportTicket.findUnique({
       where: { id },
@@ -19,15 +20,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
     return Response.json({ success: true, data: ticket });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to fetch ticket";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requirePermission("Manage Tickets");
+    const session = await requireApiPermission("Manage Tickets");
     const { id } = await params;
     const { subject, message, priority, category, status } = await req.json();
 
@@ -66,15 +65,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     return Response.json({ success: true, data: ticket });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to update ticket";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requirePermission("Manage Tickets");
+    const session = await requireApiPermission("Manage Tickets");
     const { id } = await params;
 
     const existing = await prisma.supportTicket.findUnique({ where: { id } });
@@ -93,8 +90,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     return Response.json({ success: true });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to delete ticket";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }

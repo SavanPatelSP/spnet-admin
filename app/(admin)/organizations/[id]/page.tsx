@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Organization Details" };
 
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth-helpers";
@@ -6,6 +10,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
+import EditOrganizationModal from "@/components/organizations/EditOrganizationModal";
 import {
   KeyRound, Monitor, Coins, Gem,
   Crown, Shield, ClipboardList,
@@ -76,7 +81,23 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-8">
-      <PageHeader title={orgName} description="Organization overview and license portfolio." />
+      <div className="flex items-start justify-between">
+        <PageHeader title={orgName} description="Organization overview and license portfolio." />
+        <div className="pt-2">
+          <EditOrganizationModal
+            organization={orgName}
+            licenses={licenses.map((l) => ({ id: l.id, key: l.key, plan: l.plan, status: l.status }))}
+            stats={{
+              licenseCount: stats.licenseCount,
+              activeCount: stats.activeCount,
+              deviceCount: stats.deviceCount,
+              totalCoins: stats.totalCoins,
+              totalGems: stats.totalGems,
+              premiumCount: stats.premiumLicenses,
+            }}
+          />
+        </div>
+      </div>
 
       <StatCardGrid columns={4}>
         <StatCard title="Licenses" value={stats.licenseCount} icon={KeyRound} color="blue" subtitle={`${stats.activeCount} active`} />

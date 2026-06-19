@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View Login History");
+    await requireApiPermission("View Login History");
     const url = new URL(req.url);
     const teamMemberId = url.searchParams.get("teamMemberId");
     const limitParam = url.searchParams.get("limit");
@@ -26,7 +27,6 @@ export async function GET(req: Request) {
 
     return Response.json({ loginHistory: history });
   } catch (error) {
-    console.error("Login history error:", error);
-    return Response.json({ error: "Failed to fetch login history" }, { status: 500 });
+    return handleApiError(error);
   }
 }

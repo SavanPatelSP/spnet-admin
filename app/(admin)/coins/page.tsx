@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Coins Management" };
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -7,13 +11,14 @@ import { Coins, TrendingUp, TrendingDown, Infinity } from "lucide-react";
 import { CoinsBalancesTable } from "@/components/coins/CoinsBalancesTable";
 import { CoinHistoryTable } from "@/components/coins/CoinHistoryTable";
 import { CoinsAnalytics } from "@/components/coins/CoinsAnalytics";
+import CoinsPageActions from "@/components/coins/CoinsPageActions";
 import { TopCoinHolders } from "@/components/coins/TopCoinHolders";
 import { CoinDistributionChart } from "@/components/coins/CoinDistributionChart";
 import { EconomyHealthPanel } from "@/components/coins/EconomyHealthPanel";
 import { SourceSinkTracking } from "@/components/coins/SourceSinkTracking";
 
 export default async function CoinsPage() {
-  const [balances, transactions] = await Promise.all([
+  const [balances, transactions, allLicenses] = await Promise.all([
     prisma.coinBalance.findMany({
       include: { license: { select: { organization: true, key: true, plan: true, status: true } } },
       orderBy: { balance: "desc" },
@@ -23,7 +28,10 @@ export default async function CoinsPage() {
       orderBy: { createdAt: "desc" },
       take: 500,
     }),
-    prisma.license.count(),
+    prisma.license.findMany({
+      select: { id: true, key: true, organization: true, plan: true, status: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const totalCoins = balances.reduce((sum, b) => sum + b.balance, 0);
@@ -35,11 +43,23 @@ export default async function CoinsPage() {
   const topBalance = balances.length > 0 ? balances[0].balance : 0;
   const infiniteCount = balances.filter((b) => b.isInfinite).length;
 
+  const balanceMap = new Map(balances.map((b) => [b.licenseId, b.balance]));
+  const searchLicenses = allLicenses.map((l) => ({
+    licenseId: l.id,
+    organization: l.organization,
+    key: l.key,
+    balance: balanceMap.get(l.id) || 0,
+  }));
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Coins Management"
         description="Manage coin balances, transactions, and refunds across all licenses."
+      />
+
+      <CoinsPageActions
+        licenses={searchLicenses}
       />
 
       <StatCardGrid columns={4}>

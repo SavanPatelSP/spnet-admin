@@ -8,7 +8,11 @@ export async function logAudit(
   actorRole?: string | null,
   actorName?: string | null,
   description?: string | null,
-  actorEmail?: string | null
+  actorEmail?: string | null,
+  severity?: string | null,
+  entityType?: string | null,
+  entityId?: string | null,
+  metadata?: Record<string, unknown> | null,
 ) {
   try {
     await prisma.auditLog.create({
@@ -20,6 +24,10 @@ export async function logAudit(
         actorName,
         description,
         actorEmail,
+        severity: severity ?? "Medium",
+        entityType,
+        entityId,
+        metadata: metadata ? JSON.stringify(metadata) : null,
       },
     });
   } catch {
@@ -38,6 +46,10 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
         actorName: event.actorName || null,
         actorEmail: event.actorEmail || null,
         description: event.description || null,
+        severity: (event.metadata?.severity as string) ?? "Medium",
+        entityType: event.targetType || null,
+        entityId: event.targetId || null,
+        metadata: event.metadata ? JSON.stringify(event.metadata) : null,
       },
     });
   } catch {

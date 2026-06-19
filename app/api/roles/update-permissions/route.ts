@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requirePermission("Edit Roles");
+    const session = await requireApiPermission("Edit Roles");
     const body = await req.json();
     if (!body.roleId) {
       return Response.json({ error: "Role ID is required" }, { status: 400 });
@@ -34,7 +35,6 @@ export async function PUT(req: Request) {
 
     return Response.json({ success: true, count: body.permissions?.length || 0 });
   } catch (error) {
-    console.error("Permissions update error:", error);
-    return Response.json({ error: "Failed to update permissions" }, { status: 500 });
+    return handleApiError(error);
   }
 }

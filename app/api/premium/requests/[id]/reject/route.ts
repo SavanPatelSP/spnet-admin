@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const session = await requirePermission("premium.requests.reject");
+    const session = await requireApiPermission("premium.requests.reject");
     const existing = await prisma.premiumRequest.findUnique({ where: { id } });
     if (!existing) return Response.json({ error: "Premium request not found" }, { status: 404 });
 
@@ -38,7 +39,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return Response.json(updated);
   } catch (error) {
-    console.error("Premium request reject error:", error);
-    return Response.json({ error: "Failed to reject premium request" }, { status: 500 });
+    return handleApiError(error);
   }
 }

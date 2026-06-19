@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View Gem History");
+    await requireApiPermission("View Gem History");
     const { searchParams } = new URL(req.url);
     const licenseId = searchParams.get("licenseId");
 
@@ -21,7 +22,6 @@ export async function GET(req: Request) {
 
     return Response.json(transactions);
   } catch (error) {
-    console.error("Gems history error:", error);
-    return Response.json({ error: "Failed to fetch gem history" }, { status: 500 });
+    return handleApiError(error);
   }
 }

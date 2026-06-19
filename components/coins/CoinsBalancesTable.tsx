@@ -124,7 +124,7 @@ export function CoinsBalancesTable({ balances }: { balances: BalanceRow[] }) {
             </span>,
             <StatusBadge key="status" status={b.status} />,
             <div key="actions" className="flex items-center gap-1.5">
-              <AddCoinsModal licenseId={b.licenseId} organization={b.organization} />
+              <AddCoinsModal licenseId={b.licenseId} organization={b.organization} currentBalance={b.balance} />
               {b.balance > 0 && <RemoveCoinsModal licenseId={b.licenseId} organization={b.organization} currentBalance={b.balance} />}
               <SetCoinsModal licenseId={b.licenseId} organization={b.organization} currentBalance={b.balance} />
               {!b.isInfinite ? (

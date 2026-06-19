@@ -22,6 +22,10 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  handleRetry = () => {
+    this.setState({ hasError: false, error: undefined });
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -34,11 +38,11 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error?.message || "An unexpected error occurred."}
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={this.handleRetry}
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-medium text-white transition-colors hover:bg-red-500"
           >
             <RefreshCw size={16} />
-            Reload Page
+            Retry
           </button>
         </div>
       );

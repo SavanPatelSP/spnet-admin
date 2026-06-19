@@ -58,7 +58,7 @@ export default function CreateRolePage() {
         <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-8 lg:col-span-2">
           <h2 className="mb-6 text-xl font-bold">Role Information</h2>
           <div className="space-y-5">

@@ -3,6 +3,54 @@ import Credentials from "next-auth/providers/credentials";
 import type { DefaultSession } from "next-auth";
 import { AUTH } from "@/lib/constants";
 
+const IP_ATTEMPT_WINDOW = 60_000;
+const IP_MAX_ATTEMPTS = 10;
+
+interface IpRecord {
+  attempts: number;
+  firstAttempt: number;
+  blockedUntil: number;
+  strikeCount: number;
+}
+
+const ipAttempts = new Map<string, IpRecord>();
+
+function checkIpRateLimit(ip: string): { allowed: boolean; retryAfter: number } {
+  const now = Date.now();
+  const record = ipAttempts.get(ip);
+
+  if (record && record.blockedUntil > now) {
+    return { allowed: false, retryAfter: Math.ceil((record.blockedUntil - now) / 1000) };
+  }
+
+  if (record && record.firstAttempt < now - IP_ATTEMPT_WINDOW) {
+    ipAttempts.set(ip, { attempts: 1, firstAttempt: now, blockedUntil: 0, strikeCount: record.strikeCount });
+    return { allowed: true, retryAfter: 0 };
+  }
+
+  if (record && record.attempts >= IP_MAX_ATTEMPTS) {
+    const blockDuration = [60_000, 300_000, 600_000, 3_600_000][Math.min(record.strikeCount, 3)];
+    record.blockedUntil = now + blockDuration;
+    record.attempts = 0;
+    record.strikeCount += 1;
+    return { allowed: false, retryAfter: Math.ceil(blockDuration / 1000) };
+  }
+
+  if (record) {
+    record.attempts += 1;
+  } else {
+    ipAttempts.set(ip, { attempts: 1, firstAttempt: now, blockedUntil: 0, strikeCount: 0 });
+  }
+
+  return { allowed: true, retryAfter: 0 };
+}
+
+const LOCKOUT_STAGES = [15, 60, 360, 1440];
+
+function computeLockoutDuration(strikeCount: number): number {
+  return LOCKOUT_STAGES[Math.min(strikeCount, LOCKOUT_STAGES.length - 1)] * 60 * 1000;
+}
+
 declare module "next-auth" {
   interface Session {
     user: {
@@ -60,15 +108,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
         licenseKey: { label: "License Key", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         try {
           const { prisma } = await import("@/lib/prisma");
+
+          const headersList = await import("next/headers").then(m => m.headers());
+          const ipAddress = headersList.get("x-forwarded-for")?.split(",")[0]?.trim()
+            || headersList.get("x-real-ip")
+            || "127.0.0.1";
+          const userAgent = headersList.get("user-agent") || "Unknown";
 
           const email = String(credentials?.email ?? "").trim().toLowerCase();
           const password = String(credentials?.password ?? "");
           const licenseKey = String(credentials?.licenseKey ?? "").trim();
 
           if (!email || !password || !licenseKey) {
+            return null;
+          }
+
+          const ipCheck = checkIpRateLimit(ipAddress);
+          if (!ipCheck.allowed) {
+            await logAuthEvent("LOGIN_FAILURE", {
+              email,
+              description: `Login blocked: IP rate limit exceeded for ${ipAddress}, retry after ${ipCheck.retryAfter}s`,
+            });
             return null;
           }
 
@@ -88,10 +151,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email,
               description: `Login failed: no account found for ${email}`,
             });
+            await prisma.loginHistory.create({
+              data: { teamMemberId: "unknown", ipAddress, userAgent, success: false, failureReason: "No account found" },
+            });
             return null;
           }
 
-          // Check lockout
+          // Check lockout (progressive duration)
           if (member.lockedUntil && member.lockedUntil > new Date()) {
             await logAuthEvent("LOGIN_FAILURE", {
               teamMemberId: member.id,
@@ -105,6 +171,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const isValidPassword = await bcrypt.compare(password, member.password);
           if (!isValidPassword) {
             const newAttempts = member.failedLoginAttempts + 1;
+            const strikeCount = member.failedLoginAttempts >= AUTH.MAX_LOGIN_ATTEMPTS
+              ? (await prisma.teamMember.findUnique({ where: { id: member.id }, select: { failedLoginAttempts: true } }))?.failedLoginAttempts ?? 0
+              : 0;
+            const lockoutDuration = computeLockoutDuration(Math.floor(newAttempts / AUTH.MAX_LOGIN_ATTEMPTS));
             const update: {
               failedLoginAttempts: number;
               lockedUntil?: Date;
@@ -112,14 +182,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               failedLoginAttempts: newAttempts,
             };
             if (newAttempts >= AUTH.MAX_LOGIN_ATTEMPTS) {
-              update.lockedUntil = new Date(
-                Date.now() + AUTH.LOCKOUT_DURATION_MINUTES * 60 * 1000
-              );
+              update.lockedUntil = new Date(Date.now() + Math.max(lockoutDuration, AUTH.LOCKOUT_DURATION_MINUTES * 60 * 1000));
               update.failedLoginAttempts = 0;
             }
             await prisma.teamMember.update({
               where: { id: member.id },
               data: update,
+            });
+
+            await prisma.loginHistory.create({
+              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid password" },
             });
 
             await logAuthEvent("LOGIN_FAILURE", {
@@ -137,6 +209,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email,
               description: `Login failed: no license assigned to ${email}`,
             });
+            await prisma.loginHistory.create({
+              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "No license assigned" },
+            });
             return null;
           }
 
@@ -149,10 +224,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email,
               description: `Login failed: invalid license key provided for ${email}`,
             });
+            await prisma.loginHistory.create({
+              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid license key" },
+            });
             return null;
           }
 
-          // 5. License belongs to this user (enforced by DB relation, double-check)
+          // 5. License belongs to this user
           if (member.licenseId !== license.id) {
             await logAuthEvent("INVALID_LICENSE_KEY", {
               teamMemberId: member.id,
@@ -169,6 +247,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email,
               description: `Login denied: license ${license.key} expired on ${license.expiresAt.toISOString()}`,
             });
+            await prisma.loginHistory.create({
+              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License expired" },
+            });
             return null;
           }
 
@@ -179,6 +260,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email,
               description: `Login denied: license ${license.key} is suspended`,
             });
+            await prisma.loginHistory.create({
+              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License suspended" },
+            });
             return null;
           }
 
@@ -188,6 +272,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               teamMemberId: member.id,
               email,
               description: `Login denied: license ${license.key} has status ${license.status}`,
+            });
+            await prisma.loginHistory.create({
+              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: `License status: ${license.status}` },
             });
             return null;
           }
@@ -201,6 +288,94 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               lastLogin: new Date(),
             },
           });
+
+          // Session rotation: expire old sessions, keep only the last 5
+          const oldSessions = await prisma.session.findMany({
+            where: { teamMemberId: member.id },
+            orderBy: { createdAt: "desc" },
+            skip: 4,
+          });
+          if (oldSessions.length > 0) {
+            await prisma.session.deleteMany({
+              where: { id: { in: oldSessions.map((s) => s.id) } },
+            });
+          }
+
+          // Create Session record
+          const sessionToken = crypto.randomUUID();
+          await prisma.session.create({
+            data: {
+              teamMemberId: member.id,
+              token: sessionToken,
+              ipAddress,
+              userAgent,
+              expiresAt: new Date(Date.now() + AUTH.SESSION_MAX_AGE_SECONDS * 1000),
+            },
+          });
+
+          // Update team member with last login metadata
+          await prisma.teamMember.update({
+            where: { id: member.id },
+            data: {
+              lastLoginIp: ipAddress,
+              lastUserAgent: userAgent,
+            },
+          });
+
+          // Create LoginHistory record
+          await prisma.loginHistory.create({
+            data: {
+              teamMemberId: member.id,
+              ipAddress,
+              userAgent,
+              success: true,
+            },
+          });
+
+          // Create/update activation record for device tracking
+          const deviceId = `device-${member.id}-${license.id}`;
+          const existingActivation = await prisma.activation.findFirst({
+            where: { deviceId },
+          });
+
+          const os = userAgent.includes("Windows") ? "Windows"
+            : userAgent.includes("Mac") ? "macOS"
+            : userAgent.includes("Linux") ? "Linux"
+            : userAgent.includes("Android") ? "Android"
+            : userAgent.includes("iOS") ? "iOS"
+            : "Unknown";
+          const browser = userAgent.includes("Chrome") ? "Chrome"
+            : userAgent.includes("Firefox") ? "Firefox"
+            : userAgent.includes("Safari") ? "Safari"
+            : userAgent.includes("Edge") ? "Edge"
+            : "Unknown";
+
+          if (existingActivation) {
+            await prisma.activation.update({
+              where: { id: existingActivation.id },
+              data: {
+                ipAddress,
+                os,
+                browser,
+                lastSeen: new Date(),
+                trustScore: Math.min(100, existingActivation.trustScore + 5),
+              },
+            });
+          } else {
+            await prisma.activation.create({
+              data: {
+                deviceId,
+                deviceName: `${member.name || member.email}'s ${os} device`,
+                licenseId: license.id,
+                ipAddress,
+                os,
+                browser,
+                country: "Unknown",
+                trustScore: 50,
+                isBlacklisted: false,
+              },
+            });
+          }
 
           const permissions = (await prisma.permission.findMany({
             where: { roleId: member.roleId },

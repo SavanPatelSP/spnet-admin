@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("gems.set");
+    const session = await requireApiPermission("gems.set");
     const { licenseId, balance, type, reason, description } = await req.json();
 
     if (!licenseId || balance === undefined || balance < 0) {
@@ -60,7 +61,6 @@ export async function POST(req: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("Gems set error:", error);
-    return Response.json({ error: "Failed to set gem balance" }, { status: 500 });
+    return handleApiError(error);
   }
 }

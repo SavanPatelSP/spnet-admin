@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission("View Organizations");
+    await requireApiPermission("View Organizations");
     const { id: orgName } = await params;
 
     const licenses = await prisma.license.findMany({
@@ -45,8 +46,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to fetch organization";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }

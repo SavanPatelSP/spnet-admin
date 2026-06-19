@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requirePermission("Update Device Trust");
+    const session = await requireApiPermission("Update Device Trust");
     const body = await req.json();
 
     if (!body.id || body.trustScore === undefined || body.trustScore === null) {
@@ -42,7 +43,6 @@ export async function PUT(req: Request) {
 
     return Response.json({ success: true, data: { id: body.id, trustScore } });
   } catch (error) {
-    console.error("Update trust error:", error);
-    return Response.json({ error: "Failed to update trust score" }, { status: 500 });
+    return handleApiError(error);
   }
 }

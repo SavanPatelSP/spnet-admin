@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { PREMIUM_PLANS } from "@/lib/constants";
+import { XCircle, Edit3, FileText, Shield, Calendar, Eye } from "lucide-react";
 
 interface PremiumRequestActionsProps {
   requestId: string;
@@ -18,6 +19,13 @@ interface PremiumRequestActionsProps {
   submittedBy: string | null;
   licenseKey: string;
   convertedSubscriptionId: string | null;
+}
+
+function fmt(d: Date) {
+  const date = new Date(d);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()];
+  return `${dd} ${mm} ${date.getFullYear()}`;
 }
 
 export default function PremiumRequestActions(data: PremiumRequestActionsProps) {
@@ -89,13 +97,6 @@ export default function PremiumRequestActions(data: PremiumRequestActionsProps) 
   );
 }
 
-function fmt(d: Date) {
-  const date = new Date(d);
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()];
-  return `${dd} ${mm} ${date.getFullYear()}`;
-}
-
 function ApproveModal({
   open, onClose, requestId, organization, plan, durationDays,
 }: {
@@ -108,6 +109,10 @@ function ApproveModal({
   const [finalPlan, setFinalPlan] = useState(plan);
   const [finalDuration, setFinalDuration] = useState(durationDays);
   const [reviewNotes, setReviewNotes] = useState("");
+
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + finalDuration);
 
   async function handleApprove() {
     setError("");
@@ -133,47 +138,149 @@ function ApproveModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Approve Request" description={`Approve premium request for ${organization}.`} size="md"
+    <Modal open={open} onClose={onClose} title="Approve Request" description={`Approve premium request for ${organization}.`} size="lg"
       footer={
         <>
           <ActionButton variant="secondary" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton variant="primary" onClick={handleApprove} disabled={loading}>
+          <ActionButton variant="primary" onClick={handleApprove} loading={loading}>
             {loading ? "Approving..." : "Approve & Grant"}
           </ActionButton>
         </>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm">
-          <div className="grid grid-cols-2 gap-y-2 text-sm">
-            <span className="text-zinc-500">Organization</span><span className="text-zinc-200">{organization}</span>
-            <span className="text-zinc-500">Requested Plan</span><span className="text-zinc-200">{plan}</span>
-            <span className="text-zinc-500">Duration</span><span className="text-zinc-200">{durationDays} days</span>
+        {/* Step 1: Request Details */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">1</span>
+            <h4 className="text-sm font-semibold text-zinc-100">Request Details</h4>
+          </div>
+          <div className="grid grid-cols-2 gap-y-3 text-sm">
+            <div className="text-zinc-500">Organization</div>
+            <div className="font-medium text-zinc-200">{organization}</div>
+            <div className="text-zinc-500">Requested Plan</div>
+            <div><span className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-200">{plan}</span></div>
+            <div className="text-zinc-500">Duration</div>
+            <div className="text-zinc-200">{durationDays} days</div>
           </div>
         </div>
 
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Plan to Grant</label>
-          <select value={finalPlan} onChange={(e) => setFinalPlan(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
-          >
-            {PREMIUM_PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+        {/* Step 2: Grant Configuration */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">2</span>
+            <h4 className="text-sm font-semibold text-zinc-100">Grant Configuration</h4>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  <Shield className="mr-1 inline" size={12} />
+                  Plan to Grant
+                </label>
+                <select value={finalPlan} onChange={(e) => setFinalPlan(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+                >
+                  {PREMIUM_PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  <Calendar className="mr-1 inline" size={12} />
+                  Duration (days)
+                </label>
+                <input type="number" min={1} value={finalDuration} onChange={(e) => setFinalDuration(Number(e.target.value))}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                <FileText className="mr-1 inline" size={12} />
+                Review Notes (optional)
+              </label>
+              <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={2}
+                placeholder="Notes for the review record..."
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Duration (days)</label>
-          <input type="number" min={1} value={finalDuration} onChange={(e) => setFinalDuration(Number(e.target.value))}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Review Notes (optional)</label>
-          <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={2}
-            placeholder="Notes for the review record..."
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
-          />
+
+        {/* Step 3: Impact Summary & Audit */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">3</span>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
+              <Eye size={14} />
+              Impact &amp; Audit
+            </h4>
+          </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+              <div className="mb-2 text-xs font-medium text-zinc-500">Grant Preview</div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-500">Plan</span>
+                  <span className="font-medium text-zinc-200">{finalPlan}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-500">Start</span>
+                  <span className="text-zinc-300">{fmt(startDate)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-500">End</span>
+                  <span className="text-zinc-300">{fmt(endDate)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg bg-zinc-800/50 px-3 py-2">
+              <span className="text-xs text-zinc-500">Duration</span>
+              <p className="font-medium text-zinc-200">{finalDuration} days</p>
+              <span className="mt-2 block text-xs text-zinc-500">Organization</span>
+              <p className="font-medium text-zinc-200">{organization}</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>
+            </div>
+            <div className="space-y-1 font-mono text-xs">
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Action</span>
+                <span className="text-yellow-400">PREMIUM_REQUEST_APPROVED</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Request</span>
+                <span className="text-zinc-300">{requestId}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Plan</span>
+                <span className="text-zinc-300">{finalPlan}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Duration</span>
+                <span className="text-zinc-300">{finalDuration} days</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Start</span>
+                <span className="text-zinc-300">{fmt(startDate)}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">End</span>
+                <span className="text-zinc-300">{fmt(endDate)}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Notes</span>
+                <span className="text-zinc-300">{reviewNotes || <span className="text-zinc-600">(none)</span>}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Modal>
@@ -212,27 +319,88 @@ function RejectModal({ open, onClose, requestId, organization }: {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Reject Request" description={`Reject premium request from ${organization}.`} size="md"
+    <Modal open={open} onClose={onClose} title="Reject Request" description={`Reject premium request from ${organization}.`} size="lg"
       footer={
         <>
           <ActionButton variant="secondary" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton variant="danger" onClick={handleReject} disabled={loading}>
+          <ActionButton variant="danger" onClick={handleReject} loading={loading}>
             {loading ? "Rejecting..." : "Reject Request"}
           </ActionButton>
         </>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-300">
-          This will mark the request as rejected. The submitter can be notified separately.
+
+        {/* Step 1: Confirmation Context */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">1</span>
+            <h4 className="text-sm font-semibold text-zinc-100">Request Context</h4>
+          </div>
+          <div className="rounded-lg bg-zinc-800/30 px-3 py-2 text-sm">
+            <span className="text-zinc-500">Organization: </span>
+            <span className="font-medium text-zinc-200">{organization}</span>
+          </div>
         </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Rejection Reason</label>
-          <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={3}
-            placeholder="Explain why the request was rejected..."
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
-          />
+
+        {/* Step 2: Warning */}
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-700 text-xs font-bold text-red-200">2</span>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-red-200">
+              <XCircle size={14} />
+              Rejection Warning
+            </h4>
+          </div>
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3">
+            <p className="text-xs text-red-300">
+              This will mark the request as <strong>rejected</strong>. The submitter can be notified separately. This action is logged.
+            </p>
+          </div>
+        </div>
+
+        {/* Step 3: Reason */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">3</span>
+            <h4 className="text-sm font-semibold text-zinc-100">Rejection Reason</h4>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+              <FileText className="mr-1 inline" size={12} />
+              Reason
+            </label>
+            <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={3}
+              placeholder="Explain why the request was rejected..."
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>
+            </div>
+            <div className="space-y-1 font-mono text-xs">
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Action</span>
+                <span className="text-yellow-400">PREMIUM_REQUEST_REJECTED</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Request</span>
+                <span className="text-zinc-300">{requestId}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Organization</span>
+                <span className="text-zinc-300">{organization}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Reason</span>
+                <span className="text-zinc-300">{reviewNotes || <span className="text-zinc-600">(not provided)</span>}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Modal>
@@ -250,6 +418,8 @@ function ModifyModal({ open, onClose, requestId, plan, durationDays, reason }: {
   const [newDuration, setNewDuration] = useState(durationDays);
   const [newReason, setNewReason] = useState(reason || "");
   const [notes, setNotes] = useState("");
+
+  const hasChanges = newPlan !== plan || newDuration !== durationDays || newReason !== (reason || "");
 
   async function handleModify() {
     setError("");
@@ -280,46 +450,134 @@ function ModifyModal({ open, onClose, requestId, plan, durationDays, reason }: {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Modify Request" description="Update the premium request details." size="md"
+    <Modal open={open} onClose={onClose} title="Modify Request" description="Update the premium request details." size="lg"
       footer={
         <>
           <ActionButton variant="secondary" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton variant="primary" onClick={handleModify} disabled={loading}>
+          <ActionButton variant="primary" onClick={handleModify} loading={loading} disabled={!hasChanges}>
             {loading ? "Saving..." : "Save Changes"}
           </ActionButton>
         </>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Plan</label>
-            <select value={newPlan} onChange={(e) => setNewPlan(e.target.value)}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
-            >
-              {PREMIUM_PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+
+        {/* Step 1: Current Values */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">1</span>
+            <h4 className="text-sm font-semibold text-zinc-100">Current Values</h4>
           </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Duration (days)</label>
-            <input type="number" min={1} value={newDuration} onChange={(e) => setNewDuration(Number(e.target.value))}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-zinc-800/30 px-3 py-2">
+              <span className="text-xs text-zinc-500">Plan</span>
+              <p className="font-medium text-zinc-200">{plan}</p>
+            </div>
+            <div className="rounded-lg bg-zinc-800/30 px-3 py-2">
+              <span className="text-xs text-zinc-500">Duration</span>
+              <p className="font-medium text-zinc-200">{durationDays} days</p>
+            </div>
           </div>
         </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Reason</label>
-          <textarea value={newReason} onChange={(e) => setNewReason(e.target.value)} rows={2}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
-          />
+
+        {/* Step 2: Edit Fields */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">2</span>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
+              <Edit3 size={14} />
+              Edit Fields
+            </h4>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  <Shield className="mr-1 inline" size={12} />
+                  Plan
+                </label>
+                <select value={newPlan} onChange={(e) => setNewPlan(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+                >
+                  {PREMIUM_PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  <Calendar className="mr-1 inline" size={12} />
+                  Duration (days)
+                </label>
+                <input type="number" min={1} value={newDuration} onChange={(e) => setNewDuration(Number(e.target.value))}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                <FileText className="mr-1 inline" size={12} />
+                Reason
+              </label>
+              <textarea value={newReason} onChange={(e) => setNewReason(e.target.value)} rows={2}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                Internal Notes
+              </label>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Admin notes..."
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Internal Notes</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Admin notes..."
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
-          />
-        </div>
+
+        {/* Step 3: Changes & Audit */}
+        {hasChanges && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">3</span>
+              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
+                <Eye size={14} />
+                Changes &amp; Audit
+              </h4>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>
+              </div>
+              <div className="space-y-1 font-mono text-xs">
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">Action</span>
+                  <span className="text-yellow-400">PREMIUM_REQUEST_MODIFIED</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">Request</span>
+                  <span className="text-zinc-300">{requestId}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">Plan</span>
+                  <span className="text-zinc-300">{newPlan}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">Duration</span>
+                  <span className="text-zinc-300">{newDuration} days</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">Reason</span>
+                  <span className="text-zinc-300">{newReason || <span className="text-zinc-600">(not set)</span>}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">Notes</span>
+                  <span className="text-zinc-300">{notes || <span className="text-zinc-600">(none)</span>}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );
@@ -371,58 +629,145 @@ function ConvertModal({ open, onClose, requestId, licenseId, organization, licen
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Convert to Premium" description="Grant premium directly from this request." size="md"
+    <Modal open={open} onClose={onClose} title="Convert to Premium" description="Grant premium directly from this request." size="lg"
       footer={
         <>
           <ActionButton variant="secondary" onClick={onClose}>Cancel</ActionButton>
-          <ActionButton variant="primary" onClick={handleConvert} disabled={loading}>
+          <ActionButton variant="primary" onClick={handleConvert} loading={loading}>
             {loading ? "Granting..." : "Convert & Grant"}
           </ActionButton>
         </>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm">
-          <div className="grid grid-cols-2 gap-y-2 text-sm">
-            <span className="text-zinc-500">Organization</span><span className="text-zinc-200">{organization}</span>
-            <span className="text-zinc-500">License</span><code className="text-zinc-200">{licenseKey}</code>
-            <span className="text-zinc-500">Submitted By</span><span className="text-zinc-200">{submittedBy || "-"}</span>
+        {/* Step 1: Request Source */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">1</span>
+            <h4 className="text-sm font-semibold text-zinc-100">Request Source</h4>
+          </div>
+          <div className="grid grid-cols-2 gap-y-3 text-sm">
+            <div className="text-zinc-500">Organization</div>
+            <div className="font-medium text-zinc-200">{organization}</div>
+            <div className="text-zinc-500">License</div>
+            <code className="text-zinc-300">{licenseKey}</code>
+            <div className="text-zinc-500">Submitted By</div>
+            <div className="text-zinc-200">{submittedBy || <span className="text-zinc-600">-</span>}</div>
+            <div className="text-zinc-500">Requested Plan</div>
+            <div><span className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-200">{plan}</span></div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Plan</label>
-            <select value={finalPlan} onChange={(e) => setFinalPlan(e.target.value)}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
-            >
-              {PREMIUM_PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+        {/* Step 2: Grant Configuration */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">2</span>
+            <h4 className="text-sm font-semibold text-zinc-100">Grant Configuration</h4>
           </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Duration (days)</label>
-            <input type="number" min={1} value={finalDuration} onChange={(e) => setFinalDuration(Number(e.target.value))}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                <Shield className="mr-1 inline" size={12} />
+                Plan
+              </label>
+              <select value={finalPlan} onChange={(e) => setFinalPlan(e.target.value)}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+              >
+                {PREMIUM_PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                <Calendar className="mr-1 inline" size={12} />
+                Duration (days)
+              </label>
+              <input type="number" min={1} value={finalDuration} onChange={(e) => setFinalDuration(Number(e.target.value))}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+              <FileText className="mr-1 inline" size={12} />
+              Internal Notes
+            </label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+              placeholder="Additional context..."
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
             />
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-blue-300">
-          <div className="font-medium">Grant Preview</div>
-          <div className="mt-1 space-y-0.5">
-            <div>Plan: <strong>{finalPlan}</strong> &middot; Type: <strong>{subscriptionType}</strong></div>
-            <div>Start: <strong>{fmt(startDate)}</strong> &middot; End: <strong>{fmt(endDate)}</strong></div>
+        {/* Step 3: Grant Preview & Audit */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">3</span>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
+              <Eye size={14} />
+              Grant Preview &amp; Audit
+            </h4>
           </div>
-        </div>
 
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Internal Notes</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-            placeholder="Additional context..."
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
-          />
+          <div className="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+            <div className="text-xs font-medium text-blue-400 mb-2">Grant Preview</div>
+            <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+              <div className="text-zinc-500">Plan</div>
+              <div className="text-zinc-200 font-medium">{finalPlan}</div>
+              <div className="text-zinc-500">Type</div>
+              <div className="text-zinc-200">{subscriptionType}</div>
+              <div className="text-zinc-500">Start</div>
+              <div className="text-zinc-200">{fmt(startDate)}</div>
+              <div className="text-zinc-500">End</div>
+              <div className="text-zinc-200">{fmt(endDate)}</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>
+            </div>
+            <div className="space-y-1 font-mono text-xs">
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Action</span>
+                <span className="text-yellow-400">PREMIUM_GRANTED_FROM_REQUEST</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Request</span>
+                <span className="text-zinc-300">{requestId}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">License</span>
+                <span className="text-zinc-300">{licenseKey}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Plan</span>
+                <span className="text-zinc-300">{finalPlan}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Type</span>
+                <span className="text-zinc-300">{subscriptionType}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Duration</span>
+                <span className="text-zinc-300">{finalDuration} days</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Start</span>
+                <span className="text-zinc-300">{fmt(startDate)}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">End</span>
+                <span className="text-zinc-300">{fmt(endDate)}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 text-zinc-500">Notes</span>
+                <span className="text-zinc-300">{notes || <span className="text-zinc-600">(none)</span>}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Modal>

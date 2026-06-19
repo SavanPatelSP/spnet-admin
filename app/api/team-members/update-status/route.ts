@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requirePermission("Remove Team Members");
+    const session = await requireApiPermission("Remove Team Members");
     const body = await req.json();
     if (!body.id) {
       return Response.json({ error: "Member ID is required" }, { status: 400 });
@@ -26,7 +27,6 @@ export async function PUT(req: Request) {
 
     return Response.json(member);
   } catch (error) {
-    console.error("Status update error:", error);
-    return Response.json({ error: "Failed to update status" }, { status: 500 });
+    return handleApiError(error);
   }
 }

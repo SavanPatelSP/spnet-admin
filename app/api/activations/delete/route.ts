@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function DELETE(req: Request) {
   try {
-    const session = await requirePermission("Revoke Devices");
+    const session = await requireApiPermission("Revoke Devices");
     const body = await req.json();
     if (!body.id) {
       return Response.json({ error: "Activation ID is required" }, { status: 400 });
@@ -32,7 +33,6 @@ export async function DELETE(req: Request) {
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("Activation delete error:", error);
-    return Response.json({ error: "Failed to delete activation" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Change Premium Plan");
+    const session = await requireApiPermission("Change Premium Plan");
     const { licenseId, newPlan, newSubscriptionType, notes } = await req.json();
 
     if (!licenseId) {
@@ -86,7 +87,6 @@ export async function POST(req: Request) {
 
     return Response.json(subscription);
   } catch (error) {
-    console.error("Premium change-plan error:", error);
-    return Response.json({ error: "Failed to change premium plan" }, { status: 500 });
+    return handleApiError(error);
   }
 }

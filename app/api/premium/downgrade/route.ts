@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("premium.downgrade");
+    const session = await requireApiPermission("premium.downgrade");
     const { licenseId, newPlan, newSubscriptionType, notes } = await req.json();
 
     if (!licenseId || !newPlan) {
@@ -73,7 +74,6 @@ export async function POST(req: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("Premium downgrade error:", error);
-    return Response.json({ error: "Failed to downgrade premium" }, { status: 500 });
+    return handleApiError(error);
   }
 }

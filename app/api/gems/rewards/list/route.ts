@@ -1,15 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET() {
   try {
-    await requirePermission("View Gem History");
+    await requireApiPermission("View Gem History");
     const rewards = await prisma.gemReward.findMany({
       orderBy: { name: "asc" },
     });
     return Response.json(rewards);
   } catch (error) {
-    console.error("Gems rewards list error:", error);
-    return Response.json({ error: "Failed to fetch rewards" }, { status: 500 });
+    return handleApiError(error);
   }
 }

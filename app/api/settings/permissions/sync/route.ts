@@ -1,16 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { PERMISSION_GROUPS, ALL_PERMISSIONS, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET() {
-  await requirePermission("Edit Roles");
+  await requireApiPermission("Edit Roles");
   return Response.json(PERMISSION_GROUPS);
 }
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Edit Roles");
+    const session = await requireApiPermission("Edit Roles");
     const body = await req.json();
     const roleId: string | undefined = body.roleId;
 
@@ -26,8 +27,7 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, roleCount: roles.length });
   } catch (error) {
-    console.error("Permission sync error:", error);
-    return Response.json({ error: "Failed to sync permissions" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 

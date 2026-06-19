@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 import bcrypt from "bcryptjs";
@@ -11,7 +12,7 @@ function generateTempPassword(): string {
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Edit Users");
+    const session = await requireApiPermission("Edit Users");
     const body = await req.json();
     const { id } = body;
 
@@ -48,7 +49,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, tempPassword });
   } catch (error) {
-    console.error("Password reset error:", error);
-    return Response.json({ error: "Failed to reset password" }, { status: 500 });
+    return handleApiError(error);
   }
 }

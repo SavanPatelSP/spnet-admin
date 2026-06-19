@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("Manage License Features");
+    await requireApiPermission("Manage License Features");
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
 
@@ -33,14 +34,13 @@ export async function GET(req: Request) {
 
     return Response.json({ featureFlags });
   } catch (error) {
-    console.error("Feature flags get error:", error);
-    return Response.json({ error: "Failed to get feature flags" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
 export async function PUT(req: Request) {
   try {
-    const session = await requirePermission("Manage License Features");
+    const session = await requireApiPermission("Manage License Features");
     const body = await req.json();
     const { id, featureFlags } = body;
 
@@ -86,7 +86,6 @@ export async function PUT(req: Request) {
 
     return Response.json({ featureFlags: JSON.parse(updated.featureFlags || "{}") });
   } catch (error) {
-    console.error("Feature flags update error:", error);
-    return Response.json({ error: "Failed to update feature flags" }, { status: 500 });
+    return handleApiError(error);
   }
 }

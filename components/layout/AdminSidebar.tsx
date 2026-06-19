@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   KeyRound,
   Crown,
+  Sparkles,
   Coins,
   Gem,
   Users,
@@ -33,6 +34,7 @@ import {
   Monitor,
   Server,
   Lock,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -60,6 +62,7 @@ const groups: SidebarGroup[] = [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
       { icon: KeyRound, label: "Licenses", href: "/licenses", permission: "View Licenses" },
       { icon: Crown, label: "Premium", href: "/premium", permission: "View Premium" },
+      { icon: Sparkles, label: "Plan Overview", href: "/premium/plan-overview" },
       { icon: Coins, label: "Coins", href: "/coins", permission: "View Coin Balances" },
       { icon: Gem, label: "Gems", href: "/gems", permission: "View Gem Balances" },
     ],
@@ -89,6 +92,7 @@ const groups: SidebarGroup[] = [
       { icon: ClipboardList, label: "Audit Logs", href: "/audit-logs", permission: "View Audit Logs" },
       { icon: Shield, label: "Security", href: "/security", permission: "View Security Policies" },
       { icon: FileWarning, label: "Moderation", href: "/moderation", permission: "Moderate Content" },
+      { icon: Clock, label: "Sessions", href: "/sessions", permission: "Manage Sessions" },
     ],
   },
   {
@@ -138,7 +142,7 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
       <div className="flex items-center justify-between border-b border-zinc-800 p-6">
         <div className={cn("overflow-hidden", collapsed ? "w-0" : "w-auto")}>
           <h1 className="whitespace-nowrap text-2xl font-black tracking-tight">{APP_NAME}</h1>
-          <p className="mt-1 whitespace-nowrap text-sm text-zinc-500">Enterprise Control Center</p>
+          <p className="mt-1 whitespace-nowrap text-sm text-zinc-500">Admin Panel</p>
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -189,7 +193,7 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
       </nav>
       <div className="border-t border-zinc-800 p-4">
         <p className={cn("text-center text-xs text-zinc-600")}>
-          {collapsed ? `v1` : `${APP_NAME} Admin v1.0`}
+          {collapsed ? `v1.1.0` : `${APP_NAME} Admin v1.1.0 (200)`}
         </p>
       </div>
     </aside>

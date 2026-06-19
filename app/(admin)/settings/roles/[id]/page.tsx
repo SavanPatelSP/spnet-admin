@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -8,6 +9,8 @@ import { formatDateTime } from "@/lib/shared";
 import DeleteRoleButton from "../DeleteRoleButton";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Role Details" };
 
 export default async function RoleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,7 +49,7 @@ export default async function RoleDetailsPage({ params }: { params: Promise<{ id
         <StatCard title="Protected" value={role.protected ? "Yes" : "No"} icon={Shield} color={role.protected ? "yellow" : "default"} />
       </StatCardGrid>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
           <h2 className="mb-4 text-xl font-bold">Granted Permissions ({role.permissions.length})</h2>
           {role.permissions.length === 0 ? (

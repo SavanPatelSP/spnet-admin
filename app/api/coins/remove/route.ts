@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Remove Coins");
+    const session = await requireApiPermission("Remove Coins");
     const { licenseId, amount, reason, description } = await req.json();
 
     if (!licenseId || !amount || amount < 1) {
@@ -55,7 +56,6 @@ export async function POST(req: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("Coins remove error:", error);
-    return Response.json({ error: "Failed to remove coins" }, { status: 500 });
+    return handleApiError(error);
   }
 }

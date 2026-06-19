@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 const COIN_TYPES = ["FINITE", "PROMOTIONAL", "BONUS"];
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("coins.grant");
+    const session = await requireApiPermission("coins.grant");
     const { licenseId, amount, type, reason, description } = await req.json();
 
     if (!licenseId || !amount || amount < 1) {
@@ -60,7 +61,6 @@ export async function POST(req: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("Coins grant error:", error);
-    return Response.json({ error: "Failed to grant coins" }, { status: 500 });
+    return handleApiError(error);
   }
 }

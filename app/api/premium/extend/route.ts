@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Extend Premium");
+    const session = await requireApiPermission("Extend Premium");
     const { licenseId, additionalDays, notes } = await req.json();
 
     if (!licenseId || !additionalDays) {
@@ -56,7 +57,6 @@ export async function POST(req: Request) {
 
     return Response.json(subscription);
   } catch (error) {
-    console.error("Premium extend error:", error);
-    return Response.json({ error: "Failed to extend premium" }, { status: 500 });
+    return handleApiError(error);
   }
 }

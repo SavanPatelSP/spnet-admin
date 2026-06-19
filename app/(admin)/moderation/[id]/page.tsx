@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Report Details" };
 
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth-helpers";

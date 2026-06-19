@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("View Device Fingerprints");
+    const session = await requireApiPermission("View Device Fingerprints");
     const body = await req.json();
 
     if (!body.activationId || !body.fingerprint) {
@@ -51,7 +52,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, data: fingerprint });
   } catch (error) {
-    console.error("Fingerprint registration error:", error);
-    return Response.json({ error: "Failed to register fingerprint" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
 
 export async function GET() {
-  await requirePermission("View Roles");
+  await requireApiPermission("View Roles");
 
   const roles = await prisma.role.findMany({
     orderBy: { name: "asc" },

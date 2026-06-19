@@ -1,58 +1,37 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
 
-import { prisma } from "@/lib/prisma";
+export const metadata: Metadata = { title: "Content Management" };
+
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { DataTable } from "@/components/ui/DataTable";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { FileText, AlertTriangle, CheckCircle, Clock } from "lucide-react";
-import { formatDateTime } from "@/lib/shared";
+import { FileText, Clock, CheckCircle, Archive } from "lucide-react";
+import { ContentManager } from "@/components/content/ContentManager";
+import { contentStore } from "@/lib/content-store";
 
 export default async function ContentPage() {
-  const auditLogs = await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
-
-  const contentActions = ["LICENSE_CREATED", "LICENSE_UPDATED", "LICENSE_KEY_REGENERATED"];
-  const contentItems = auditLogs.filter((l) => contentActions.includes(l.action));
+  const drafts = await contentStore.list({ status: "DRAFT", pageSize: 1 });
+  const inReview = await contentStore.list({ status: "IN_REVIEW", pageSize: 1 });
+  const published = await contentStore.list({ status: "PUBLISHED", pageSize: 1 });
+  const archived = await contentStore.list({ status: "ARCHIVED", pageSize: 1 });
+  const all = await contentStore.list({ pageSize: 1000 });
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Content Moderation" description="Review and manage platform content and moderation queue." />
+      <PageHeader title="Content Management" description="Create, review, and publish content with Draft → Review → Publish workflow." />
 
       <StatCardGrid columns={4}>
-        <StatCard title="Total Items" value={contentItems.length} icon={FileText} color="blue" />
-        <StatCard title="Flagged" value={0} icon={AlertTriangle} color="red" subtitle="Awaiting review" />
-        <StatCard title="Approved" value={contentItems.length} icon={CheckCircle} color="green" />
-        <StatCard title="Pending" value={0} icon={Clock} color="yellow" />
+        <StatCard title="Drafts" value={drafts.total} icon={FileText} color="yellow" />
+        <StatCard title="In Review" value={inReview.total} icon={Clock} color="purple" />
+        <StatCard title="Published" value={published.total} icon={CheckCircle} color="green" />
+        <StatCard title="Archived" value={archived.total} icon={Archive} color="red" />
       </StatCardGrid>
 
-      <DataTable
-        columns={[
-          { key: "action", label: "Type", sortable: true },
-          { key: "description", label: "Content", sortable: false, searchable: true },
-          { key: "organization", label: "Organization", sortable: true, searchable: true },
-          { key: "actorName", label: "Author", sortable: true },
-          { key: "createdAt", label: "Date", sortable: true },
-        ]}
-        rows={contentItems.map((c) => ({
-          id: c.id,
-          values: {
-            action: c.action,
-            description: c.description || "",
-            organization: c.organization || "",
-            actorName: c.actorName || "",
-            createdAt: c.createdAt.toISOString(),
-          },
-          cells: [
-            <StatusBadge key="action" status={c.action.replace(/_/g, " ")} />,
-            <span key="description" className="text-sm">{c.description || "-"}</span>,
-            <span key="organization">{c.organization || "-"}</span>,
-            <span key="actorName">{c.actorName || "-"}</span>,
-            <span key="createdAt">{formatDateTime(c.createdAt)}</span>,
-          ],
-        }))}
-        emptyMessage="No content items found."
-        searchPlaceholder="Search content..."
-      />
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+        <h2 className="mb-6 text-xl font-bold">All Content</h2>
+        <ContentManager initialData={all.data} initialTotal={all.total} />
+      </div>
     </div>
   );
 }

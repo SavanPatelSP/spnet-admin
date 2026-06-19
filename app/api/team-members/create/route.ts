@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 import bcrypt from "bcryptjs";
@@ -11,7 +12,7 @@ function generateTempPassword(): string {
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Invite Team Members");
+    const session = await requireApiPermission("Invite Team Members");
     const body = await req.json();
     const { name, email, roleId } = body;
 
@@ -47,7 +48,6 @@ export async function POST(req: Request) {
       tempPassword,
     });
   } catch (error) {
-    console.error("Team member create error:", error);
-    return Response.json({ success: false, error: "Failed to create team member" }, { status: 500 });
+    return handleApiError(error);
   }
 }

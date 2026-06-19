@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requirePermission("Manage Tickets");
+    const session = await requireApiPermission("Manage Tickets");
     const { id } = await params;
     const { assigneeId } = await req.json();
 
@@ -35,8 +36,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return Response.json({ success: true, data: updated });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to assign ticket";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }

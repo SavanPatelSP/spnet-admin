@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await requirePermission("premium.requests.view");
+    await requireApiPermission("premium.requests.view");
     const request = await prisma.premiumRequest.findUnique({
       where: { id },
       include: {
@@ -16,15 +17,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!request) return Response.json({ error: "Premium request not found" }, { status: 404 });
     return Response.json(request);
   } catch (error) {
-    console.error("Premium request get error:", error);
-    return Response.json({ error: "Failed to fetch premium request" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const session = await requirePermission("premium.requests.approve");
+    const session = await requireApiPermission("premium.requests.approve");
     const { requestedPlan, requestedDurationDays, reason, notes } = await req.json();
 
     const existing = await prisma.premiumRequest.findUnique({ where: { id } });
@@ -56,15 +56,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     return Response.json(updated);
   } catch (error) {
-    console.error("Premium request update error:", error);
-    return Response.json({ error: "Failed to update premium request" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const session = await requirePermission("premium.requests.reject");
+    const session = await requireApiPermission("premium.requests.reject");
     const existing = await prisma.premiumRequest.findUnique({ where: { id } });
     if (!existing) return Response.json({ error: "Premium request not found" }, { status: 404 });
 
@@ -82,7 +81,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("Premium request delete error:", error);
-    return Response.json({ error: "Failed to delete premium request" }, { status: 500 });
+    return handleApiError(error);
   }
 }

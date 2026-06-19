@@ -1,14 +1,23 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    await requirePermission("View Device Analytics");
+    await requireApiPermission("View Device Analytics");
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const ranges = [
+      { range: "0-20", gte: 0, lte: 20 },
+      { range: "21-40", gte: 21, lte: 40 },
+      { range: "41-60", gte: 41, lte: 60 },
+      { range: "61-80", gte: 61, lte: 80 },
+      { range: "81-100", gte: 81, lte: 100 },
+    ] as const;
 
     const [
       totalDevices,
@@ -19,6 +28,7 @@ export async function GET() {
       byDeviceType,
       byCountry,
       trend,
+      ...trustCounts
     ] = await Promise.all([
       prisma.activation.count(),
       prisma.activation.count({ where: { isBlacklisted: true } }),
@@ -51,6 +61,9 @@ export async function GET() {
         `SELECT date(createdAt) as date, COUNT(*) as count FROM Activation WHERE createdAt >= ? GROUP BY date(createdAt) ORDER BY date ASC`,
         thirtyDaysAgo.toISOString()
       ),
+      ...ranges.map((r) =>
+        prisma.activation.count({ where: { trustScore: { gte: r.gte, lte: r.lte } } })
+      ),
     ]);
 
     return Response.json({
@@ -67,10 +80,13 @@ export async function GET() {
           date: t.date,
           count: Number(t.count),
         })),
+        trustDistribution: ranges.map((r, i) => ({
+          range: r.range,
+          count: trustCounts[i],
+        })),
       },
     });
   } catch (error) {
-    console.error("Device analytics error:", error);
-    return Response.json({ error: "Failed to fetch device analytics" }, { status: 500 });
+    return handleApiError(error);
   }
 }

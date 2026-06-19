@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requirePermission("Manage License Templates");
+    const session = await requireApiPermission("Manage License Templates");
     const body = await req.json();
     const { id, name, description, plan, maxDevices, durationDays, featureFlags, defaultNotes, isActive } = body;
 
@@ -44,7 +45,6 @@ export async function PUT(req: Request) {
 
     return Response.json(template);
   } catch (error) {
-    console.error("Template update error:", error);
-    return Response.json({ error: "Failed to update template" }, { status: 500 });
+    return handleApiError(error);
   }
 }

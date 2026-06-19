@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Devices" };
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -38,6 +42,7 @@ export default async function DevicesPage() {
     licenseId: a.license.id,
     licenseKey: a.license.key,
     organization: a.license.organization,
+    lastSeen: a.lastSeen,
     createdAt: a.createdAt,
   }));
 

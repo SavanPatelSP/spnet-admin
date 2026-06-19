@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { generateKey, parseExpiryDate } from "@/lib/shared";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Bulk Create Licenses");
+    const session = await requireApiPermission("Bulk Create Licenses");
     const body = await req.json();
     const { count, organization, plan, expiresAt, maxDevices, notes, templateId } = body;
 
@@ -56,7 +57,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, data: licenses, count: licenses.length });
   } catch (error) {
-    console.error("Bulk create error:", error);
-    return Response.json({ error: "Failed to bulk create licenses" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -46,10 +46,10 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
       <div
-        className={cn("w-full rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl", sizeStyles[size], className)}
+        className={cn("flex flex-col w-full rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl max-h-[90vh]", sizeStyles[size], className)}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-6 flex items-start justify-between">
+        <div className="mb-6 flex items-start justify-between shrink-0">
           <div>
             <h2 className="text-2xl font-bold">{title}</h2>
             {description && <p className="mt-1 text-sm text-zinc-500">{description}</p>}
@@ -61,8 +61,8 @@ export function Modal({ open, onClose, title, description, children, footer, siz
             <X size={20} />
           </button>
         </div>
-        <div>{children}</div>
-        {footer && <div className="mt-6 flex items-center justify-end gap-3 border-t border-zinc-800 pt-6">{footer}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        {footer && <div className="mt-6 flex items-center justify-end gap-3 border-t border-zinc-800 pt-6 shrink-0">{footer}</div>}
       </div>
     </div>
   );

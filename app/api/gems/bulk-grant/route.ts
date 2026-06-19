@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Grant Gems");
+    const session = await requireApiPermission("Grant Gems");
     const { licenseIds, amount, rewardId, reason, description } = await req.json();
 
     if (!licenseIds || !Array.isArray(licenseIds) || licenseIds.length === 0) {
@@ -72,7 +73,6 @@ export async function POST(req: Request) {
 
     return Response.json({ count: results.length, results });
   } catch (error) {
-    console.error("Gems bulk grant error:", error);
-    return Response.json({ error: "Failed to grant gems" }, { status: 500 });
+    return handleApiError(error);
   }
 }

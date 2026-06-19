@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View Devices");
+    await requireApiPermission("View Devices");
 
     const url = new URL(req.url);
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
@@ -61,7 +62,6 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Device list error:", error);
-    return Response.json({ error: "Failed to fetch devices" }, { status: 500 });
+    return handleApiError(error);
   }
 }

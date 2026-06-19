@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function PUT(req: Request) {
   try {
-    const session = await requirePermission("Edit Team Members");
+    const session = await requireApiPermission("Edit Team Members");
     const { id, name, email, roleId, licenseId, status } = await req.json();
 
     if (!id) {
@@ -67,7 +68,6 @@ export async function PUT(req: Request) {
 
     return Response.json({ member: updated });
   } catch (error) {
-    console.error("Team member update error:", error);
-    return Response.json({ error: "Failed to update team member" }, { status: 500 });
+    return handleApiError(error);
   }
 }

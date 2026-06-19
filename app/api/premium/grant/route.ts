@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Grant Premium");
+    const session = await requireApiPermission("Grant Premium");
     const { licenseId, plan, durationDays, subscriptionType, notes } = await req.json();
 
     if (!licenseId || !plan) {
@@ -70,7 +71,6 @@ export async function POST(req: Request) {
 
     return Response.json(subscription);
   } catch (error) {
-    console.error("Premium grant error:", error);
-    return Response.json({ error: "Failed to grant premium" }, { status: 500 });
+    return handleApiError(error);
   }
 }

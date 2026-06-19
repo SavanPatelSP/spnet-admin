@@ -1,24 +1,29 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Revenue" };
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
-import { Tooltip } from "@/components/ui/Tooltip";
-import { CreditCard, TrendingUp, Crown, TrendingDown, Activity } from "lucide-react";
+import { PREMIUM_PLANS, PLAN_PRICES } from "@/lib/constants";
+import { CreditCard, TrendingUp, Crown, TrendingDown, Activity, Minus, AlertTriangle } from "lucide-react";
 import { formatDate } from "@/lib/shared";
 
 export default async function RevenuePage() {
-  const [licenses, premiumSubs] = await Promise.all([
+  const [licenses, premiumSubs, allPremiumSubs] = await Promise.all([
     prisma.license.findMany(),
     prisma.premiumSubscription.findMany({
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    prisma.premiumSubscription.findMany(),
   ]);
 
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
-  const premiumLicenses = licenses.filter((l) => ["ENTERPRISE", "LIFETIME", "BUSINESS"].includes(l.plan)).length;
+  const premiumLicenses = licenses.filter((l) => PREMIUM_PLANS.includes(l.plan as typeof PREMIUM_PLANS[number])).length;
   const premiumRate = licenses.length > 0 ? Math.round((premiumLicenses / licenses.length) * 100) : 0;
 
   const planDist = licenses.reduce(
@@ -29,17 +34,49 @@ export default async function RevenuePage() {
     {} as Record<string, number>,
   );
 
-  const totalSubs = premiumSubs.length;
-  const revokes = premiumSubs.filter((s) => s.action === "REVOKED").length;
-  const extensions = premiumSubs.filter((s) => s.action === "EXTENDED").length;
-  const churnRate = totalSubs > 0 ? Math.round((revokes / totalSubs) * 100) : 0;
+  const totalSubs = allPremiumSubs.length;
+  const revokedSubs = allPremiumSubs.filter((s) => s.action === "REVOKED");
+  const uniqueRevokedLicenseIds = new Set(revokedSubs.map((s) => s.licenseId));
+  const revokedCount = uniqueRevokedLicenseIds.size;
+  const revokeEvents = revokedSubs.length;
+  const extensions = allPremiumSubs.filter((s) => s.action === "EXTENDED").length;
+  const churnRate = totalSubs > 0 ? Math.round((revokeEvents / totalSubs) * 100) : 0;
+
+  const lifetimeSubs = allPremiumSubs.filter((s) => s.subscriptionType === "LIFETIME").length;
+  const monthlySubsCount = allPremiumSubs.filter((s) => s.subscriptionType === "MONTHLY").length;
+  const yearlySubsCount = allPremiumSubs.filter((s) => s.subscriptionType === "YEARLY").length;
+  const customSubsCount = allPremiumSubs.filter((s) => s.subscriptionType === "CUSTOM").length;
+
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const thisMonthSubs = allPremiumSubs.filter((s) => s.createdAt >= currentMonthStart).length;
+  const prevMonthSubs = allPremiumSubs.filter(
+    (s) => s.createdAt >= prevMonthStart && s.createdAt < currentMonthStart,
+  ).length;
+  const subTrend = prevMonthSubs > 0 ? Math.round(((thisMonthSubs - prevMonthSubs) / prevMonthSubs) * 100) : 0;
+
+  const thisMonthRevokes = allPremiumSubs.filter(
+    (s) => s.action === "REVOKED" && s.createdAt >= currentMonthStart,
+  ).length;
+  const prevMonthRevokes = allPremiumSubs.filter(
+    (s) => s.action === "REVOKED" && s.createdAt >= prevMonthStart && s.createdAt < currentMonthStart,
+  ).length;
+  const revokeTrend = prevMonthRevokes > 0 ? Math.round(((thisMonthRevokes - prevMonthRevokes) / prevMonthRevokes) * 100) : 0;
+
+  const revokedRevenue = revokedSubs.reduce((sum, s) => {
+    const basePrice = PLAN_PRICES[s.plan as keyof typeof PLAN_PRICES];
+    const multiplier = s.subscriptionType === "YEARLY" ? 12 : s.subscriptionType === "LIFETIME" ? 120 : s.subscriptionType === "CUSTOM" ? s.durationDays ? s.durationDays / 30 : 1 : 1;
+    const annualized = (basePrice || 0) * multiplier;
+    return sum + annualized;
+  }, 0);
 
   const monthlySubs: { month: string; count: number }[] = [];
-  const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const monthLabel = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-    const count = premiumSubs.filter(
+    const count = allPremiumSubs.filter(
       (s) => s.createdAt >= d && s.createdAt < new Date(d.getFullYear(), d.getMonth() + 1, 1),
     ).length;
     monthlySubs.push({ month: monthLabel, count });
@@ -66,15 +103,77 @@ export default async function RevenuePage() {
     <div className="space-y-8">
       <PageHeader title="Revenue Dashboard" description="Track earnings, subscriptions and financial metrics." />
 
-      <StatCardGrid columns={5}>
+      <StatCardGrid columns={4}>
         <StatCard title="Total Licenses" value={licenses.length} icon={CreditCard} color="blue" subtitle={`${activeLicenses} active`} />
         <StatCard title="Premium Licenses" value={premiumLicenses} icon={Crown} color="yellow" subtitle={`${premiumRate}% premium rate`} />
         <StatCard title="Conversion" value={`${conversionRate}%`} icon={TrendingUp} color="green" subtitle="Free → Premium" />
-        <Tooltip content="Revokes / Total subscriptions">
-          <StatCard title="Churn Rate" value={`${churnRate}%`} icon={TrendingDown} color={churnRate > 10 ? "red" : "green"} subtitle={`${revokes} revoked`} />
-        </Tooltip>
         <StatCard title="Extensions" value={extensions} icon={Activity} color="purple" subtitle="Premium extensions" />
       </StatCardGrid>
+
+      <StatCardGrid columns={4}>
+        <StatCard
+          title="Total Subscriptions"
+          value={totalSubs}
+          icon={CreditCard}
+          color="blue"
+          subtitle={
+            subTrend !== 0
+              ? `${subTrend > 0 ? "+" : ""}${subTrend}% vs last month`
+              : "No change vs last month"
+          }
+          trend={{ value: `${subTrend > 0 ? "+" : ""}${subTrend}%`, direction: subTrend > 0 ? "up" : subTrend < 0 ? "down" : "neutral" }}
+        />
+        <StatCard
+          title="Revoked Subscriptions"
+          value={revokedCount}
+          icon={AlertTriangle}
+          color="red"
+          subtitle={
+            revokeTrend !== 0
+              ? `${revokeTrend > 0 ? "+" : ""}${revokeTrend}% vs last month`
+              : "No change vs last month"
+          }
+          trend={{ value: `${revokeTrend > 0 ? "+" : ""}${revokeTrend}%`, direction: revokeTrend > 0 ? "up" : revokeTrend < 0 ? "down" : "neutral" }}
+        />
+        <StatCard
+          title="Churn Rate"
+          value={`${churnRate}%`}
+          icon={TrendingDown}
+          color={churnRate > 10 ? "red" : churnRate > 5 ? "yellow" : "green"}
+          subtitle={`${revokeEvents} revoke events`}
+        />
+        <StatCard
+          title="Subscription Breakdown"
+          value={`${monthlySubsCount + yearlySubsCount + lifetimeSubs + customSubsCount}`}
+          icon={Minus}
+          color="purple"
+          subtitle={`${monthlySubsCount}M / ${yearlySubsCount}Y / ${lifetimeSubs}L / ${customSubsCount}C`}
+        />
+      </StatCardGrid>
+
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Revenue Impact Summary</h2>
+          <span className="text-sm text-zinc-500">{revokedCount} revoked license{revokedCount !== 1 ? "s" : ""}</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
+            <p className="text-xs text-red-400 mb-1">Lost Revenue (Revoked)</p>
+            <p className="text-2xl font-bold text-red-300">${revokedRevenue.toLocaleString()}</p>
+            <p className="text-[10px] text-red-400/60">Annualized value of revoked subscriptions</p>
+          </div>
+          <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+            <p className="text-xs text-green-400 mb-1">Active Licenses</p>
+            <p className="text-2xl font-bold text-green-300">{activeLicenses}</p>
+            <p className="text-[10px] text-green-400/60">Out of {licenses.length} total</p>
+          </div>
+          <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+            <p className="text-xs text-yellow-400 mb-1">Churn Impact</p>
+            <p className="text-2xl font-bold text-yellow-300">{churnRate}%</p>
+            <p className="text-[10px] text-yellow-400/60">{revokeEvents} revocations across {revokedCount} license{revokedCount !== 1 ? "s" : ""}</p>
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
@@ -101,7 +200,7 @@ export default async function RevenuePage() {
               .sort(([, a], [, b]) => b - a)
               .map(([plan, count]) => {
                 const max = Math.max(...Object.values(planDist));
-                const isPremium = ["ENTERPRISE", "LIFETIME", "BUSINESS"].includes(plan);
+                const isPremium = PREMIUM_PLANS.includes(plan as typeof PREMIUM_PLANS[number]);
                 return (
                   <div key={plan} className="flex items-center justify-between rounded-xl bg-zinc-800/50 px-4 py-3">
                     <div className="flex items-center gap-2">

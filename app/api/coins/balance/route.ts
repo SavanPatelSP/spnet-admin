@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View Coin Balances");
+    await requireApiPermission("View Coin Balances");
     const { searchParams } = new URL(req.url);
     const licenseId = searchParams.get("licenseId");
 
@@ -21,7 +22,6 @@ export async function GET(req: Request) {
     });
     return Response.json(allBalances);
   } catch (error) {
-    console.error("Coins balance error:", error);
-    return Response.json({ error: "Failed to fetch balances" }, { status: 500 });
+    return handleApiError(error);
   }
 }

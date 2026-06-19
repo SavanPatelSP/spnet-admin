@@ -33,6 +33,7 @@ interface DataTableProps {
   bulkActions?: ReactNode;
   exportable?: boolean;
   onExport?: () => void;
+  exportActions?: ReactNode;
   filters?: ReactNode;
   emptyIcon?: ReactNode;
   emptyTitle?: string;
@@ -52,6 +53,7 @@ export function DataTable({
   bulkActions,
   exportable,
   onExport,
+  exportActions,
   filters,
   emptyIcon,
   emptyTitle,
@@ -125,8 +127,8 @@ export function DataTable({
   return (
     <div className={cn("overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl", className)}>
       <div className="space-y-3 border-b border-zinc-800 px-5 py-4">
-        <div className="flex items-center justify-between">
-          <div className="relative">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:w-auto">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               value={search}
@@ -135,11 +137,11 @@ export function DataTable({
                 setPage(0);
               }}
               placeholder={searchPlaceholder}
-              className="w-72 rounded-2xl border border-zinc-700 bg-zinc-800/50 py-2 pl-10 pr-4 text-sm outline-none focus:border-zinc-500"
+              className="w-full sm:w-72 rounded-2xl border border-zinc-700 bg-zinc-800/50 py-2 pl-10 pr-4 text-sm outline-none focus:border-zinc-500"
               aria-label={searchPlaceholder}
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {selectable && selectedIds && selectedIds.size > 0 && (
               <span className="text-sm text-zinc-400">{selectedIds.size} selected</span>
             )}
@@ -156,6 +158,7 @@ export function DataTable({
                 Export
               </button>
             )}
+            {exportActions}
             <select
               value={perPage}
               onChange={(e) => { setPerPage(Number(e.target.value)); setPage(0); }}

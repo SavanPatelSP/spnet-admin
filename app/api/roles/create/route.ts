@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Create Roles");
+    const session = await requireApiPermission("Create Roles");
     const body = await req.json();
     const { name, description, riskLevel, protected: isProtected } = body;
 
@@ -33,7 +34,6 @@ export async function POST(req: Request) {
 
     return Response.json(role);
   } catch (error) {
-    console.error("Role create error:", error);
-    return Response.json({ error: "Failed to create role" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View License Events");
+    await requireApiPermission("View License Events");
     const url = new URL(req.url);
     const licenseId = url.searchParams.get("licenseId");
 
@@ -23,7 +24,6 @@ export async function GET(req: Request) {
 
     return Response.json(parsed);
   } catch (error) {
-    console.error("Events get error:", error);
-    return Response.json({ error: "Failed to get events" }, { status: 500 });
+    return handleApiError(error);
   }
 }

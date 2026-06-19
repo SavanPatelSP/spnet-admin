@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("Manage License Tags");
+    await requireApiPermission("Manage License Tags");
     const url = new URL(req.url);
     const licenseId = url.searchParams.get("licenseId");
 
@@ -20,14 +21,13 @@ export async function GET(req: Request) {
 
     return Response.json(tags);
   } catch (error) {
-    console.error("Tags get error:", error);
-    return Response.json({ error: "Failed to get tags" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Manage License Tags");
+    const session = await requireApiPermission("Manage License Tags");
     const body = await req.json();
     const { licenseId, name, color } = body;
 
@@ -77,14 +77,13 @@ export async function POST(req: Request) {
     if ((error as Record<string, unknown>)?.code === "P2002") {
       return Response.json({ error: "Tag with this name already exists for this license" }, { status: 409 });
     }
-    console.error("Tag create error:", error);
-    return Response.json({ error: "Failed to create tag" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const session = await requirePermission("Manage License Tags");
+    const session = await requireApiPermission("Manage License Tags");
     const body = await req.json();
     const { id } = body;
 
@@ -124,7 +123,6 @@ export async function DELETE(req: Request) {
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("Tag delete error:", error);
-    return Response.json({ error: "Failed to delete tag" }, { status: 500 });
+    return handleApiError(error);
   }
 }

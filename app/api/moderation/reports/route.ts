@@ -1,25 +1,24 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET() {
   try {
-    await requirePermission("Moderate Content");
+    await requireApiPermission("Moderate Content");
     const reports = await prisma.moderationReport.findMany({
       orderBy: { createdAt: "desc" },
     });
     return Response.json({ success: true, data: reports });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to fetch reports";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Moderate Content");
+    const session = await requireApiPermission("Moderate Content");
     const { targetType, targetId, reason, description } = await req.json();
 
     if (!targetType || !targetId || !reason?.trim()) {
@@ -45,8 +44,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, data: report });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to create report";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }

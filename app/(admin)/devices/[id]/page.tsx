@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,6 +14,8 @@ import { DeviceSessionEnforcement } from "@/components/devices/DeviceSessionEnfo
 import RevokeDeviceButton from "@/components/devices/RevokeDeviceButton";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Device Details" };
 
 export default async function DeviceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,7 +37,6 @@ export default async function DeviceDetailsPage({ params }: { params: Promise<{ 
             <DeviceBlacklistButton
               activationId={activation.id}
               isBlacklisted={activation.isBlacklisted}
-              onToggle={() => {}}
             />
             <RevokeDeviceButton id={activation.id} />
             <Link
@@ -59,7 +61,7 @@ export default async function DeviceDetailsPage({ params }: { params: Promise<{ 
         <StatCard title="First Seen" value={formatDateTime(activation.createdAt)} icon={Clock} color="default" />
       </StatCardGrid>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <DeviceFingerprintCard
           activationId={activation.id}
           initialFingerprint={activation.fingerprint ? {
@@ -80,12 +82,12 @@ export default async function DeviceDetailsPage({ params }: { params: Promise<{ 
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <DeviceSessionEnforcement licenseId={activation.license.id} />
         <DeviceTrustBadge trustScore={activation.trustScore} size="lg" activationId={activation.id} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
           <h2 className="mb-4 text-xl font-bold">Profile Information</h2>
           <div className="space-y-4">

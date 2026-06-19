@@ -4,27 +4,10 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, PLAN_TIERS, SUBSCRIPTION_TYPES } from "@/lib/constants";
+import { API_ROUTES, PLAN_TIERS, PLAN_PRICES, SUBSCRIPTION_TYPES } from "@/lib/constants";
+import { getPlanFeatureList } from "@/lib/premium";
 import { daysUntil } from "@/lib/shared";
-import { ArrowUp, ArrowDown, Check, Minus, ArrowRight, RefreshCw } from "lucide-react";
-
-const PLAN_PRICES: Record<string, number> = {
-  FREE: 0,
-  BASIC: 4,
-  PLUS: 9,
-  PRO: 29,
-  BUSINESS: 99,
-  ENTERPRISE: 299,
-};
-
-const PLAN_FEATURES: Record<string, string[]> = {
-  FREE: ["Basic dashboard", "Up to 3 devices", "Community support"],
-  BASIC: ["Enhanced dashboard", "Up to 5 devices", "Email support"],
-  PLUS: ["Basic analytics dashboard", "Up to 5 devices", "Email support", "Standard API access"],
-  PRO: ["Advanced analytics dashboard", "Up to 10 devices", "Priority email support", "Full API access", "Custom branding"],
-  BUSINESS: ["Premium analytics & reports", "Up to 25 devices", "Dedicated support", "Full API access", "Custom branding", "Custom integrations", "SLA: 99.9% uptime"],
-  ENTERPRISE: ["Enterprise analytics suite", "Unlimited devices", "24/7 dedicated support", "Full API access", "White-label branding", "Custom integrations", "SLA: 99.99% uptime", "Priority feature requests", "Dedicated account manager"],
-};
+import { ArrowUp, ArrowDown, Check, Minus, ArrowRight, RefreshCw, Calendar } from "lucide-react";
 
 interface Props {
   licenseId: string;
@@ -59,7 +42,30 @@ export default function ChangePremiumPlanModal({
   const [newPlan, setNewPlan] = useState("");
   const [newSubscriptionType, setNewSubscriptionType] = useState(currentSubscriptionType);
   const [remainingTimeOption, setRemainingTimeOption] = useState("keep");
+  const [customDuration, setCustomDuration] = useState(1);
+  const [customDurationUnit, setCustomDurationUnit] = useState<"days" | "weeks" | "months" | "years">("months");
+  const [customStartDate, setCustomStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
+
+  const isCustomSubscription = newSubscriptionType === "CUSTOM";
+
+  const customDurationDays = useMemo(() => {
+    switch (customDurationUnit) {
+      case "days": return customDuration;
+      case "weeks": return customDuration * 7;
+      case "months": return customDuration * 30;
+      case "years": return customDuration * 365;
+      default: return customDuration;
+    }
+  }, [customDuration, customDurationUnit]);
+
+  const customEndDate = useMemo(() => {
+    if (!isCustomSubscription) return null;
+    const start = new Date(customStartDate);
+    const end = new Date(start);
+    end.setDate(end.getDate() + customDurationDays);
+    return end;
+  }, [customStartDate, customDurationDays, isCustomSubscription]);
 
   const remainingDays = daysUntil(new Date(currentExpiry));
   const currentIndex = PLAN_TIERS.indexOf(currentPlan as never);
@@ -77,8 +83,14 @@ export default function ChangePremiumPlanModal({
   const targetPrice = PLAN_PRICES[newPlan] || 0;
   const priceDiff = targetPrice - currentPrice;
 
-  const currentFeatures = useMemo(() => PLAN_FEATURES[currentPlan] || [], [currentPlan]);
-  const targetFeatures = useMemo(() => PLAN_FEATURES[newPlan] || [], [newPlan]);
+  const customBilling = useMemo(() => {
+    if (!isCustomSubscription || customDurationDays <= 0) return null;
+    const total = (targetPrice / 30) * customDurationDays;
+    return { total, perMonth: targetPrice, label: `$${total.toFixed(2)} for ${customDuration} ${customDurationUnit}`, rate: `$${targetPrice}/mo` };
+  }, [targetPrice, isCustomSubscription, customDuration, customDurationUnit, customDurationDays]);
+
+  const currentFeatures = useMemo(() => getPlanFeatureList(currentPlan), [currentPlan]);
+  const targetFeatures = useMemo(() => getPlanFeatureList(newPlan), [newPlan]);
   const gainedFeatures = useMemo(
     () => direction === "upgrade" ? targetFeatures.filter((f) => !currentFeatures.includes(f)) : [],
     [direction, currentFeatures, targetFeatures]
@@ -105,6 +117,10 @@ export default function ChangePremiumPlanModal({
           newPlan: planChanged ? newPlan : currentPlan,
           newSubscriptionType: typeChanged ? newSubscriptionType : undefined,
           remainingTimeOption,
+          customDuration: isCustomSubscription ? customDuration : undefined,
+          customDurationUnit: isCustomSubscription ? customDurationUnit : undefined,
+          customDurationDays: isCustomSubscription ? customDurationDays : undefined,
+          customStartDate: isCustomSubscription ? customStartDate : undefined,
           notes: notes || null,
         }),
       });
@@ -157,12 +173,12 @@ export default function ChangePremiumPlanModal({
           )}
 
           {/* Step 1: Current Subscription */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">1</span>
               <h4 className="text-sm font-semibold text-zinc-100">Current Subscription</h4>
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
               <div className="text-zinc-500">Organization</div>
               <div className="font-medium text-zinc-100">{organization}</div>
               <div className="text-zinc-500">Plan</div>
@@ -179,13 +195,13 @@ export default function ChangePremiumPlanModal({
           </div>
 
           {/* Step 2: Target Configuration */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">2</span>
               <h4 className="text-sm font-semibold text-zinc-100">Target Configuration</h4>
             </div>
 
-            <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-zinc-400">New Plan</label>
                 <select
@@ -258,7 +274,7 @@ export default function ChangePremiumPlanModal({
                     )}
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className="text-xs text-zinc-500">Current Price</span>
                       <p className="font-medium text-zinc-300">${currentPrice.toLocaleString()}/mo</p>
@@ -266,7 +282,7 @@ export default function ChangePremiumPlanModal({
                     <div>
                       <span className="text-xs text-zinc-500">New Price</span>
                       <p className={`font-medium ${direction === "upgrade" ? "text-green-400" : direction === "downgrade" ? "text-red-400" : "text-zinc-300"}`}>
-                        ${targetPrice.toLocaleString()}/mo
+                        {customBilling ? customBilling.label : `$${targetPrice.toLocaleString()}/mo`}
                       </p>
                     </div>
                   </div>
@@ -306,7 +322,7 @@ export default function ChangePremiumPlanModal({
 
           {/* Step 3: Remaining Time */}
           {(direction === "downgrade" || typeChanged) && remainingDays > 0 && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
               <div className="mb-3 flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">3</span>
                 <h4 className="text-sm font-semibold text-zinc-100">Remaining Time Handling</h4>
@@ -348,10 +364,97 @@ export default function ChangePremiumPlanModal({
             </div>
           )}
 
+          {/* Custom Duration (only when CUSTOM type) */}
+          {isCustomSubscription && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+                  {direction === "downgrade" || typeChanged ? "4" : "3"}
+                </span>
+                <h4 className="text-sm font-semibold text-zinc-100">Custom Duration</h4>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">Duration</label>
+                  <input
+                    type="number" min="1" max="36500"
+                    value={customDuration}
+                    onChange={(e) => setCustomDuration(Number(e.target.value))}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">Unit</label>
+                  <div className="flex gap-2">
+                    {(["days", "weeks", "months", "years"] as const).map((unit) => (
+                      <button
+                        key={unit}
+                        type="button"
+                        onClick={() => setCustomDurationUnit(unit)}
+                        className={`flex-1 rounded-xl border py-2.5 text-xs font-medium transition-all ${
+                          customDurationUnit === unit
+                            ? "border-blue-500/50 bg-blue-500/10 text-blue-400"
+                            : "border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600"
+                        }`}
+                      >
+                        {unit}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">Start Date</label>
+                  <div className="relative">
+                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-800 py-2.5 pl-9 pr-3 text-sm text-zinc-100 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">Calculated End Date</label>
+                  <div className="flex h-[42px] items-center rounded-xl border border-zinc-700 bg-zinc-800/50 px-3 text-sm text-zinc-300">
+                    {customEndDate ? (
+                      <span className="text-blue-400">{fmt(customEndDate)}</span>
+                    ) : <span className="text-zinc-600">Select start date</span>}
+                  </div>
+                </div>
+              </div>
+
+              {customEndDate && (
+                <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                  <div className="text-xs text-blue-300">
+                    <span className="font-medium">Duration Preview:</span>{" "}
+                    {customDuration} {customDurationUnit} ({customDurationDays.toLocaleString()} days) &mdash;{" "}
+                    {fmt(new Date(customStartDate))} &rarr; {fmt(customEndDate)}
+                  </div>
+                  {customBilling && (
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      <span className="text-zinc-500">Rate:</span>
+                      <span className="text-zinc-300">{customBilling.rate}</span>
+                      <span className="text-zinc-600">|</span>
+                      <span className="text-zinc-500">Total Billing Value:</span>
+                      <span className="text-green-400 font-medium">{customBilling.label}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Notes */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">{direction === "downgrade" || typeChanged ? "4" : "3"}</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+                {isCustomSubscription ? (direction === "downgrade" || typeChanged ? "5" : "4") : (direction === "downgrade" || typeChanged ? "4" : "3")}
+              </span>
               <h4 className="text-sm font-semibold text-zinc-100">Notes (optional)</h4>
             </div>
             <textarea
@@ -364,7 +467,7 @@ export default function ChangePremiumPlanModal({
           </div>
 
           {/* Audit Preview */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-x-auto p-3 sm:p-4">
             <div className="mb-2 flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
               <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>
@@ -409,11 +512,25 @@ export default function ChangePremiumPlanModal({
               <div className="flex">
                 <span className="w-28 text-zinc-500">Remaining</span>
                 <span className="text-zinc-300">
-                  {remainingDays > 0 && (direction === "downgrade" || typeChanged)
+                  {isCustomSubscription
+                    ? `${customDuration} ${customDurationUnit} (${customDurationDays} days)`
+                    : remainingDays > 0 && (direction === "downgrade" || typeChanged)
                     ? `${remainingDays} days (${remainingTimeOption})`
                     : "Unaffected"}
                 </span>
               </div>
+              {customBilling && (
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">Billing</span>
+                  <span className="text-green-400">{customBilling.label}</span>
+                </div>
+              )}
+              {isCustomSubscription && customEndDate && (
+                <div className="flex">
+                  <span className="w-28 text-zinc-500">New Expiry</span>
+                  <span className="text-blue-400">{fmt(customEndDate)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

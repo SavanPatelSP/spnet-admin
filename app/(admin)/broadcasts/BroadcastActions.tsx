@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Trash2, FileEdit } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Broadcast {
   id: string;
@@ -13,6 +14,9 @@ interface Broadcast {
 export function BroadcastActions({ broadcast }: { broadcast: Broadcast }) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   async function send() {
     setLoading("send");
@@ -25,23 +29,28 @@ export function BroadcastActions({ broadcast }: { broadcast: Broadcast }) {
       if (!res.ok) throw new Error("Failed to send");
       router.refresh();
     } catch {
-      // ignore
+      // send errors are silent as they don't affect data
     } finally {
       setLoading(null);
     }
   }
 
   async function remove() {
-    if (!confirm(`Delete "${broadcast.subject}"?`)) return;
-    setLoading("delete");
+    setDeleteLoading(true);
+    setDeleteError("");
     try {
       const res = await fetch(`/api/broadcasts/${broadcast.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      if (!res.ok) {
+        const data = await res.json();
+        setDeleteError(data.error || "Failed to delete");
+        return;
+      }
+      setDeleteOpen(false);
       router.refresh();
     } catch {
-      // ignore
+      setDeleteError("Network error");
     } finally {
-      setLoading(null);
+      setDeleteLoading(false);
     }
   }
 
@@ -56,6 +65,7 @@ export function BroadcastActions({ broadcast }: { broadcast: Broadcast }) {
           disabled={loading === "send"}
           className="rounded-lg border border-zinc-700 p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-green-400 disabled:opacity-30"
           title="Send now"
+          aria-label="Send broadcast"
         >
           <Send size={14} />
         </button>
@@ -64,19 +74,35 @@ export function BroadcastActions({ broadcast }: { broadcast: Broadcast }) {
         <button
           className="rounded-lg border border-zinc-700 p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-blue-400 disabled:opacity-30"
           title="Edit"
+          aria-label="Edit broadcast"
         >
           <FileEdit size={14} />
         </button>
       )}
       {canDelete && (
-        <button
-          onClick={remove}
-          disabled={loading === "delete"}
-          className="rounded-lg border border-zinc-700 p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-red-400 disabled:opacity-30"
-          title="Delete"
-        >
-          <Trash2 size={14} />
-        </button>
+        <>
+          <button
+            onClick={() => setDeleteOpen(true)}
+            disabled={loading === "delete"}
+            className="rounded-lg border border-zinc-700 p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-red-400 disabled:opacity-30"
+            title="Delete"
+            aria-label="Delete broadcast"
+          >
+            <Trash2 size={14} />
+          </button>
+
+          <ConfirmDialog
+            open={deleteOpen}
+            onClose={() => { setDeleteOpen(false); setDeleteError(""); }}
+            onConfirm={remove}
+            title="Delete Broadcast"
+            description={`Delete "${broadcast.subject}"? This action cannot be undone.`}
+            confirmLabel="Delete"
+            variant="danger"
+            loading={deleteLoading}
+            error={deleteError}
+          />
+        </>
       )}
     </div>
   );

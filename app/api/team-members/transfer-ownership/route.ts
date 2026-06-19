@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Edit Users");
+    const session = await requireApiPermission("Edit Users");
     const body = await req.json();
     const { targetMemberId } = body;
 
@@ -74,7 +75,6 @@ export async function POST(req: Request) {
       newOwner: { id: targetMember.id, name: targetMember.name, email: targetMember.email },
     });
   } catch (error) {
-    console.error("Transfer ownership error:", error);
-    return Response.json({ error: "Failed to transfer ownership" }, { status: 500 });
+    return handleApiError(error);
   }
 }

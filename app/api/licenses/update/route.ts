@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { parseExpiryDate } from "@/lib/shared";
 import { AUDIT_ACTIONS, DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Edit Licenses");
+    const session = await requireApiPermission("Edit Licenses");
     const body = await req.json();
     const { id, organization, plan, status, maxDevices, expiresAt, notes } = body;
 
@@ -41,7 +42,6 @@ export async function POST(req: Request) {
 
     return Response.json(license);
   } catch (error) {
-    console.error("License update error:", error);
-    return Response.json({ error: "Failed to update license" }, { status: 500 });
+    return handleApiError(error);
   }
 }

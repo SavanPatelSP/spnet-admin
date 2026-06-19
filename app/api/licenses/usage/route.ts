@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { daysUntil } from "@/lib/shared";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("View License Usage");
+    await requireApiPermission("View License Usage");
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
     const org = url.searchParams.get("org");
@@ -50,7 +51,6 @@ export async function GET(req: Request) {
 
     return Response.json(usage);
   } catch (error) {
-    console.error("Usage get error:", error);
-    return Response.json({ error: "Failed to get usage" }, { status: 500 });
+    return handleApiError(error);
   }
 }

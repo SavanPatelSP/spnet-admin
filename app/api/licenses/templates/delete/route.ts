@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function DELETE(req: Request) {
   try {
-    const session = await requirePermission("Manage License Templates");
+    const session = await requireApiPermission("Manage License Templates");
     const body = await req.json();
     const { id } = body;
 
@@ -32,7 +33,6 @@ export async function DELETE(req: Request) {
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("Template delete error:", error);
-    return Response.json({ error: "Failed to delete template" }, { status: 500 });
+    return handleApiError(error);
   }
 }

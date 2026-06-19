@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Whitelist Devices");
+    const session = await requireApiPermission("Whitelist Devices");
     const body = await req.json();
 
     if (!body.id) {
@@ -41,7 +42,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, data: { id: body.id, isBlacklisted: false } });
   } catch (error) {
-    console.error("Whitelist device error:", error);
-    return Response.json({ error: "Failed to whitelist device" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,26 +1,25 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET() {
   try {
-    await requirePermission("View Tickets");
+    await requireApiPermission("View Tickets");
     const tickets = await prisma.supportTicket.findMany({
       orderBy: { createdAt: "desc" },
       include: { notes: true, license: { select: { key: true, organization: true } } },
     });
     return Response.json({ success: true, data: tickets });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to fetch tickets";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Manage Tickets");
+    const session = await requireApiPermission("Manage Tickets");
     const { subject, message, priority, category, licenseId } = await req.json();
 
     if (!subject?.trim() || !message?.trim()) {
@@ -48,8 +47,6 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, data: ticket });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to create ticket";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }

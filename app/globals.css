@@ -217,19 +217,37 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: #09090b;
+    color: #f4f4f5;
   }
   html {
     @apply font-sans;
   }
-body {
-  background:
-    radial-gradient(circle at top left,
-      rgba(59,130,246,.15),
-      transparent 30%),
-    radial-gradient(circle at top right,
-      rgba(168,85,247,.15),
-      transparent 30%),
-    #09090b;
 }
+
+:root {
+  --color-zinc-50: #fafafa;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #9f9fa9;
+  --color-zinc-500: #71717b;
+  --color-zinc-600: #52525c;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+  --color-zinc-950: #09090b;
+  --color-blue-400: #54a2ff;
+  --color-blue-500: #3080ff;
+  --color-blue-600: #155dfc;
+  --color-purple-400: #c07eff;
+  --color-purple-500: #ac4bff;
+  --color-purple-600: #9810fa;
+  --color-emerald-400: #00d294;
+  --color-emerald-500: #00bb7f;
+  --color-red-400: #ff6568;
+  --color-red-900: #1c398e;
+  --color-red-950: #460809;
+  --color-white: #fff;
+  --color-black: #000;
 }

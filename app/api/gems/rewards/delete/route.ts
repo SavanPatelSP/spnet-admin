@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function POST(req: Request) {
   try {
-    await requirePermission("Manage Rewards");
+    await requireApiPermission("Manage Rewards");
     const { id } = await req.json();
 
     if (!id) {
@@ -17,7 +18,6 @@ export async function POST(req: Request) {
     if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "P2025") {
       return Response.json({ error: "Reward not found" }, { status: 404 });
     }
-    console.error("Gems reward delete error:", error);
-    return Response.json({ error: "Failed to delete reward" }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requirePermission("Moderate Content");
+    const session = await requireApiPermission("Moderate Content");
     const { id } = await params;
     const { status, actionTaken, reason, targetType, targetId, durationDays } = await req.json();
 
@@ -80,8 +81,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return Response.json({ success: true, data: resolved });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to resolve report";
-    if (message.includes("redirect")) throw e;
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return handleApiError(e);
   }
 }

@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("Manage Device Policies");
+    await requireApiPermission("Manage Device Policies");
 
     const url = new URL(req.url);
     const licenseId = url.searchParams.get("licenseId");
@@ -39,7 +40,6 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Session enforcement error:", error);
-    return Response.json({ error: "Failed to check session enforcement" }, { status: 500 });
+    return handleApiError(error);
   }
 }

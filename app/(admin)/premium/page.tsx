@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Premium Management" };
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { Crown, CalendarDays, Clock, ClipboardList, ArrowUpRight, Download, Tags } from "lucide-react";
+import { Crown, CalendarDays, Clock, ClipboardList, ArrowUpRight, Download, Tags, Sparkles } from "lucide-react";
 import { PREMIUM_PLANS, EXPIRING_SOON_DAYS } from "@/lib/constants";
 import { daysUntil } from "@/lib/shared";
 import GrantPremiumModal from "@/components/premium/GrantPremiumModal";
@@ -82,7 +86,7 @@ export default async function PremiumPage() {
     return acc;
   }, {});
 
-  const availableForGrant = nonPremiumLicenses.map((l) => ({
+  const availableForGrant = licenses.map((l) => ({
     id: l.id,
     key: l.key,
     organization: l.organization,
@@ -105,6 +109,16 @@ export default async function PremiumPage() {
       <PageHeader
         title="Premium Subscriptions"
         description="Enterprise subscription operations center"
+        actions={
+          <Link
+            href="/premium/plan-overview"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:from-purple-500 hover:to-blue-500 max-sm:px-3 max-sm:py-2"
+          >
+            <Sparkles size={16} />
+            <span className="hidden sm:inline">Plan Overview</span>
+            <span className="sm:hidden">Overview</span>
+          </Link>
+        }
       />
 
       <StatCardGrid columns={4}>

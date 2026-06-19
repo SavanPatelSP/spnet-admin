@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 import { generateKey, parseExpiryDate } from "@/lib/shared";
 import { DEFAULT_PLAN, DEFAULT_MAX_DEVICES, AUDIT_ACTIONS } from "@/lib/constants";
 import { DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
-    const session = await requirePermission("Create Licenses");
+    const session = await requireApiPermission("Create Licenses");
     const body = await req.json();
 
     if (!body.organization?.trim()) {
@@ -41,7 +42,6 @@ export async function POST(req: Request) {
 
     return Response.json(license);
   } catch (error) {
-    console.error("License create error:", error);
-    return Response.json({ error: "Failed to create license" }, { status: 500 });
+    return handleApiError(error);
   }
 }
