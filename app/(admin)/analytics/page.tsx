@@ -54,21 +54,21 @@ export default async function AnalyticsPage({
   ]);
 
   const totalDevices = activations.length;
-  const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
+  const totalCapacity = licenses.reduce((t: number, l: any) => t + l.maxDevices, 0);
   const utilization = calculateUtilization(totalDevices, totalCapacity);
-  const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
+  const activeLicenses = licenses.filter((l: any) => l.status === "ACTIVE").length;
   const avgDevicesPerLicense = licenses.length > 0 ? (totalDevices / licenses.length).toFixed(1) : "0";
 
   const planDistribution = Object.entries(
-    licenses.reduce<Record<string, number>>((acc, l) => {
+    licenses.reduce((acc: Record<string, number>, l: any) => {
       acc[l.plan] = (acc[l.plan] || 0) + 1;
       return acc;
-    }, {})
-  ).sort(([, a], [, b]) => b - a).map(([name, value]) => ({ name, value }));
+    }, {} as Record<string, number>)
+  ).sort(([, a], [, b]) => (b as number) - (a as number)).map(([name, value]) => ({ name, value: value as number }));
 
   const statusDistribution = (["ACTIVE", "SUSPENDED", "PENDING", "EXPIRED", "REVOKED"] as const).map((status) => ({
     name: status,
-    value: licenses.filter((l) => l.status === status).length,
+    value: licenses.filter((l: any) => l.status === status).length,
   }));
 
   const deviceTrend = calculateTrend(totalDevices, previousActivations);
