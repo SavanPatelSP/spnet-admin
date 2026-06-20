@@ -3,7 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
-import { lookupGeo } from "@/lib/geo";
+import { resolveGeoFromApi } from "@/lib/geo";
 
 export async function POST(req: Request) {
   try {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "Activation not found" }, { status: 404 });
     }
 
-    const geo = lookupGeo(body.ipAddress);
+    const geo = await resolveGeoFromApi(body.ipAddress);
 
     await prisma.activation.update({
       where: { id: body.id },

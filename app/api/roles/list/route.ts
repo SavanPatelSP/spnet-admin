@@ -1,12 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-helpers";
+import { handleApiError } from "@/lib/security/errors";
 
 export async function GET() {
-  await requireApiPermission("View Roles");
+  try {
+    await requireApiPermission("View Roles");
 
-  const roles = await prisma.role.findMany({
-    orderBy: { name: "asc" },
-  });
+    const roles = await prisma.role.findMany({
+      orderBy: { name: "asc" },
+    });
 
-  return Response.json(roles);
+    return Response.json(roles);
+  } catch (error) {
+    return handleApiError(error);
+  }
 }

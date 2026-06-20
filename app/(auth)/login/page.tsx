@@ -175,7 +175,7 @@ function LoginForm() {
               <Server size={12} className="text-zinc-600" />
               <span className="text-zinc-500">Environment</span>
               <span className="font-medium text-zinc-300">
-                {process.env.NODE_ENV === "development" ? "Development" : "Production"}
+                {process.env.NEXT_PUBLIC_APP_ENV === "staging" ? "Staging" : process.env.NEXT_PUBLIC_APP_ENV === "production" ? "Production" : "Development"}
               </span>
             </div>
           </div>

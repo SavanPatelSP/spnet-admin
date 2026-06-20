@@ -50,9 +50,14 @@ export function RecentLoginAttempts({ loginHistory }: { loginHistory: LoginEntry
                 {entry.failureReason && <span className="text-red-400/70">{entry.failureReason}</span>}
                 <span className="inline-flex items-center gap-1">
                   <Clock size={10} />
-                  {new Date(entry.createdAt).toLocaleDateString("en-IN", {
-                    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                  })}
+                  {(() => {
+                    const d = new Date(entry.createdAt);
+                    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const h = d.getHours(), m = d.getMinutes();
+                    const h12 = h % 12 || 12;
+                    const ampm = h < 12 ? "am" : "pm";
+                    return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${h12}:${m < 10 ? "0" + m : m} ${ampm}`;
+                  })()}
                 </span>
               </div>
             </div>

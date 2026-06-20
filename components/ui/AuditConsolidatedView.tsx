@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { formatDateTime } from "@/lib/shared";
 import { downloadCSV } from "@/lib/export";
 import { RefreshCw } from "lucide-react";
 
@@ -132,7 +133,7 @@ export default function AuditConsolidatedView() {
       <span key="actorEmail" className="text-sm text-zinc-400">{e.actorEmail || "-"}</span>,
       <span key="organization">{e.organization || "-"}</span>,
       <span key="description" className="max-w-xs truncate text-sm text-zinc-400">{e.description || "-"}</span>,
-      <span key="createdAt" className="text-sm text-zinc-400">{new Date(e.createdAt).toLocaleString()}</span>,
+      <span key="createdAt" className="text-sm text-zinc-400">{formatDateTime(e.createdAt)}</span>,
     ],
   }));
 

@@ -27,7 +27,9 @@ function relativeTime(dateStr: string): string {
   if (diffHr < 24) return `${diffHr} hour${diffHr > 1 ? "s" : ""} ago`;
   const diffDays = Math.floor(diffHr / 24);
   if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-  return new Date(dateStr).toLocaleDateString();
+  const d = new Date(dateStr);
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function truncateUA(ua: string | null, max = 60): string {

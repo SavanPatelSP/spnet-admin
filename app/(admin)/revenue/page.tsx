@@ -75,7 +75,8 @@ export default async function RevenuePage() {
   const monthlySubs: { month: string; count: number }[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthLabel = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthLabel = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
     const count = allPremiumSubs.filter(
       (s) => s.createdAt >= d && s.createdAt < new Date(d.getFullYear(), d.getMonth() + 1, 1),
     ).length;

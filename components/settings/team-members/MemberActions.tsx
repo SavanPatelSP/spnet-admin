@@ -26,9 +26,11 @@ import {
 interface Props {
   memberId: string;
   status: string;
+  currentUserRole?: string;
 }
 
-export default function MemberActions({ memberId, status }: Props) {
+export default function MemberActions({ memberId, status, currentUserRole }: Props) {
+  const canManagePasswords = currentUserRole === "OWNER" || currentUserRole === "SUPER_ADMIN";
   const router = useRouter();
   const { showToast } = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -216,37 +218,29 @@ export default function MemberActions({ memberId, status }: Props) {
         </ActionButton>
         {menuOpen && (
           <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-zinc-700 bg-zinc-800 py-1 shadow-xl">
-            <button
-              onClick={() => { setMenuOpen(false); sendInvite(false); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              <Mail size={12} /> Send Invite
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); sendInvite(true); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              <RefreshCw size={12} /> Resend Invite
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); generatePasswordLink(); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              <KeyRound size={12} /> Generate Password Link
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); resetPassword(); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              <Lock size={12} /> Reset Password
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); generateTempPassword(); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              <KeyRound size={12} /> Generate Temp Password
-            </button>
-            <div className="my-1 border-t border-zinc-700" />
+            {canManagePasswords && (
+              <>
+                <button
+                  onClick={() => { setMenuOpen(false); generatePasswordLink(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
+                >
+                  <KeyRound size={12} /> Generate Password Link
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); resetPassword(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
+                >
+                  <Lock size={12} /> Reset Password
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); generateTempPassword(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
+                >
+                  <KeyRound size={12} /> Generate Temp Password
+                </button>
+                <div className="my-1 border-t border-zinc-700" />
+              </>
+            )}
             {isActive ? (
               <button
                 onClick={() => { setMenuOpen(false); suspendAccount(); }}

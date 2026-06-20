@@ -19,13 +19,17 @@ export async function POST(req: Request) {
     const session = await requireApiPermission("Invite Team Members");
     const body = await req.json();
 
-    const { name, email, roleId, organization, plan, maxDevices, expiresAt, notes, sendInvite } = body;
+    const { name, email, roleId, organization, plan, maxDevices, expiresAt, notes, sendInvite, tempPassword } = body;
 
     if (!name || !email || !roleId || !organization) {
       return Response.json(
         { success: false, error: "Name, email, role and organization are required" },
         { status: 400 }
       );
+    }
+
+    if (!tempPassword) {
+      return Response.json({ success: false, error: "Password is required" }, { status: 400 });
     }
 
     const existing = await prisma.teamMember.findUnique({ where: { email } });
@@ -41,7 +45,6 @@ export async function POST(req: Request) {
     const tier = LICENSE_TIERS.find((t) => t.label === plan) || LICENSE_TIERS[0];
     const expiryDate = expiresAt ? parseExpiryDate(expiresAt) : new Date(Date.now() + tier.durationDays * 24 * 60 * 60 * 1000);
 
-    const tempPassword = crypto.randomBytes(12).toString("hex");
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
     // 1. Create license

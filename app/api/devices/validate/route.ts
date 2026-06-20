@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
+import { lookupGeoWithCache } from "@/lib/geo";
 
 export async function POST(req: Request) {
   try {
@@ -79,6 +80,9 @@ export async function POST(req: Request) {
       return Response.json({ valid: false, reason: "Device is suspended" });
     }
 
+    const userAgent = req.headers.get("user-agent") ?? undefined;
+    const geo = body.ipAddress ? lookupGeoWithCache(body.ipAddress) : { country: null, region: null, city: null, isp: null };
+
     const now = new Date();
     const activation = existing
       ? await prisma.activation.update({
@@ -90,6 +94,10 @@ export async function POST(req: Request) {
             browser: body.browser ?? existing.browser,
             browserVersion: body.browserVersion ?? existing.browserVersion,
             deviceType: body.deviceType ?? existing.deviceType,
+            userAgent: userAgent ?? existing.userAgent,
+            country: geo.country ?? existing.country,
+            city: geo.city ?? existing.city,
+            isp: geo.isp ?? existing.isp,
             lastSeenAt: now,
             status: existing.status === "INACTIVE" ? "ACTIVE" : existing.status,
           },
@@ -104,6 +112,10 @@ export async function POST(req: Request) {
             browser: body.browser,
             browserVersion: body.browserVersion,
             deviceType: body.deviceType,
+            userAgent,
+            country: geo.country,
+            city: geo.city,
+            isp: geo.isp,
             lastSeenAt: now,
             status: "ACTIVE",
           },

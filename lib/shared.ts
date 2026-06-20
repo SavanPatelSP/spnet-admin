@@ -1,6 +1,11 @@
 import { randomBytes } from "crypto";
 import { LICENSE_KEY_PREFIX, DEFAULT_LOCALE } from "./constants";
 
+const MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 export function generateKey(): string {
   return `${LICENSE_KEY_PREFIX}-${randomBytes(8).toString("hex").toUpperCase()}`;
 }
@@ -10,26 +15,49 @@ export function parseExpiryDate(dateString: string): Date {
   return new Date(year, month - 1, day, 12, 0, 0);
 }
 
-export function formatDate(
-  date: Date | string | number,
-  options: Intl.DateTimeFormatOptions = {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  },
-  locale = DEFAULT_LOCALE
-): string {
-  return new Intl.DateTimeFormat(locale, options).format(new Date(date));
+function pad(n: number): string {
+  return n < 10 ? "0" + n : String(n);
 }
 
-export function formatDateTime(
+function formatDateTimeParts(date: Date) {
+  return {
+    day: date.getDate(),
+    month: MONTHS_SHORT[date.getMonth()],
+    year: date.getFullYear(),
+    hour: date.getHours(),
+    minute: date.getMinutes(),
+  };
+}
+
+export function formatDate(
   date: Date | string | number,
-  locale = DEFAULT_LOCALE
+  options?: { month?: string; day?: string; year?: string; hour?: string; minute?: string; weekday?: string }
 ): string {
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(date));
+  const d = new Date(date);
+  const { day, month, year, hour, minute } = formatDateTimeParts(d);
+  const day2 = pad(day);
+  const opts = options || { day: "2-digit", month: "short", year: "numeric" };
+
+  if (opts.weekday === "long") {
+    const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return DAYS[d.getDay()];
+  }
+
+  if (opts.hour && opts.minute) {
+    const hour12 = hour % 12 || 12;
+    const ampm = hour < 12 ? "am" : "pm";
+    return `${day} ${month} ${year}, ${hour12}:${pad(minute)} ${ampm}`;
+  }
+
+  return `${day2} ${month} ${year}`;
+}
+
+export function formatDateTime(date: Date | string | number): string {
+  const d = new Date(date);
+  const { day, month, year, hour, minute } = formatDateTimeParts(d);
+  const hour12 = hour % 12 || 12;
+  const ampm = hour < 12 ? "am" : "pm";
+  return `${day} ${month} ${year}, ${hour12}:${pad(minute)} ${ampm}`;
 }
 
 export function daysUntil(date: Date | string | number): number {

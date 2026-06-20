@@ -3,8 +3,15 @@ import { NextResponse } from "next/server";
 import { buildCSP, getSecurityHeaders } from "@/lib/security/headers";
 import { isValidRole } from "@/lib/security/rbac";
 
-const publicRoutes = new Set(["/login", "/unauthorized"]);
-const publicPrefixes = ["/api/auth", "/_next", "/favicon"];
+const publicRoutes = new Set(["/login", "/unauthorized", "/setup-password"]);
+const publicPrefixes = [
+  "/api/auth",
+  "/_next",
+  "/favicon",
+  "/invite",
+  "/api/team-members/verify-invite",
+  "/api/team-members/setup-password",
+];
 
 function pathnameFrom(url: string): string {
   try {

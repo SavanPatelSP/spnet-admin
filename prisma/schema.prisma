@@ -341,6 +341,10 @@ model Session {
   userAgent     String?
   expiresAt     DateTime
   createdAt     DateTime @default(now())
+
+  overrideDurationMinutes  Int?   // custom duration in minutes when policy is overridden
+  overrideCooldownMinutes  Int?   // cooldown in minutes before next override is allowed
+  lastOverrideAt           DateTime? // when the last override was applied
 }
 
 model LoginHistory {

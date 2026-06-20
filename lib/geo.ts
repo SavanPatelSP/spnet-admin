@@ -36,13 +36,63 @@ export function lookupGeo(ip: string): GeoResult {
     : { country: null, region: null, city: null, isp: null };
 }
 
-const geoCache = new Map<string, GeoResult>();
+const GEO_CACHE_TTL = 86_400_000;
+
+const geoCache = new Map<string, { result: GeoResult; expiresAt: number }>();
 
 export function lookupGeoWithCache(ip: string): GeoResult {
-  if (geoCache.has(ip)) return geoCache.get(ip)!;
+  const cached = geoCache.get(ip);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
   const result = lookupGeo(ip);
-  geoCache.set(ip, result);
+  geoCache.set(ip, { result, expiresAt: Date.now() + GEO_CACHE_TTL });
   return result;
+}
+
+interface IpApiResponse {
+  status: "success" | "fail";
+  country?: string;
+  regionName?: string;
+  city?: string;
+  isp?: string;
+  countryCode?: string;
+}
+
+export async function resolveGeoFromApi(ip: string): Promise<GeoResult> {
+  const cached = geoCache.get(ip);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+
+  const staticResult = lookupGeo(ip);
+  if (staticResult.country) {
+    geoCache.set(ip, { result: staticResult, expiresAt: Date.now() + GEO_CACHE_TTL });
+    return staticResult;
+  }
+
+  if (ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
+    const localResult: GeoResult = { country: "Private", region: null, city: null, isp: null };
+    geoCache.set(ip, { result: localResult, expiresAt: Date.now() + GEO_CACHE_TTL });
+    return localResult;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,isp`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return { country: null, region: null, city: null, isp: null };
+    const data: IpApiResponse = await res.json();
+    const result: GeoResult = {
+      country: data.status === "success" ? (data.countryCode ?? null) : null,
+      region: data.status === "success" ? (data.regionName ?? null) : null,
+      city: data.status === "success" ? (data.city ?? null) : null,
+      isp: data.status === "success" ? (data.isp ?? null) : null,
+    };
+    geoCache.set(ip, { result, expiresAt: Date.now() + GEO_CACHE_TTL });
+    return result;
+  } catch {
+    return { country: null, region: null, city: null, isp: null };
+  }
 }
 
 export function getCountryName(code: string | null): string {

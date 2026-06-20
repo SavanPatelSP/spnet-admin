@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, ALL_PERMISSIONS, PERMISSION_GROUPS, RISK_LEVELS } from "@/lib/constants";
+import { PERMISSION_META } from "@/lib/permission-meta";
 import { SIDEBAR_PAGES } from "@/lib/sidebar";
 import type { RoleWithPermissions } from "@/types/common";
+import { Search, Shield, ChevronDown, ChevronRight, Info } from "lucide-react";
 
 interface Props {
   role: RoleWithPermissions;
@@ -21,9 +23,31 @@ export default function EditRoleForm({ role }: Props) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(Object.keys(PERMISSION_GROUPS)));
+  const [selectedPermInfo, setSelectedPermInfo] = useState<string | null>(null);
 
   const visiblePagesCount = SIDEBAR_PAGES.filter((p) => p.permission && selectedPermissions.has(p.permission)).length;
   const restrictedPagesCount = SIDEBAR_PAGES.length - visiblePagesCount;
+
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return Object.entries(PERMISSION_GROUPS);
+    const q = searchQuery.toLowerCase();
+    return Object.entries(PERMISSION_GROUPS).filter(([group, perms]) => {
+      const groupMatch = group.toLowerCase().includes(q);
+      const permMatch = perms.some((p) => {
+        const meta = PERMISSION_META[p];
+        return p.toLowerCase().includes(q) || meta?.friendlyName.toLowerCase().includes(q) || meta?.description.toLowerCase().includes(q);
+      });
+      return groupMatch || permMatch;
+    }).map(([group, perms]) => [
+      group,
+      perms.filter((p) => {
+        const meta = PERMISSION_META[p];
+        return p.toLowerCase().includes(q) || meta?.friendlyName.toLowerCase().includes(q) || meta?.description.toLowerCase().includes(q);
+      }),
+    ] as [string, string[]]);
+  }, [searchQuery]);
 
   function togglePermission(p: string) {
     setSelectedPermissions((prev) => {
@@ -32,6 +56,24 @@ export default function EditRoleForm({ role }: Props) {
       else next.add(p);
       return next;
     });
+  }
+
+  function toggleCategory(groupName: string, permissions: string[]) {
+    const allSelected = permissions.every((p) => selectedPermissions.has(p));
+    setSelectedPermissions((prev) => {
+      const next = new Set(prev);
+      if (allSelected) permissions.forEach((p) => next.delete(p));
+      else permissions.forEach((p) => next.add(p));
+      return next;
+    });
+  }
+
+  function displayName(p: string): string {
+    return PERMISSION_META[p]?.friendlyName || p;
+  }
+
+  function displayDescription(p: string): string | undefined {
+    return PERMISSION_META[p]?.description;
   }
 
   async function saveRole() {
@@ -149,25 +191,111 @@ export default function EditRoleForm({ role }: Props) {
 
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
         <h2 className="mb-4 text-xl font-bold">Permission Assignment</h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
-            <div key={group} className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-5">
-              <h3 className="mb-4 font-semibold">{group}</h3>
-              <div className="space-y-3">
-                {permissions.map((permission) => (
-                  <label key={permission} className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3 transition-colors hover:bg-zinc-800">
-                    <input
-                      type="checkbox"
-                      checked={selectedPermissions.has(permission)}
-                      onChange={() => togglePermission(permission)}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-sm">{permission}</span>
-                  </label>
-                ))}
+        <div className="mb-4 relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search permissions by name or description..."
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 py-2.5 pl-9 pr-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-blue-500"
+          />
+        </div>
+        {selectedPermInfo && (
+          <div className="mb-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+            <div className="flex items-start gap-2">
+              <Info size={14} className="mt-0.5 shrink-0 text-blue-400" />
+              <div>
+                <p className="text-sm font-medium text-blue-300">{displayName(selectedPermInfo)}</p>
+                <p className="text-xs text-blue-200/70 mt-0.5">{displayDescription(selectedPermInfo) || "No description available."}</p>
               </div>
             </div>
-          ))}
+          </div>
+        )}
+        <div className="space-y-4">
+          {filteredGroups.length === 0 ? (
+            <div className="flex items-center justify-center rounded-xl border border-dashed border-zinc-700 py-8">
+              <p className="text-sm text-zinc-500">No permissions match your search.</p>
+            </div>
+          ) : filteredGroups.map(([group, permissions]) => {
+            const perms = permissions as string[];
+            const groupSelected = perms.every((p) => selectedPermissions.has(p));
+            const groupPartial = perms.some((p) => selectedPermissions.has(p)) && !groupSelected;
+            const isExpanded = expandedCategories.has(group);
+            return (
+              <div key={group} className="rounded-2xl border border-zinc-800 bg-zinc-950/30">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    setExpandedCategories((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(group)) next.delete(group);
+                      else next.add(group);
+                      return next;
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setExpandedCategories((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(group)) next.delete(group);
+                        else next.add(group);
+                        return next;
+                      });
+                    }
+                  }}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left"
+                >
+                  <Shield size={14} className="shrink-0 text-zinc-500" />
+                  <span className="flex-1 text-sm font-semibold text-zinc-200">{group}</span>
+                  <span className="text-xs text-zinc-500">{perms.filter((p) => selectedPermissions.has(p)).length}/{perms.length}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleCategory(group, perms); }}
+                    className={`rounded-lg border px-2 py-0.5 text-[10px] transition-colors ${
+                      groupSelected ? "border-green-500/30 bg-green-500/10 text-green-400" : groupPartial ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" : "border-zinc-700 bg-zinc-800 text-zinc-500 hover:border-zinc-600"
+                    }`}
+                  >
+                    {groupSelected ? "Deselect All" : groupPartial ? "Select All" : "Select All"}
+                  </button>
+                  {isExpanded ? <ChevronDown size={14} className="shrink-0 text-zinc-500" /> : <ChevronRight size={14} className="shrink-0 text-zinc-500" />}
+                </div>
+                {isExpanded && (
+                  <div className="border-t border-zinc-800 px-5 py-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {perms.map((permission) => {
+                        const isSelected = selectedPermissions.has(permission);
+                        const meta = PERMISSION_META[permission];
+                        return (
+                          <label
+                            key={permission}
+                            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+                              isSelected ? "border-blue-500/30 bg-blue-500/5" : "border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                            }`}
+                            onMouseEnter={() => setSelectedPermInfo(permission)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => togglePermission(permission)}
+                              className="mt-0.5 h-4 w-4 shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <span className="text-sm text-zinc-200">{displayName(permission)}</span>
+                              {meta?.description && (
+                                <p className="mt-0.5 text-[10px] text-zinc-500 leading-tight">{meta.description}</p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

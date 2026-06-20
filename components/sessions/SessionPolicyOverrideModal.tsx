@@ -9,7 +9,7 @@ import { cn } from "@/lib/shared";
 import {
   Crown, Shield, Server, DollarSign, FileText, TrendingUp, Clock,
   AlertTriangle, CheckCircle, ArrowRight, RotateCcw, Infinity,
-  Calendar, Unlock,
+  Calendar, Unlock, Lock, Timer,
 } from "lucide-react";
 
 interface SessionRow {
@@ -21,9 +21,10 @@ interface SessionRow {
   createdAt: Date;
 }
 
-type OverrideOption = "unlimited" | "12h" | "24h" | "7d" | "30d" | "custom" | "restore";
+type OverridePolicyOption = "unlimited" | "12h" | "24h" | "7d" | "30d" | "custom" | "restore";
+type CooldownOption = "0min" | "5min" | "10min" | "30min" | "1h" | "custom" | "restore";
 
-const OPTIONS: { key: OverrideOption; label: string; description: string; icon: React.ReactNode }[] = [
+const POLICY_OPTIONS: { key: OverridePolicyOption; label: string; description: string; icon: React.ReactNode }[] = [
   { key: "unlimited", label: "Unlimited Session", description: "Disable timeout entirely.", icon: <Infinity size={18} /> },
   { key: "12h", label: "12 Hours", description: "Extend session to 12 hours.", icon: <Clock size={18} /> },
   { key: "24h", label: "24 Hours", description: "Extend session to 24 hours.", icon: <Clock size={18} /> },
@@ -33,7 +34,17 @@ const OPTIONS: { key: OverrideOption; label: string; description: string; icon: 
   { key: "restore", label: "Restore Default Policy", description: "Revert to platform default.", icon: <RotateCcw size={18} /> },
 ];
 
-const OPTION_MINUTES: Record<Exclude<OverrideOption, "custom" | "restore" | "unlimited">, number> = {
+const COOLDOWN_OPTIONS: { key: CooldownOption; label: string; minutes: number }[] = [
+  { key: "0min", label: "No Cooldown", minutes: 0 },
+  { key: "5min", label: "5 Minutes", minutes: 5 },
+  { key: "10min", label: "10 Minutes", minutes: 10 },
+  { key: "30min", label: "30 Minutes", minutes: 30 },
+  { key: "1h", label: "1 Hour", minutes: 60 },
+  { key: "custom", label: "Custom", minutes: 0 },
+  { key: "restore", label: "Restore Default", minutes: -1 },
+];
+
+const OPTION_MINUTES: Record<Exclude<OverridePolicyOption, "custom" | "restore" | "unlimited">, number> = {
   "12h": 720,
   "24h": 1440,
   "7d": 10080,
@@ -62,56 +73,85 @@ export function SessionPolicyOverrideModal({
   onSuccess: () => void;
 }) {
   const { showToast } = useToast();
-  const [option, setOption] = useState<OverrideOption>("unlimited");
+  const [tab, setTab] = useState<"policy" | "cooldown">("policy");
+
+  // Policy state
+  const [policyOption, setPolicyOption] = useState<OverridePolicyOption>("unlimited");
   const [customMinutes, setCustomMinutes] = useState(60);
-  const [customCooldown, setCustomCooldown] = useState(0);
+
+  // Cooldown state
+  const [cooldownOption, setCooldownOption] = useState<CooldownOption>("0min");
+  const [customCooldown, setCustomCooldown] = useState(10);
+
   const [saving, setSaving] = useState(false);
 
   const policyDurationMinutes = AUTH.SESSION_MAX_AGE_SECONDS / 60;
   const currentExpiry = session.expiresAt;
 
   const newExpiry = useMemo(() => {
-    if (option === "restore") return new Date(session.createdAt.getTime() + policyDurationMinutes * 60000);
-    if (option === "unlimited") return new Date("2099-12-31T23:59:59.999Z");
-    const mins = option === "custom" ? customMinutes : OPTION_MINUTES[option];
+    if (policyOption === "restore") return new Date(session.createdAt.getTime() + policyDurationMinutes * 60000);
+    if (policyOption === "unlimited") return new Date("2099-12-31T23:59:59.999Z");
+    const mins = policyOption === "custom" ? customMinutes : OPTION_MINUTES[policyOption];
     return new Date(Date.now() + mins * 60000);
-  }, [option, customMinutes, session.createdAt, policyDurationMinutes]);
+  }, [policyOption, customMinutes, session.createdAt, policyDurationMinutes]);
 
   const selectedMinutes = useMemo(() => {
-    if (option === "unlimited" || option === "restore") return 0;
-    return option === "custom" ? customMinutes : OPTION_MINUTES[option];
-  }, [option, customMinutes]);
+    if (policyOption === "unlimited" || policyOption === "restore") return 0;
+    return policyOption === "custom" ? customMinutes : OPTION_MINUTES[policyOption];
+  }, [policyOption, customMinutes]);
 
   const newPolicyLabel = useMemo(() => {
-    if (option === "restore") return "Default Policy";
-    if (option === "unlimited") return "Unlimited Session";
+    if (policyOption === "restore") return "Default Policy";
+    if (policyOption === "unlimited") return "Unlimited Session";
     return formatDuration(selectedMinutes);
-  }, [option, selectedMinutes]);
+  }, [policyOption, selectedMinutes]);
+
+  const selectedCooldownMinutes = useMemo(() => {
+    const opt = COOLDOWN_OPTIONS.find((o) => o.key === cooldownOption);
+    if (!opt) return 0;
+    if (cooldownOption === "custom") return customCooldown;
+    if (cooldownOption === "restore") return -1;
+    return opt.minutes;
+  }, [cooldownOption, customCooldown]);
 
   const costImpact = useMemo(() => {
-    if (option === "restore") return 0;
-    if (option === "unlimited") return UNLIMITED_COST;
+    if (policyOption === "restore") return 0;
+    if (policyOption === "unlimited") return UNLIMITED_COST;
     return (SESSION_EXTENSION_PRICE_PER_MINUTE || 0) * selectedMinutes;
-  }, [option, selectedMinutes]);
+  }, [policyOption, selectedMinutes]);
 
   const hasCostImpact = costImpact > 0;
 
   async function handleSubmit() {
     setSaving(true);
     try {
+      const body: Record<string, unknown> = {
+        sessionId: session.id,
+      };
+
+      if (tab === "policy") {
+        body.option = policyOption;
+        if (policyOption === "custom") {
+          body.customMinutes = customMinutes;
+          body.customCooldown = customCooldown;
+        }
+      } else {
+        body.option = "custom";
+        body.customMinutes = 60;
+        body.customCooldown = selectedCooldownMinutes;
+      }
+
       const res = await fetch("/api/sessions/override-policy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: session.id,
-          option,
-          customMinutes: option === "custom" ? customMinutes : undefined,
-          customCooldown: option === "custom" ? customCooldown : undefined,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "Override failed");
-      showToast("Session policy overridden", "success");
+      showToast(
+        tab === "policy" ? "Session policy overridden" : "Login tenure cooldown updated",
+        "success"
+      );
       onSuccess();
       onClose();
     } catch (err) {
@@ -125,18 +165,18 @@ export function SessionPolicyOverrideModal({
     <Modal
       open
       onClose={onClose}
-      title="Override Session Policy"
-      description={`Bypass standard session policy for ${session.teamMember?.name || "this user"}.`}
+      title="Session Override"
+      description={`Manage session policy and login tenure for ${session.teamMember?.name || "this user"}.`}
       size="lg"
       footer={
         <>
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800">Cancel</button>
           <button
             onClick={handleSubmit}
-            disabled={saving || option === "custom" && customMinutes < 1}
+            disabled={saving || (tab === "policy" && policyOption === "custom" && customMinutes < 1)}
             className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50"
           >
-            {saving ? "Applying..." : "Override Policy"}
+            {saving ? "Applying..." : tab === "policy" ? "Override Policy" : "Update Cooldown"}
           </button>
         </>
       }
@@ -144,123 +184,223 @@ export function SessionPolicyOverrideModal({
       <div className="space-y-5">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
           <div className="mb-3 flex items-center gap-2"><Crown size={16} className="text-purple-400" /><p className="text-sm font-semibold text-zinc-200">Privileged Action</p></div>
-          <p className="text-xs text-zinc-400">This action is restricted to Owner and Super Admin roles. It bypasses standard session timeout policies and will be audited.</p>
+          <p className="text-xs text-zinc-400">This action is restricted to Owner and Super Admin roles.</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
-            <p className="text-xs text-zinc-500">Current Policy</p>
-            <p className="mt-1 text-sm font-medium text-zinc-200">{formatDuration(policyDurationMinutes)}</p>
-            <p className="text-[10px] text-zinc-500">Standard platform policy.</p>
-          </div>
-          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
-            <p className="text-xs text-purple-300">New Policy</p>
-            <p className="mt-1 text-sm font-bold text-zinc-100">{newPolicyLabel}</p>
-            <p className="text-[10px] text-purple-300/70">After override is applied.</p>
-          </div>
+        <div className="flex rounded-xl border border-zinc-800 bg-zinc-950/50 p-1">
+          <button
+            onClick={() => setTab("policy")}
+            className={cn(
+              "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              tab === "policy" ? "bg-purple-500/20 text-purple-300" : "text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            <Crown size={14} className="mr-1.5 inline" /> Override Session Policy
+          </button>
+          <button
+            onClick={() => setTab("cooldown")}
+            className={cn(
+              "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              tab === "cooldown" ? "bg-purple-500/20 text-purple-300" : "text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            <Timer size={14} className="mr-1.5 inline" /> Override Login Tenure
+          </button>
         </div>
 
-        <div>
-          <p className="mb-2 text-sm font-medium text-zinc-300">Override Option</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setOption(opt.key)}
-                className={cn(
-                  "flex items-start gap-3 rounded-xl border p-3 text-left transition-colors",
-                  option === opt.key
-                    ? "border-purple-500/50 bg-purple-500/10"
-                    : "border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900"
-                )}
-              >
-                <div className={cn("rounded-lg p-2", option === opt.key ? "bg-purple-500/20 text-purple-400" : "bg-zinc-800 text-zinc-500")}>{opt.icon}</div>
-                <div>
-                  <p className={cn("text-sm font-medium", option === opt.key ? "text-purple-300" : "text-zinc-200")}>{opt.label}</p>
-                  <p className="text-xs text-zinc-500">{opt.description}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {option === "custom" && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
-            <p className="mb-3 text-sm font-semibold text-zinc-200">Custom Duration</p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-zinc-400">Duration (minutes)</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={customMinutes}
-                  onChange={(e) => setCustomMinutes(Number(e.target.value))}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-purple-500"
-                />
-                <p className="mt-1 text-[10px] text-zinc-500">{formatDuration(customMinutes)}</p>
+        {tab === "policy" && (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
+                <p className="text-xs text-zinc-500">Current Policy</p>
+                <p className="mt-1 text-sm font-medium text-zinc-200">{formatDuration(policyDurationMinutes)}</p>
+                <p className="text-[10px] text-zinc-500">Standard platform policy.</p>
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-zinc-400">Cooldown (minutes)</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={customCooldown}
-                  onChange={(e) => setCustomCooldown(Number(e.target.value))}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-purple-500"
-                />
-                <p className="mt-1 text-[10px] text-zinc-500">Optional cooldown before next override.</p>
+              <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+                <p className="text-xs text-purple-300">New Policy</p>
+                <p className="mt-1 text-sm font-bold text-zinc-100">{newPolicyLabel}</p>
+                <p className="text-[10px] text-purple-300/70">After override is applied.</p>
               </div>
             </div>
-          </div>
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-zinc-300">Override Session Policy</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {POLICY_OPTIONS.map((opt) => (
+                  <button key={opt.key} onClick={() => setPolicyOption(opt.key)}
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border p-3 text-left transition-colors",
+                      policyOption === opt.key ? "border-purple-500/50 bg-purple-500/10" : "border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900"
+                    )}>
+                    <div className={cn("rounded-lg p-2", policyOption === opt.key ? "bg-purple-500/20 text-purple-400" : "bg-zinc-800 text-zinc-500")}>{opt.icon}</div>
+                    <div>
+                      <p className={cn("text-sm font-medium", policyOption === opt.key ? "text-purple-300" : "text-zinc-200")}>{opt.label}</p>
+                      <p className="text-xs text-zinc-500">{opt.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {policyOption === "custom" && (
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Custom Duration (minutes)</label>
+                <input type="number" min={1} value={customMinutes} onChange={(e) => setCustomMinutes(Number(e.target.value))}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-purple-500" />
+                <p className="mt-1 text-[10px] text-zinc-500">{formatDuration(customMinutes)}</p>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-300"><ArrowRight size={16} /> Policy Transition</p>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between"><span className="text-zinc-400">Current Expiry</span><span className="font-medium text-zinc-200">{formatDateTime(currentExpiry)}</span></div>
+                <div className="flex justify-between"><span className="text-zinc-400">New Expiry</span><span className="font-bold text-zinc-100">{formatDateTime(newExpiry)}</span></div>
+              </div>
+            </div>
+          </>
         )}
 
-        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
-          <p className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-300"><ArrowRight size={16} /> Policy Transition</p>
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between"><span className="text-zinc-400">Current Expiry</span><span className="font-medium text-zinc-200">{formatDateTime(currentExpiry)}</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">New Expiry</span><span className="font-bold text-zinc-100">{formatDateTime(newExpiry)}</span></div>
-          </div>
-        </div>
+        {tab === "cooldown" && (
+          <>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
+              <p className="flex items-center gap-2 text-xs text-zinc-500"><Lock size={12} /> Current Cooldown</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Platform default</p>
+              <p className="text-[10px] text-zinc-500">Users must wait before logging in after session expiry.</p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-zinc-300">Override Login Tenure</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {COOLDOWN_OPTIONS.map((opt) => (
+                  <button key={opt.key} onClick={() => setCooldownOption(opt.key)}
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border p-3 text-left transition-colors",
+                      cooldownOption === opt.key ? "border-amber-500/50 bg-amber-500/10" : "border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900"
+                    )}>
+                    <div className={cn("rounded-lg p-2", cooldownOption === opt.key ? "bg-amber-500/20 text-amber-400" : "bg-zinc-800 text-zinc-500")}>
+                      {opt.key === "restore" ? <RotateCcw size={18} /> : <Timer size={18} />}
+                    </div>
+                    <div>
+                      <p className={cn("text-sm font-medium", cooldownOption === opt.key ? "text-amber-300" : "text-zinc-200")}>{opt.label}</p>
+                      <p className="text-xs text-zinc-500">{opt.key === "restore" ? "Revert to platform default." : `Cooldown: ${opt.minutes >= 0 ? `${opt.minutes} min` : "Default"}`}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {cooldownOption === "custom" && (
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Custom Cooldown (minutes)</label>
+                <input type="number" min={0} value={customCooldown} onChange={(e) => setCustomCooldown(Number(e.target.value))}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-amber-500" />
+                <p className="mt-1 text-[10px] text-zinc-500">Cooldown before next login attempt after expiry.</p>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-medium text-amber-300"><ArrowRight size={16} /> Cooldown Transition</p>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between"><span className="text-zinc-400">Current Cooldown</span><span className="font-medium text-zinc-200">Platform default</span></div>
+                <div className="flex justify-between"><span className="text-zinc-400">New Cooldown</span><span className="font-bold text-zinc-100">
+                  {cooldownOption === "restore" ? "Default" : selectedCooldownMinutes >= 0 ? `${selectedCooldownMinutes} minutes` : "Default"}
+                </span></div>
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
             <p className="flex items-center gap-2 text-xs font-medium text-zinc-400"><Shield size={14} /> Security Impact</p>
-            <p className="mt-1 text-sm font-medium text-zinc-200">{option === "restore" ? "Policy restored" : "Elevated privilege use"}</p>
-            <p className="text-[10px] text-zinc-500">{option === "restore" ? "Returns to standard security posture." : "Extends attack window if compromised."}</p>
+            <p className="mt-1 text-sm font-medium text-zinc-200">
+              {tab === "policy"
+                ? (policyOption === "restore" ? "Policy restored" : "Elevated privilege use")
+                : (cooldownOption === "restore" ? "Default restored" : "Cooldown adjusted")}
+            </p>
+            <p className="text-[10px] text-zinc-500">
+              {tab === "policy"
+                ? (policyOption === "unlimited" ? "Extends attack window if compromised." : "Managed session duration.")
+                : "Controls re-auth timing."}
+            </p>
           </div>
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
             <p className="flex items-center gap-2 text-xs font-medium text-zinc-400"><Server size={14} /> Resource Impact</p>
-            <p className="mt-1 text-sm font-medium text-zinc-200">{option === "unlimited" ? "Unbounded retention" : option === "restore" ? "Default retention" : formatDuration(selectedMinutes)}</p>
-            <p className="text-[10px] text-zinc-500">Additional server resources consumed.</p>
+            <p className="mt-1 text-sm font-medium text-zinc-200">
+              {tab === "policy"
+                ? (policyOption === "unlimited" ? "Unbounded" : policyOption === "restore" ? "Default" : formatDuration(selectedMinutes))
+                : (cooldownOption === "restore" ? "Default" : `${selectedCooldownMinutes} min`)}
+            </p>
+            <p className="text-[10px] text-zinc-500">
+              {tab === "policy" ? "Session retention." : "Login throttle period."}
+            </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
             <p className="flex items-center gap-2 text-xs font-medium text-zinc-400"><DollarSign size={14} /> Cost Impact</p>
-            <p className={`mt-1 text-sm font-medium ${hasCostImpact ? "text-red-400" : "text-zinc-200"}`}>{hasCostImpact ? formatPrice(costImpact, "$") : "No charge"}</p>
-            <p className="text-[10px] text-zinc-500">{hasCostImpact ? "Charged per override policy." : "Restore default has no cost."}</p>
+            <p className={`mt-1 text-sm font-medium ${tab === "policy" && hasCostImpact ? "text-red-400" : "text-zinc-200"}`}>
+              {tab === "policy" ? (hasCostImpact ? formatPrice(costImpact, "$") : "No charge") : "No charge"}
+            </p>
+            <p className="text-[10px] text-zinc-500">
+              {tab === "policy" ? (hasCostImpact ? "Override billed." : "Default policy.") : "Cooldown changes are free."}
+            </p>
           </div>
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
-            <p className="flex items-center gap-2 text-xs font-medium text-zinc-400"><TrendingUp size={14} /> Forecast Impact</p>
-            <p className="mt-1 text-sm font-medium text-zinc-200">{option === "unlimited" ? "Permanent session retention" : option === "restore" ? "Standard rotation" : formatDuration(selectedMinutes)}</p>
-            <p className="text-[10px] text-zinc-500">Predicted resource consumption.</p>
+            <p className="flex items-center gap-2 text-xs font-medium text-zinc-400"><TrendingUp size={14} /> Revenue Impact</p>
+            <p className="mt-1 text-sm font-medium text-emerald-400">
+              {tab === "policy" ? (hasCostImpact ? `+${formatPrice(costImpact, "$")}` : "No revenue") : "No revenue"}
+            </p>
+            <p className="text-[10px] text-zinc-500">
+              {tab === "policy" && hasCostImpact ? "Invoice generated." : "No billing impact."}
+            </p>
           </div>
         </div>
 
-        {hasCostImpact && (
+        {tab === "policy" && hasCostImpact && (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
             <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500"><FileText size={14} /> Invoice Preview</p>
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between border-b border-zinc-800 pb-2"><span className="text-zinc-400">Session policy override — {newPolicyLabel}</span><span className="text-zinc-200">{formatPrice(costImpact, "$")}</span></div>
-              <div className="flex justify-between font-medium"><span className="text-zinc-300">Total</span><span className="text-zinc-100">{formatPrice(costImpact, "$")}</span></div>
+              <div className="flex justify-between border-b border-zinc-800 pb-2">
+                <span className="text-zinc-400">Session policy override &mdash; {newPolicyLabel}</span>
+                <span className="text-zinc-200">{formatPrice(costImpact, "$")}</span>
+              </div>
+              <div className="flex justify-between font-medium">
+                <span className="text-zinc-300">Total</span>
+                <span className="text-zinc-100">{formatPrice(costImpact, "$")}</span>
+              </div>
+              <p className="text-[10px] text-zinc-500">Auto-generated invoice. Category: Session - Policy Override. Due in 30 days.</p>
             </div>
           </div>
         )}
 
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>
+          </div>
+          <div className="space-y-1 font-mono text-xs">
+            <div className="flex"><span className="w-28 text-zinc-500">Action</span><span className="text-yellow-400">{tab === "policy" ? "SESSION_POLICY_OVERRIDDEN" : "LOGIN_TENURE_OVERRIDDEN"}</span></div>
+            <div className="flex"><span className="w-28 text-zinc-500">Target</span><span className="text-zinc-300">{session.teamMember?.email || session.id}</span></div>
+            <div className="flex"><span className="w-28 text-zinc-500">Tab</span><span className="text-zinc-300">{tab === "policy" ? "Session Policy" : "Login Tenure"}</span></div>
+            {tab === "policy" && (
+              <>
+                <div className="flex"><span className="w-28 text-zinc-500">New Policy</span><span className="text-zinc-300">{newPolicyLabel}</span></div>
+                <div className="flex"><span className="w-28 text-zinc-500">New Expiry</span><span className="text-blue-400">{formatDateTime(newExpiry)}</span></div>
+              </>
+            )}
+            {tab === "cooldown" && (
+              <div className="flex"><span className="w-28 text-zinc-500">Cooldown</span><span className="text-zinc-300">{selectedCooldownMinutes >= 0 ? `${selectedCooldownMinutes} min` : "Default"}</span></div>
+            )}
+            <div className="flex"><span className="w-28 text-zinc-500">Cost</span><span className={hasCostImpact ? "text-red-400" : "text-zinc-500"}>{hasCostImpact ? formatPrice(costImpact, "$") : "No charge"}</span></div>
+          </div>
+        </div>
+
         <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-yellow-300"><AlertTriangle size={16} /> Override Notice</div>
-          <p className="text-xs leading-relaxed text-yellow-200/80">This override bypasses the platform session timeout policy. It will be logged, an invoice will be generated if applicable, and the user will retain access until the new expiry.</p>
+          <p className="text-xs leading-relaxed text-yellow-200/80">This action will be logged and an invoice will be generated if applicable. Changes take effect immediately.</p>
         </div>
       </div>
     </Modal>

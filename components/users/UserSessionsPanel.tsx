@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
+import { formatDateTime } from "@/lib/shared";
 import { Monitor, XCircle, Loader2 } from "lucide-react";
 
 interface Session {
@@ -112,8 +113,8 @@ export function UserSessionsPanel({ teamMemberId }: Props) {
                   </td>
                   <td className="p-4 text-sm text-zinc-300">{session.ipAddress}</td>
                   <td className="p-4 text-sm text-zinc-400 max-w-xs truncate">{session.userAgent}</td>
-                  <td className="p-4 text-sm text-zinc-400">{session.createdAt ? new Date(session.createdAt).toLocaleString() : "-"}</td>
-                  <td className="p-4 text-sm text-zinc-400">{session.expiresAt ? new Date(session.expiresAt).toLocaleString() : "-"}</td>
+                  <td className="p-4 text-sm text-zinc-400">{session.createdAt ? formatDateTime(session.createdAt) : "-"}</td>
+                  <td className="p-4 text-sm text-zinc-400">{session.expiresAt ? formatDateTime(session.expiresAt) : "-"}</td>
                   <td className="p-4 text-right">
                     <ActionButton
                       onClick={() => revokeSession(session.id)}

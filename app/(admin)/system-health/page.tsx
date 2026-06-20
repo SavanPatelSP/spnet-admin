@@ -13,6 +13,7 @@ import {
   Server, Cpu, HardDrive,
 } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/shared";
+import { getAppEnvironment } from "@/lib/env";
 
 async function checkDb(): Promise<{ status: "healthy" | "degraded" | "down"; latency: string; error?: string }> {
   const start = Date.now();
@@ -264,7 +265,7 @@ export default async function SystemHealthPage() {
             {[
               { label: "Node.js", value: process.version },
               { label: "Platform", value: `${process.platform} (${process.arch})` },
-              { label: "Environment", value: process.env.NODE_ENV || "development" },
+              { label: "Environment", value: getAppEnvironment() === "development" ? "Development" : getAppEnvironment() === "staging" ? "Staging" : "Production" },
               { label: "Next.js", value: "16.2.9" },
               { label: "Database", value: "SQLite" },
               { label: "Uptime", value: `${uptimePct}%` },

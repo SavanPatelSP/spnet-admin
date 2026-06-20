@@ -112,6 +112,7 @@ export default function GrantPremiumModal({
     BUSINESS: "border-amber-500/30 bg-amber-500/5 ring-amber-500/10",
     ENTERPRISE: "border-red-500/30 bg-red-500/5 ring-red-500/10",
     STUDENT: "border-green-500/30 bg-green-500/5 ring-green-500/10",
+    SP_PLAN: "border-cyan-500/30 bg-cyan-500/5 ring-cyan-500/10",
   };
 
   const computedBilling = useMemo(() => {
@@ -377,6 +378,7 @@ export default function GrantPremiumModal({
                   purple: "border-purple-500/50 bg-purple-500/10 shadow-purple-500/10",
                   amber: "border-amber-500/50 bg-amber-500/10 shadow-amber-500/10",
                   red: "border-red-500/50 bg-red-500/10 shadow-red-500/10",
+                  cyan: "border-cyan-500/50 bg-cyan-500/10 shadow-cyan-500/10",
                 };
                 return (
                   <button key={p} type="button" onClick={() => setPlan(p)}
@@ -399,6 +401,7 @@ export default function GrantPremiumModal({
                             p === "PLUS" ? "text-blue-400" : p === "PRO" ? "text-purple-400" :
                             p === "BUSINESS" ? "text-amber-400" : p === "ENTERPRISE" ? "text-red-400" :
                             p === "STUDENT" ? "text-green-400" :
+                            p === "SP_PLAN" ? "text-cyan-400" :
                             "text-zinc-500"
                           } />
                           <span className="font-semibold text-zinc-100">{p}</span>
@@ -409,6 +412,7 @@ export default function GrantPremiumModal({
                               p === "BUSINESS" ? "bg-amber-500/15 text-amber-300 border-amber-500/25" :
                               p === "STUDENT" ? "bg-green-500/15 text-green-300 border-green-500/25" :
                               p === "ENTERPRISE" ? "bg-red-500/15 text-red-300 border-red-500/25" :
+                              p === "SP_PLAN" ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/25" :
                               "bg-zinc-500/15 text-zinc-300 border-zinc-500/25"
                             }`}>
                               {meta.badge}
@@ -448,7 +452,8 @@ export default function GrantPremiumModal({
                           <div className={`h-2 w-2 rounded-full shrink-0 ${
                             p === "PLUS" ? "bg-blue-400" : p === "PRO" ? "bg-purple-400" :
                             p === "BUSINESS" ? "bg-amber-400" : p === "ENTERPRISE" ? "bg-red-400" :
-                            p === "STUDENT" ? "bg-green-400" : "bg-zinc-500"
+                            p === "STUDENT" ? "bg-green-400" :
+                            p === "SP_PLAN" ? "bg-cyan-400" : "bg-zinc-500"
                           }`} />
                           <span className="truncate flex-1">{cat}</span>
                           <span className="rounded bg-zinc-800 px-1 text-[9px] font-medium text-zinc-500">{feats.length}</span>
@@ -475,7 +480,8 @@ export default function GrantPremiumModal({
                     <span className={`text-sm font-bold uppercase tracking-wider ${
                       plan === "PLUS" ? "text-blue-300" : plan === "PRO" ? "text-purple-300" :
                       plan === "BUSINESS" ? "text-amber-300" : plan === "ENTERPRISE" ? "text-red-300" :
-                      plan === "STUDENT" ? "text-green-300" : "text-zinc-200"
+                      plan === "STUDENT" ? "text-green-300" :
+                      plan === "SP_PLAN" ? "text-cyan-300" : "text-zinc-200"
                     }`}>
                       Full Feature Breakdown &mdash; {plan}
                     </span>
@@ -484,7 +490,8 @@ export default function GrantPremiumModal({
                   <div className={`hidden sm:flex items-center gap-1 text-[10px] ${
                     plan === "PLUS" ? "text-blue-400" : plan === "PRO" ? "text-purple-400" :
                     plan === "BUSINESS" ? "text-amber-400" : plan === "ENTERPRISE" ? "text-red-400" :
-                    plan === "STUDENT" ? "text-green-400" : "text-zinc-400"
+                    plan === "STUDENT" ? "text-green-400" :
+                    plan === "SP_PLAN" ? "text-cyan-400" : "text-zinc-400"
                   }`}>
                     <CheckCircle size={8} />
                     {selectedFeatureList.length} total features
@@ -498,13 +505,14 @@ export default function GrantPremiumModal({
                       plan === "BUSINESS" ? "border-amber-500/15 bg-amber-500/[0.04]" :
                       plan === "ENTERPRISE" ? "border-red-500/15 bg-red-500/[0.04]" :
                       plan === "STUDENT" ? "border-green-500/15 bg-green-500/[0.04]" :
+                      plan === "SP_PLAN" ? "border-cyan-500/15 bg-cyan-500/[0.04]" :
                       "border-zinc-700/50 bg-zinc-800/30"
                     }`}>
                       <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-zinc-700/30">
                         <div className={`h-2.5 w-2.5 rounded-full ${
                           plan === "PLUS" ? "bg-blue-400" : plan === "PRO" ? "bg-purple-400" :
                           plan === "BUSINESS" ? "bg-amber-400" : plan === "ENTERPRISE" ? "bg-red-400" :
-                          plan === "STUDENT" ? "bg-green-400" : plan === "BASIC" ? "bg-zinc-400" : "bg-zinc-500"
+                          plan === "STUDENT" ? "bg-green-400" : plan === "SP_PLAN" ? "bg-cyan-400" : plan === "BASIC" ? "bg-zinc-400" : "bg-zinc-500"
                         }`} />
                         <span className="text-sm font-semibold text-zinc-200">{cat}</span>
                         <span className="ml-auto rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-medium text-zinc-500">{feats.length}</span>
@@ -579,6 +587,7 @@ export default function GrantPremiumModal({
                     plan === "BUSINESS" ? "bg-amber-500/10 text-amber-400" :
                     plan === "ENTERPRISE" ? "bg-red-500/10 text-red-400" :
                     plan === "STUDENT" ? "bg-green-500/10 text-green-400" :
+                    plan === "SP_PLAN" ? "bg-cyan-500/10 text-cyan-400" :
                     "bg-zinc-700 text-zinc-300"
                   }`}>{plan}</span>
                   <span className="text-zinc-600">&middot;</span>
@@ -824,7 +833,8 @@ export default function GrantPremiumModal({
                   <Crown size={16} className={
                     plan === "PLUS" ? "text-blue-400" : plan === "PRO" ? "text-purple-400" :
                     plan === "BUSINESS" ? "text-amber-400" : plan === "ENTERPRISE" ? "text-red-400" :
-                    plan === "STUDENT" ? "text-green-400" : "text-red-400"
+                    plan === "STUDENT" ? "text-green-400" :
+                    plan === "SP_PLAN" ? "text-cyan-400" : "text-red-400"
                   } />
                   <span className="text-sm font-bold text-zinc-100">{plan}</span>
                   <span className="rounded-full border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[9px] text-zinc-400">{subscriptionType}</span>
@@ -846,12 +856,14 @@ export default function GrantPremiumModal({
                   <div className="flex justify-between">
                     <span className="text-zinc-600">Support</span>
                     <span className={
+                      plan === "SP_PLAN" ? "text-cyan-400" :
                       plan === "ENTERPRISE" ? "text-purple-400" :
                       plan === "BUSINESS" ? "text-amber-400" :
                       plan === "PRO" ? "text-purple-300" :
                       "text-green-300"
                     }>
-                      {plan === "ENTERPRISE" ? "24/7 Dedicated + AM" :
+                      {plan === "SP_PLAN" ? "Concierge + Direct Engineering" :
+                       plan === "ENTERPRISE" ? "24/7 Dedicated + AM" :
                        plan === "BUSINESS" ? "Dedicated + SLA" :
                        plan === "PRO" ? "Priority" :
                        plan === "STUDENT" ? "Priority" :
@@ -904,7 +916,7 @@ export default function GrantPremiumModal({
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
                     <CheckCircle size={7} className="shrink-0 text-blue-500" />
-                    <span className={plan === "ENTERPRISE" ? "text-red-400" : plan === "BUSINESS" ? "text-amber-400" : plan === "PRO" ? "text-purple-400" : "text-blue-400"}>
+                    <span className={plan === "ENTERPRISE" ? "text-red-400" : plan === "SP_PLAN" ? "text-cyan-400" : plan === "BUSINESS" ? "text-amber-400" : plan === "PRO" ? "text-purple-400" : "text-blue-400"}>
                       {Object.keys(selectedFeatures).length}
                     </span> feature categories
                   </div>
@@ -977,6 +989,7 @@ export default function GrantPremiumModal({
                     plan === "BUSINESS" ? "bg-amber-500/10 text-amber-400" :
                     plan === "ENTERPRISE" ? "bg-red-500/10 text-red-400" :
                     plan === "STUDENT" ? "bg-green-500/10 text-green-400" :
+                    plan === "SP_PLAN" ? "bg-cyan-500/10 text-cyan-400" :
                     "bg-zinc-700 text-zinc-300"
                   }`}>{plan}</span>
                 </div>
@@ -1052,7 +1065,8 @@ export default function GrantPremiumModal({
                         <Crown size={12} className={
                           plan === "PLUS" ? "text-blue-400" : plan === "PRO" ? "text-purple-400" :
                           plan === "BUSINESS" ? "text-amber-400" : plan === "ENTERPRISE" ? "text-red-400" :
-                          plan === "STUDENT" ? "text-green-400" : "text-zinc-400"
+                          plan === "STUDENT" ? "text-green-400" :
+                          plan === "SP_PLAN" ? "text-cyan-400" : "text-zinc-400"
                         } />
                         {plan}
                         {planMeta?.badge && <Badge label={planMeta.badge} color={planMeta.color} />}

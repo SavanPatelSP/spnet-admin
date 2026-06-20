@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { DefaultSession } from "next-auth";
 import { AUTH } from "@/lib/constants";
+import { resolveGeoFromApi } from "@/lib/geo";
 
 const IP_ATTEMPT_WINDOW = 60_000;
 const IP_MAX_ATTEMPTS = 10;
@@ -352,11 +353,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             : userAgent.includes("Android") ? "Android"
             : userAgent.includes("iOS") ? "iOS"
             : "Unknown";
+          const osVersion = userAgent.match(/(?:Windows NT |Mac OS X |Android )([\d._]+)/)?.[1]?.replace(/_/g, ".") ?? null;
           const browser = userAgent.includes("Chrome") ? "Chrome"
             : userAgent.includes("Firefox") ? "Firefox"
-            : userAgent.includes("Safari") ? "Safari"
+            : userAgent.includes("Safari") && !userAgent.includes("Chrome") ? "Safari"
             : userAgent.includes("Edge") ? "Edge"
             : "Unknown";
+          const browserVersion = userAgent.match(/(?:Chrome|Firefox|Safari|Edge)\/([\d.]+)/)?.[1] ?? null;
+          const deviceType = userAgent.includes("Mobile") ? "MOBILE"
+            : userAgent.includes("Tablet") || userAgent.includes("iPad") ? "TABLET"
+            : "DESKTOP";
+
+          const geo = await resolveGeoFromApi(ipAddress);
 
           if (existingActivation) {
             await prisma.activation.update({
@@ -364,7 +372,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               data: {
                 ipAddress,
                 os,
+                osVersion,
                 browser,
+                browserVersion,
+                deviceType,
+                userAgent,
+                country: geo.country,
+                city: geo.city,
+                isp: geo.isp,
                 lastSeenAt: new Date(),
                 trustScore: Math.min(100, existingActivation.trustScore + 5),
               },
@@ -377,8 +392,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 licenseId: license.id,
                 ipAddress,
                 os,
+                osVersion,
                 browser,
-                country: "Unknown",
+                browserVersion,
+                deviceType,
+                userAgent,
+                country: geo.country,
+                city: geo.city,
+                isp: geo.isp,
                 trustScore: 50,
                 status: "ACTIVE",
               },
@@ -453,8 +474,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (token.licenseStatus !== license.status) {
             token.licenseStatus = license.status;
           }
-        } catch {
-          return null;
+        } catch (e) {
+          console.error("License validation error in JWT callback:", e);
         }
 
         // Server-driven session validation
@@ -475,8 +496,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             token.sessionCreatedAt = sessionRecord.createdAt.toISOString();
             token.sessionExpiresAt = sessionRecord.expiresAt.toISOString();
-          } catch {
-            return null;
+          } catch (e) {
+            console.error("Session validation error in JWT callback:", e);
           }
         }
       }

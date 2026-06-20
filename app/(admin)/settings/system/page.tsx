@@ -190,7 +190,7 @@ export default async function SystemPage() {
           <div className="rounded-xl bg-zinc-800/50 px-4 py-3">
             <p className="text-xs text-zinc-500">Environment</p>
             <p className="mt-1 text-sm font-medium text-zinc-100">
-              {process.env.NODE_ENV || "development"}
+              {(process.env.APP_ENV || process.env.NODE_ENV || "development") === "staging" ? "Staging" : (process.env.APP_ENV || process.env.NODE_ENV || "development") === "production" ? "Production" : "Development"}
             </p>
           </div>
           <div className="rounded-xl bg-zinc-800/50 px-4 py-3">

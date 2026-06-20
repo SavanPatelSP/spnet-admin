@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
@@ -9,7 +9,7 @@ import { API_ROUTES } from "@/lib/constants";
 import { SessionExtendModal } from "./SessionExtendModal";
 import { SessionForceLogoutModal } from "./SessionForceLogoutModal";
 import { SessionPolicyOverrideModal } from "./SessionPolicyOverrideModal";
-import { Clock, XCircle, LogOut, ArrowUpCircle, Search, Crown } from "lucide-react";
+import { Clock, XCircle, LogOut, ArrowUpCircle, Search, Crown, RefreshCw } from "lucide-react";
 
 interface SessionRow {
   id: string;
@@ -33,6 +33,15 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
   const [extendTarget, setExtendTarget] = useState<SessionRow | null>(null);
   const [logoutTarget, setLogoutTarget] = useState<SessionRow | null>(null);
   const [overrideTarget, setOverrideTarget] = useState<SessionRow | null>(null);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const id = setInterval(() => router.refresh(), 30000);
+    return () => clearInterval(id);
+  }, [autoRefresh, router]);
 
   const canOverridePolicy = currentUserRole === "OWNER" || currentUserRole === "SUPER_ADMIN";
 
@@ -146,14 +155,23 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
         </div>
       }
       bulkActions={
-        selectedIds.size > 0 && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setAutoRefresh(!autoRefresh); }}
+            className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors ${
+              autoRefresh ? "border-blue-500/30 bg-blue-500/10 text-blue-400" : "border-zinc-700 bg-zinc-800 text-zinc-500"
+            }`}
+          >
+            <RefreshCw size={14} className={`mr-1 inline ${autoRefresh ? "animate-spin" : ""}`} />
+            Auto
+          </button>
+          {selectedIds.size > 0 && (
             <button onClick={bulkRevoke} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
               <XCircle size={14} className="mr-1 inline" />
               Revoke {selectedIds.size}
             </button>
-          </div>
-        )
+          )}
+        </div>
       }
       columns={[
         { key: "user", label: "User", sortable: true, searchable: true },
@@ -241,21 +259,21 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
         <SessionExtendModal
           session={extendTarget}
           onClose={() => setExtendTarget(null)}
-          onSuccess={() => { setExtendTarget(null); router.refresh(); }}
+          onSuccess={() => { setExtendTarget(null); setRefreshKey((k) => k + 1); router.refresh(); }}
         />
       )}
       {overrideTarget && (
         <SessionPolicyOverrideModal
           session={overrideTarget}
           onClose={() => setOverrideTarget(null)}
-          onSuccess={() => { setOverrideTarget(null); router.refresh(); }}
+          onSuccess={() => { setOverrideTarget(null); setRefreshKey((k) => k + 1); router.refresh(); }}
         />
       )}
       {logoutTarget && (
         <SessionForceLogoutModal
           session={logoutTarget}
           onClose={() => setLogoutTarget(null)}
-          onSuccess={() => { setLogoutTarget(null); router.refresh(); }}
+          onSuccess={() => { setLogoutTarget(null); setRefreshKey((k) => k + 1); router.refresh(); }}
         />
       )}
     </>

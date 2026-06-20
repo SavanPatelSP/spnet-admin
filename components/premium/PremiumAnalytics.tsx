@@ -20,6 +20,7 @@ const PLAN_COLORS: Record<string, string> = {
   BUSINESS: "#f59e0b",
   ENTERPRISE: "#ef4444",
   STUDENT: "#22c55e",
+  SP_PLAN: "#06b6d4",
 };
 
 const TYPE_COLORS: Record<string, string> = {

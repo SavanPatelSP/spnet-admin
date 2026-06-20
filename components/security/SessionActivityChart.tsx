@@ -23,7 +23,9 @@ export function SessionActivityChart() {
           if (json.sessions) {
             const grouped: Record<string, number> = {};
             for (const s of json.sessions) {
-              const d = new Date(s.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+              const dt = new Date(s.createdAt);
+              const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              const d = `${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
               grouped[d] = (grouped[d] || 0) + 1;
             }
             const sorted = Object.entries(grouped).sort((a, b) => {

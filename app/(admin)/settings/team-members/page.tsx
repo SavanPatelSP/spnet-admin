@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { getAuthSession } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import TeamMembersDataTable from "@/components/settings/TeamMembersDataTable";
-import CreateTeamMemberModal from "@/components/settings/team-members/CreateTeamMemberModal";
+import InviteTeamMemberModal from "@/components/settings/team-members/InviteTeamMemberModal";
 import OwnershipPanel from "@/components/settings/team-members/OwnershipPanel";
 import SecurityEventsPanel from "@/components/settings/team-members/SecurityEventsPanel";
-import { Users, UserCheck, UserX, Shield, Plus } from "lucide-react";
-import Link from "next/link";
+import { Users, UserCheck, UserX, Shield } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Team Members" };
 
 export default async function TeamMembersPage() {
+  const authSession = await getAuthSession();
+  const currentUserRole = authSession?.user?.role || "";
+
   const [totalMembers, activeMembers, totalRoles, members, auditEvents] = await Promise.all([
     prisma.teamMember.count(),
     prisma.teamMember.count({ where: { status: "ACTIVE" } }),
@@ -37,17 +40,17 @@ export default async function TeamMembersPage() {
     }),
   ]);
 
-  const suspendedMembers = totalMembers - activeMembers;
+  const suspendedMembers = await prisma.teamMember.count({ where: { status: "SUSPENDED" } });
   const roles = await prisma.role.findMany({ orderBy: { name: "asc" } });
 
-  const owner = members.find((m) => m.role.name === "OWNER");
+  const owner = members.find((m) => m.role?.name === "OWNER");
   const memberRows = members.map((m) => ({
     id: m.id,
     name: m.name,
     email: m.email,
     status: m.status,
     roleId: m.roleId,
-    roleName: m.role.name,
+    roleName: m.role?.name ?? "Unknown",
     createdAt: m.createdAt,
     lastLogin: m.lastLogin,
     failedLoginAttempts: m.failedLoginAttempts,
@@ -79,13 +82,7 @@ export default async function TeamMembersPage() {
               <p className="mt-1 text-sm text-zinc-500">Create new administrators and assign platform roles.</p>
             </div>
             <div className="flex items-center gap-2">
-              <CreateTeamMemberModal />
-              <Link
-                href="/settings/team-members/create-license"
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-              >
-                <Plus size={14} /> Member + License
-              </Link>
+              <InviteTeamMemberModal currentUserRole={currentUserRole} />
             </div>
           </div>
         </div>
@@ -98,7 +95,7 @@ export default async function TeamMembersPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <TeamMembersDataTable members={memberRows} roles={roleList} />
+          <TeamMembersDataTable members={memberRows} roles={roleList} currentUserRole={currentUserRole} />
         </div>
         <div>
           <SecurityEventsPanel

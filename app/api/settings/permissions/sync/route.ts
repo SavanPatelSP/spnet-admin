@@ -5,8 +5,12 @@ import { handleApiError } from "@/lib/security/errors";
 import { PERMISSION_GROUPS, ALL_PERMISSIONS, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function GET() {
-  await requireApiPermission("Edit Roles");
-  return Response.json(PERMISSION_GROUPS);
+  try {
+    await requireApiPermission("Edit Roles");
+    return Response.json(PERMISSION_GROUPS);
+  } catch (error) {
+    return handleApiError(error);
+  }
 }
 
 export async function POST(req: Request) {

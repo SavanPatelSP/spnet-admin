@@ -31,9 +31,10 @@ interface MemberRow {
 interface TeamMembersDataTableProps {
   members: MemberRow[];
   roles: { id: string; name: string }[];
+  currentUserRole?: string;
 }
 
-export default function TeamMembersDataTable({ members, roles }: TeamMembersDataTableProps) {
+export default function TeamMembersDataTable({ members, roles, currentUserRole }: TeamMembersDataTableProps) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
@@ -251,7 +252,7 @@ export default function TeamMembersDataTable({ members, roles }: TeamMembersData
                 }}
                 roles={roles}
               />
-              <MemberActions memberId={m.id} status={m.status} />
+              <MemberActions memberId={m.id} status={m.status} currentUserRole={currentUserRole} />
             </div>,
           ],
         }))}

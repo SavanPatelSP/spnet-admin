@@ -43,24 +43,36 @@ export async function POST(req: Request) {
     let policyLabel: string;
     let cost = 0;
 
+    let overrideDurationMinutes: number | null = null;
+    let overrideCooldownMinutes: number | null = null;
+
     if (option === "restore") {
       newExpiry = new Date(existing.createdAt.getTime() + AUTH.SESSION_MAX_AGE_SECONDS * 1000);
       policyLabel = "Default Policy";
+      overrideDurationMinutes = null;
+      overrideCooldownMinutes = null;
     } else if (option === "unlimited") {
       newExpiry = new Date("2099-12-31T23:59:59.999Z");
       policyLabel = "Unlimited Session";
       cost = UNLIMITED_COST;
+      overrideDurationMinutes = -1;
+      overrideCooldownMinutes = null;
     } else {
       const minutes = option === "custom" ? Math.max(1, Number(customMinutes) || 1) : OPTION_MINUTES[option];
       newExpiry = new Date(Date.now() + minutes * 60 * 1000);
       policyLabel = option === "custom" ? `Custom (${minutes} min)` : option;
       cost = (SESSION_EXTENSION_PRICE_PER_MINUTE || 0) * minutes;
+      overrideDurationMinutes = minutes;
+      overrideCooldownMinutes = option === "custom" ? Math.max(0, Number(customCooldown) || 0) : null;
     }
 
     const updated = await prisma.session.update({
       where: { id: sessionId },
       data: {
         expiresAt: newExpiry,
+        overrideDurationMinutes,
+        overrideCooldownMinutes,
+        lastOverrideAt: new Date(),
       },
     });
 

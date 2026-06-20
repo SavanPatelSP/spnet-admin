@@ -1,6 +1,30 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
+const SEED_ENV = (process.env.APP_ENV || process.env.NODE_ENV || "development").toLowerCase();
+const DB_URL = process.env.DATABASE_URL ?? "";
+
+if (SEED_ENV !== "development") {
+  console.error(
+    "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  SAFETY BLOCKED: Seed can only run in development environment.  ║\n" +
+    `║  APP_ENV=${SEED_ENV} — refusing to seed.                         ║\n` +
+    "║  Set APP_ENV=development or APP_ENV= to proceed.               ║\n" +
+    "╚══════════════════════════════════════════════════════════════════╝"
+  );
+  process.exit(1);
+}
+
+if (DB_URL.includes("prod") && !DB_URL.includes("dev")) {
+  console.error(
+    "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  SAFETY BLOCKED: DATABASE_URL looks like a production database. ║\n" +
+    "║  Seed with test data on a production database is FORBIDDEN.     ║\n" +
+    "╚══════════════════════════════════════════════════════════════════╝"
+  );
+  process.exit(1);
+}
+
 const prisma = new PrismaClient();
 
 const ALL_PERMISSIONS = [

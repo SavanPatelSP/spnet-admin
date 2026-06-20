@@ -3,7 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
-import { lookupGeo } from "@/lib/geo";
+import { resolveGeoFromApi } from "@/lib/geo";
 
 export async function POST() {
   try {
@@ -18,20 +18,23 @@ export async function POST() {
     });
 
     let enriched = 0;
+    const seenIps = new Set<string>();
     for (const activation of activations) {
-      if (!activation.ipAddress) continue;
-      const geo = lookupGeo(activation.ipAddress);
+      if (!activation.ipAddress || seenIps.has(activation.ipAddress)) continue;
+      seenIps.add(activation.ipAddress);
+      const geo = await resolveGeoFromApi(activation.ipAddress);
       if (geo.country) {
-        await prisma.activation.update({
-          where: { id: activation.id },
+        await prisma.activation.updateMany({
+          where: { ipAddress: activation.ipAddress, country: null },
           data: {
             country: geo.country,
             city: geo.city,
             isp: geo.isp,
           },
         });
-        enriched++;
+        enriched += 1;
       }
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     await logAudit(
