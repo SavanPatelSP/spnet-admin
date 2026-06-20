@@ -40,4 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
+# backup files
+/backups/
+
+# database files (environment-specific)
+prisma/staging.db
+prisma/prod.db
+prisma/dev.db
