@@ -54,7 +54,7 @@ export default async function AnalyticsPage({
   ]);
 
   const totalDevices = activations.length;
-  const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
+  const totalCapacity = licenses.reduce<number>((t, l) => t + l.maxDevices, 0);
   const utilization = calculateUtilization(totalDevices, totalCapacity);
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const avgDevicesPerLicense = licenses.length > 0 ? (totalDevices / licenses.length).toFixed(1) : "0";
