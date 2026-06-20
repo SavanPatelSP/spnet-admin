@@ -6,48 +6,53 @@ import { defineConfig } from "prisma/config";
 const APP_ENV = (process.env.APP_ENV || process.env.NODE_ENV || "development").toLowerCase();
 const DB_URL = process.env.DATABASE_URL ?? "";
 
-if (!DB_URL) {
-  console.error(
+// prisma generate needs a datasource URL to know the provider (SQLite).
+// On CI/deployment where .env files aren't present, provide a fallback.
+const DATASOURCE_URL = DB_URL || "file:./prisma/dev.db";
+
+if (!DB_URL && APP_ENV === "production") {
+  console.warn(
     "╔══════════════════════════════════════════════════════════════════╗\n" +
-    "║  FATAL: DATABASE_URL is not set.                                ║\n" +
-    "║  Create .env.development (for dev) or set DATABASE_URL env var. ║\n" +
+    "║  WARNING: DATABASE_URL is not set. Using fallback for generate. ║\n" +
+    "║  Set DATABASE_URL in your production deployment env vars.       ║\n" +
     "╚══════════════════════════════════════════════════════════════════╝"
   );
-  process.exit(1);
 }
 
-const isDevDatabase = DB_URL.includes("dev.db");
-const isStagingDatabase = DB_URL.includes("staging.db");
-const isProdDatabase = DB_URL.includes("prod.db") && !isDevDatabase;
+if (DB_URL) {
+  const isDevDatabase = DB_URL.includes("dev.db");
+  const isStagingDatabase = DB_URL.includes("staging.db");
+  const isProdDatabase = DB_URL.includes("prod.db") && !isDevDatabase;
 
-if (APP_ENV === "development" && isProdDatabase) {
-  console.error(
-    "╔══════════════════════════════════════════════════════════════════╗\n" +
-    "║  FATAL: Development environment targets a production database.  ║\n" +
-    "║  Check your DATABASE_URL in .env.development.                   ║\n" +
-    "╚══════════════════════════════════════════════════════════════════╝"
-  );
-  process.exit(1);
-}
+  if (APP_ENV === "development" && isProdDatabase) {
+    console.error(
+      "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  FATAL: Development environment targets a production database.  ║\n" +
+      "║  Check your DATABASE_URL in .env.development.                   ║\n" +
+      "╚══════════════════════════════════════════════════════════════════╝"
+    );
+    process.exit(1);
+  }
 
-if (APP_ENV === "production" && !isProdDatabase) {
-  console.error(
-    "╔══════════════════════════════════════════════════════════════════╗\n" +
-    "║  FATAL: Production environment does not target a production DB. ║\n" +
-    "║  Check your DATABASE_URL in .env.production or deployment vars. ║\n" +
-    "╚══════════════════════════════════════════════════════════════════╝"
-  );
-  process.exit(1);
-}
+  if (APP_ENV === "production" && !isProdDatabase) {
+    console.error(
+      "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  FATAL: Production environment does not target a production DB. ║\n" +
+      "║  Check your DATABASE_URL in .env.production or deployment vars. ║\n" +
+      "╚══════════════════════════════════════════════════════════════════╝"
+    );
+    process.exit(1);
+  }
 
-if (APP_ENV === "staging" && isProdDatabase) {
-  console.error(
-    "╔══════════════════════════════════════════════════════════════════╗\n" +
-    "║  FATAL: Staging environment targets a production database.      ║\n" +
-    "║  Check your DATABASE_URL in staging deployment variables.       ║\n" +
-    "╚══════════════════════════════════════════════════════════════════╝"
-  );
-  process.exit(1);
+  if (APP_ENV === "staging" && isProdDatabase) {
+    console.error(
+      "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  FATAL: Staging environment targets a production database.      ║\n" +
+      "║  Check your DATABASE_URL in staging deployment variables.       ║\n" +
+      "╚══════════════════════════════════════════════════════════════════╝"
+    );
+    process.exit(1);
+  }
 }
 
 export default defineConfig({
@@ -56,6 +61,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: DB_URL,
+    url: DATASOURCE_URL,
   },
 });
