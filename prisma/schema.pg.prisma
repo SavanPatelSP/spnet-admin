@@ -1,0 +1,562 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String
+
+  createdAt DateTime @default(now())
+}
+
+model License {
+  id           String   @id @default(cuid())
+  key          String   @unique
+
+  organization String
+  plan         String
+  status       String
+
+  maxDevices   Int
+
+  expiresAt    DateTime
+
+  notes        String?
+
+  featureFlags String?   // JSON string of feature flag key-value pairs
+
+  trialStartDate DateTime?
+  trialEndDate   DateTime?
+
+  parentLicenseId String?
+  parentLicense   License?  @relation("LicenseTransfer", fields: [parentLicenseId], references: [id], onDelete: SetNull)
+  childLicenses   License[] @relation("LicenseTransfer")
+
+  teamMember   TeamMember?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  activations  Activation[]
+  coinBalance  CoinBalance?
+  coinTransactions CoinTransaction[]
+  gemBalance   GemBalance?
+  gemTransactions GemTransaction[]
+  premiumSubscriptions PremiumSubscription[]
+  premiumRequests    PremiumRequest[]
+  supportTickets SupportTicket[]
+  tags         LicenseTag[]
+  events       LicenseEvent[]
+  invoices     Invoice[]
+}
+
+model LicenseTag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("gray")
+  licenseId String
+  license   License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([licenseId, name])
+}
+
+model LicenseEvent {
+  id          String   @id @default(cuid())
+  licenseId   String
+  license     License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type        String   // ACTIVATED, DEACTIVATED, SUSPENDED, REACTIVATED, EXPIRED, RENEWED, PLAN_CHANGED, TRANSFERRED, TRIAL_STARTED, TRIAL_CONVERTED, FEATURE_UPDATED, TAG_ADDED, TAG_REMOVED, VALIDATED
+  description String?
+  metadata    String?  // JSON string
+  performedBy String?
+  createdAt   DateTime @default(now())
+}
+
+model LicenseTemplate {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?
+  plan          String
+  maxDevices    Int      @default(5)
+  durationDays  Int      @default(365)
+  featureFlags  String?  // JSON string of default feature flag values
+  defaultNotes  String?
+  isActive      Boolean  @default(true)
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+}
+
+model CoinBalance {
+  id         String   @id @default(cuid())
+  licenseId  String   @unique
+  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type       String   @default("FINITE")  // FINITE, PROMOTIONAL, BONUS
+  balance    Int      @default(0)
+  isInfinite Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+}
+
+model CoinTransaction {
+  id           String   @id @default(cuid())
+  licenseId    String
+  license      License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type         String   // CREDIT, DEBIT, REFUND, ADJUSTMENT
+  amount       Int
+  balanceAfter Int
+  reason       String?
+  description  String?
+  performedBy  String?
+  metadata     String?
+  createdAt    DateTime @default(now())
+}
+
+model GemBalance {
+  id         String   @id @default(cuid())
+  licenseId  String   @unique
+  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type       String   @default("FINITE")  // FINITE, PROMOTIONAL, REWARD
+  balance    Int      @default(0)
+  isInfinite Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+}
+
+model GemTransaction {
+  id           String   @id @default(cuid())
+  licenseId    String
+  license      License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type         String   // GRANT, REVOKE, ADJUSTMENT, REWARD
+  amount       Int
+  balanceAfter Int
+  rewardId     String?
+  reward       GemReward? @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+  reason       String?
+  description  String?
+  performedBy  String?
+  createdAt    DateTime @default(now())
+}
+
+model GemReward {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  amount      Int
+  category    String   @default("ACHIEVEMENT")  // ACHIEVEMENT, REFERRAL, EVENT, SEASONAL
+  active      Boolean  @default(true)
+  cooldownDays Int?
+  maxClaims   Int?
+  budget      Int?
+  icon        String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions GemTransaction[]
+}
+
+model PremiumSubscription {
+  id        String   @id @default(cuid())
+
+  licenseId String
+  license   License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  plan      String
+  action    String   // GRANTED, EXTENDED, PLAN_CHANGED, REVOKED, CANCELLED, RENEWED, DOWNGRADED, CONVERTED_TO_LIFETIME
+
+  subscriptionType String @default("MONTHLY")  // MONTHLY, YEARLY, CUSTOM, LIFETIME
+
+  startDate DateTime @default(now())
+  endDate   DateTime
+  durationDays Int?
+
+  grantedBy String?
+  notes     String?
+
+  previousPlan     String?
+  previousEndDate  DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+model PremiumRequest {
+  id            String   @id @default(cuid())
+
+  licenseId     String
+  license       License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  organization  String?
+  requestedPlan String
+  requestedDurationDays Int
+  reason        String?
+  status        String   @default("PENDING")  // PENDING, APPROVED, REJECTED, EXPIRED
+
+  submittedBy   String?
+  submittedAt   DateTime @default(now())
+
+  reviewedBy    String?
+  reviewedAt    DateTime?
+
+  reviewNotes   String?
+  convertedSubscriptionId String?
+
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Activation {
+  id         String   @id @default(cuid())
+
+  licenseId  String
+  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  deviceId   String
+  deviceName String?
+
+  ipAddress  String?
+  os         String?
+  osVersion  String?
+  browser    String?
+  browserVersion String?
+  deviceType String?     // DESKTOP, MOBILE, TABLET, SERVER, OTHER
+  userAgent  String?
+  latitude   Float?
+  longitude  Float?
+
+  country    String?
+  city       String?
+  isp        String?
+
+  trustScore Int      @default(50)
+  isBlacklisted Boolean @default(false)
+  lastSeenAt DateTime?
+  status     String @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, BLACKLISTED
+  notes      String?
+
+  createdAt  DateTime @default(now())
+
+  deviceFingerprintId String?
+  deviceFingerprint   DeviceFingerprint? @relation(fields: [deviceFingerprintId], references: [id])
+}
+
+model DeviceFingerprint {
+  id              String   @id @default(cuid())
+  fingerprint     String   @unique
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  activationCount Int      @default(0)
+  licenseIds      String?  // JSON
+  activations     Activation[]
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+
+  action        String
+
+  severity      String   @default("Medium")
+
+  entityType    String?
+
+  entityId      String?
+
+  metadata      String?
+
+  licenseId     String?
+
+  organization  String?
+
+  actorRole     String?
+
+  actorName     String?
+
+  actorEmail    String?
+
+  description   String?
+
+  createdAt     DateTime @default(now())
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+
+  name      String
+  email     String   @unique
+  password  String
+
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  status    String   @default("ACTIVE")
+
+  licenseId String?     @unique
+  license   License?    @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+
+  lastLogin            DateTime?
+  lastLoginIp          String?
+  lastUserAgent        String?
+  failedLoginAttempts  Int      @default(0)
+  lockedUntil          DateTime?
+
+  mfaSecret   String?
+  mfaEnabled  Boolean  @default(false)
+
+  passwordChangedAt DateTime?
+
+  inviteToken          String?   @unique
+  inviteTokenExpiresAt DateTime?
+  passwordSetupAt      DateTime?
+  isFirstLogin         Boolean   @default(true)
+
+  ssoProvider  String?
+  ssoId        String?
+
+  department String?
+  phone      String?
+  avatarUrl  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions      Session[]
+  loginHistory  LoginHistory[]
+  mfaBackupCodes MfaBackupCode[]
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  token         String
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  overrideDurationMinutes  Int?   // custom duration in minutes when policy is overridden
+  overrideCooldownMinutes  Int?   // cooldown in minutes before next override is allowed
+  lastOverrideAt           DateTime? // when the last override was applied
+}
+
+model LoginHistory {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  ipAddress     String?
+  userAgent     String?
+  success       Boolean
+  failureReason String?
+  createdAt     DateTime @default(now())
+}
+
+model MfaBackupCode {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  code          String
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model Role {
+  id          String   @id @default(cuid())
+
+  name        String   @unique
+  description String?
+
+  riskLevel   String   @default("Medium")
+
+  protected   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     TeamMember[]
+  permissions Permission[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+
+  roleId      String
+  role        Role     @relation(fields: [roleId], references: [id])
+
+  permission  String
+
+  createdAt   DateTime @default(now())
+}
+
+model SupportTicket {
+  id         String   @id @default(cuid())
+  subject    String
+  message    String
+  status     String   @default("OPEN")       // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  priority   String   @default("MEDIUM")     // LOW, MEDIUM, HIGH, CRITICAL
+  category   String   @default("GENERAL")    // GENERAL, BILLING, TECHNICAL, ACCOUNT, OTHER
+
+  licenseId  String?
+  license    License? @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  assignedTo String?                          // TeamMember ID
+  createdBy  String?
+  resolvedBy String?
+  resolvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notes SupportNote[]
+}
+
+model SupportNote {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  note       String
+  isInternal Boolean  @default(true)
+  createdBy  String?
+  createdAt  DateTime @default(now())
+}
+
+model ModerationReport {
+  id          String   @id @default(cuid())
+  targetType  String                        // LICENSE, USER, CONTENT
+  targetId    String
+  reason      String
+  description String?
+  reporterId  String?
+  status      String   @default("PENDING")  // PENDING, INVESTIGATING, RESOLVED, DISMISSED
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  actionTaken String?                        // WARNING, SUSPENSION, BAN, NONE
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ModerationAction {
+  id            String   @id @default(cuid())
+  targetType    String                        // LICENSE, USER, TEAM_MEMBER
+  targetId      String
+  actionType    String                        // WARNING, SUSPENSION, REINSTATEMENT, BAN
+  reason        String
+  durationDays  Int?
+  expiresAt     DateTime?
+  performedBy   String?
+  reportId      String?
+  createdAt     DateTime @default(now())
+}
+
+model Broadcast {
+  id           String   @id @default(cuid())
+  subject      String
+  message      String
+  type         String   @default("INFO")     // INFO, WARNING, CRITICAL
+  audience     String   @default("ALL")       // ALL, PREMIUM, FREE, SPECIFIC
+  status       String   @default("DRAFT")     // DRAFT, SCHEDULED, SENT, CANCELLED
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  sentCount    Int      @default(0)
+  targetCount  Int      @default(0)
+  failedCount  Int      @default(0)
+  createdBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SecurityPolicy {
+  id            String   @id @default(cuid())
+
+  name          String   @unique
+
+  enabled       Boolean  @default(true)
+
+  description   String?
+
+  category      String   @default("General")
+
+  severity      String   @default("Medium")
+
+  systemManaged Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Promotion {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  productType     String    // PROMO_CODE, DISCOUNT_COUPON, CAMPAIGN, LIMITED_TIME_OFFER, FREE_TRIAL, UPGRADE_PROMOTION
+  appliesTo       String?   // PREMIUM, COIN, GEM, LICENSE
+  targetPlan      String?   // plan/package label or plan ID when applicable
+  discountType    String    // PERCENTAGE, FIXED
+  discountValue   Float
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  active          Boolean   @default(true)
+  createdBy       String?
+  metadata        String?   // JSON string for subtype-specific fields (perUserLimit, trialLength, fromPlan, campaignPromotions, etc.)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Invoice {
+  id                String    @id @default(cuid())
+  invoiceNumber     String    @unique
+  licenseId         String?
+  license           License?  @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  organization      String?
+  customerName      String?
+  customerEmail     String?
+
+  status            String    @default("PENDING") // DRAFT, PENDING, PAID, OVERDUE, CANCELLED, REFUNDED
+  type              String    @default("SALE")     // SALE, REFUND, CREDIT
+  category          String    @default("OTHER")   // PREMIUM, LICENSE, COIN, GEM, PROMOTION, ORGANIZATION, SESSION, OTHER
+  action            String?                        // e.g. GRANT, EXTEND, CHANGE_PLAN, CREATE, REFUND
+
+  subtotal          Int       @default(0)          // amount in cents
+  discount          Int       @default(0)
+  tax               Int       @default(0)
+  total             Int       @default(0)
+  currency          String    @default("USD")
+
+  lineItems         String?   // JSON string [{ description, quantity, unitPrice, total }]
+
+  issuedAt          DateTime  @default(now())
+  dueAt             DateTime?
+  paidAt            DateTime?
+
+  notes             String?
+
+  actorName         String?
+  actorEmail        String?
+  targetName        String?
+  targetId          String?
+
+  relatedEntityType String?   // e.g. PREMIUM_GRANT, LICENSE_CREATE, COIN_PURCHASE, GEM_PURCHASE, SESSION_EXTEND, PROMOTION
+  relatedEntityId   String?
+
+  shareToken        String?   @unique
+  shareTokenExpiresAt DateTime?
+  isArchived        Boolean   @default(false)
+  archivedAt        DateTime?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([licenseId])
+  @@index([status])
+  @@index([category])
+  @@index([action])
+  @@index([issuedAt])
+}

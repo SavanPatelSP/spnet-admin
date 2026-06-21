@@ -6,9 +6,12 @@ import { defineConfig } from "prisma/config";
 const APP_ENV = (process.env.APP_ENV || process.env.NODE_ENV || "development").toLowerCase();
 const DB_URL = process.env.DATABASE_URL ?? "";
 
-// prisma generate needs a datasource URL to know the provider (SQLite).
-// On CI/deployment where .env files aren't present, provide a fallback.
-const DATASOURCE_URL = DB_URL || "file:./prisma/dev.db";
+const isProduction = APP_ENV === "production";
+const schemaFile = isProduction ? "prisma/schema.pg.prisma" : "prisma/schema.prisma";
+
+// For PostgreSQL production, the fallback is empty (must be set in env).
+// For SQLite dev, fall back to the local dev database.
+const DATASOURCE_URL = DB_URL || (isProduction ? "" : "file:./prisma/dev.db");
 
 if (!DB_URL && APP_ENV === "production") {
   console.warn(
@@ -20,9 +23,27 @@ if (!DB_URL && APP_ENV === "production") {
 }
 
 if (DB_URL) {
-  const isDevDatabase = DB_URL.includes("dev.db");
-  const isStagingDatabase = DB_URL.includes("staging.db");
-  const isProdDatabase = DB_URL.includes("prod.db") && !isDevDatabase;
+  const isSqlite = DB_URL.startsWith("file:");
+  const isPostgres = DB_URL.startsWith("postgresql://") || DB_URL.startsWith("postgres://");
+
+  let isDevDatabase = false;
+  let isStagingDatabase = false;
+  let isProdDatabase = false;
+
+  if (isSqlite) {
+    isDevDatabase = DB_URL.includes("dev.db");
+    isStagingDatabase = DB_URL.includes("staging.db");
+    isProdDatabase = DB_URL.includes("prod.db") && !isDevDatabase;
+  } else if (isPostgres) {
+    const dbName = DB_URL.split("/").pop()?.split("?")[0] ?? "";
+    isDevDatabase = dbName.includes("dev");
+    isStagingDatabase = dbName.includes("staging");
+    isProdDatabase = dbName.includes("prod") || (dbName.length > 0 && !isDevDatabase && !isStagingDatabase);
+  } else {
+    isProdDatabase = APP_ENV === "production";
+    isStagingDatabase = APP_ENV === "staging";
+    isDevDatabase = APP_ENV === "development";
+  }
 
   if (APP_ENV === "development" && isProdDatabase) {
     console.error(
@@ -56,9 +77,9 @@ if (DB_URL) {
 }
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: schemaFile,
   migrations: {
-    path: "prisma/migrations",
+    path: isProduction ? "prisma/pg-migrations" : "prisma/migrations",
   },
   datasource: {
     url: DATASOURCE_URL,

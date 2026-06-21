@@ -8,6 +8,7 @@ import {
   Lock, Server, Activity, Fingerprint, Clock,
 } from "lucide-react";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { getPublicAppEnvironment } from "@/lib/env-public";
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
@@ -175,7 +176,7 @@ function LoginForm() {
               <Server size={12} className="text-zinc-600" />
               <span className="text-zinc-500">Environment</span>
               <span className="font-medium text-zinc-300">
-                {process.env.NEXT_PUBLIC_APP_ENV === "staging" ? "Staging" : process.env.NEXT_PUBLIC_APP_ENV === "production" ? "Production" : "Development"}
+                {getPublicAppEnvironment() === "staging" ? "Staging" : getPublicAppEnvironment() === "production" ? "Production" : "Development"}
               </span>
             </div>
           </div>

@@ -1,14 +1,33 @@
 import { PrismaClient } from "@prisma/client";
 import { getAppEnvironment } from "./env";
 
+function isPostgresUrl(url: string): boolean {
+  return url.startsWith("postgresql://") || url.startsWith("postgres://");
+}
+
+function resolveDatabaseType(dbUrl: string): { isDev: boolean; isStaging: boolean; isProd: boolean } {
+  if (dbUrl.startsWith("file:")) {
+    const filename = dbUrl.replace(/^file:/, "").replace(/^\.\/prisma\//, "").trim();
+    const isDev = filename.includes("dev") || filename === dbUrl;
+    const isStaging = filename.includes("staging");
+    const isProd = !isDev && !isStaging && filename.length > 0;
+    return { isDev, isStaging, isProd };
+  }
+  if (isPostgresUrl(dbUrl)) {
+    const dbName = dbUrl.split("/").pop()?.split("?")[0] ?? "";
+    const isDev = dbName.includes("dev");
+    const isStaging = dbName.includes("staging");
+    const isProd = dbName.includes("prod") || (dbName.length > 0 && !isDev && !isStaging);
+    return { isDev, isStaging, isProd };
+  }
+  return { isDev: false, isStaging: false, isProd: true };
+}
+
 function validateDatabaseEnvironment(): void {
   const appEnv = getAppEnvironment();
   const dbUrl = process.env.DATABASE_URL ?? "";
-  const dbFilename = dbUrl.replace(/^file:/, "").replace(/^\.\/prisma\//, "").trim();
 
-  const isDevDatabase = dbFilename.includes("dev") || dbFilename === dbUrl;
-  const isStagingDatabase = dbFilename.includes("staging");
-  const isProdDatabase = !isDevDatabase && !isStagingDatabase && dbFilename.length > 0;
+  const { isDev: isDevDatabase, isStaging: isStagingDatabase, isProd: isProdDatabase } = resolveDatabaseType(dbUrl);
 
   if (appEnv === "development" && isProdDatabase) {
     console.warn(
@@ -63,4 +82,12 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
+}
+
+if (getAppEnvironment() === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+  import("./init-production").then(({ initProductionOwner }) => {
+    initProductionOwner(prisma).catch((err) => {
+      console.error("Production owner initialization failed:", err);
+    });
+  });
 }
