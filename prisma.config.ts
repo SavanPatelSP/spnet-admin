@@ -5,15 +5,20 @@ import { defineConfig } from "prisma/config";
 
 const APP_ENV = (process.env.APP_ENV || process.env.NODE_ENV || "development").toLowerCase();
 const DB_URL = process.env.DATABASE_URL ?? "";
+const BUILD_PHASE = process.env.NEXT_PHASE === "phase-production-build";
 
 const isProduction = APP_ENV === "production";
 const schemaFile = isProduction ? "prisma/schema.pg.prisma" : "prisma/schema.prisma";
 
-// For PostgreSQL production, the fallback is empty (must be set in env).
-// For SQLite dev, fall back to the local dev database.
-const DATASOURCE_URL = DB_URL || (isProduction ? "" : "file:./prisma/dev.db");
+// During the Vercel build phase, DATABASE_URL may not be available as a
+// build-time env var. Provide a placeholder PostgreSQL URL so prisma generate
+// can determine the correct provider from schema.pg.prisma. The real URL is
+// injected by the Vercel platform at runtime.
+const DATASOURCE_URL = BUILD_PHASE && isProduction
+  ? "postgresql://placeholder:ignored@localhost:5432/postgres"
+  : (DB_URL || (isProduction ? "" : "file:./prisma/dev.db"));
 
-if (!DB_URL && APP_ENV === "production") {
+if (!BUILD_PHASE && !DB_URL && APP_ENV === "production") {
   console.warn(
     "╔══════════════════════════════════════════════════════════════════╗\n" +
     "║  WARNING: DATABASE_URL is not set. Using fallback for generate. ║\n" +
@@ -22,7 +27,9 @@ if (!DB_URL && APP_ENV === "production") {
   );
 }
 
-if (DB_URL) {
+// Skip datasource validation during the build phase — the actual DATABASE_URL
+// will be available at runtime via Vercel environment variables.
+if (!BUILD_PHASE && DB_URL) {
   const isSqlite = DB_URL.startsWith("file:");
   const isPostgres = DB_URL.startsWith("postgresql://") || DB_URL.startsWith("postgres://");
 
