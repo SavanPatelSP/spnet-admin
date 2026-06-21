@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "build:prod": "prisma generate && next build"
+    "build:prod": "prisma generate && next build",
     "db:setup": "prisma generate && prisma migrate deploy",
     "start": "next start",
     "lint": "eslint"
