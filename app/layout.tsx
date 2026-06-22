@@ -5,6 +5,7 @@ import "./globals.css";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { ToastProvider } from "@/components/ui/Toast";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default async function RootLayout({
         <SessionProvider>
           <ToastProvider>{children}</ToastProvider>
         </SessionProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
