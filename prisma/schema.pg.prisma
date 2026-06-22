@@ -261,7 +261,6 @@ model DeviceFingerprint {
   licenseIds      String?  // JSON
   activations     Activation[]
 
-  @@index([createdAt])
 }
 
 model AuditLog {
