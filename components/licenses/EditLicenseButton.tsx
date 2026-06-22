@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, PLANS, LICENSE_STATUSES } from "@/lib/constants";
-import type { LicenseWithActivations } from "@/types/common";
+import type { License } from "@prisma/client";
 import { Pencil, Shield, Cpu, Calendar, FileText, ArrowRight } from "lucide-react";
 
 interface Props {
-  license: LicenseWithActivations;
+  license: License;
   size?: "sm" | "md";
 }
 

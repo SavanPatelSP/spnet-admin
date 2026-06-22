@@ -24,7 +24,7 @@ export default async function OrganizationsPage() {
 
   const [licenses, auditLogs, coinBalances, gemBalances, premiumSubs] = await Promise.all([
     prisma.license.findMany({
-      include: { activations: true },
+      include: { _count: { select: { activations: true } } },
       orderBy: { organization: "asc" },
     }),
     prisma.auditLog.findMany({
@@ -52,7 +52,7 @@ export default async function OrganizationsPage() {
         organization: org,
         licenseCount: lic.length,
         activeCount: lic.filter((l) => l.status === "ACTIVE").length,
-        deviceCount: lic.reduce((s, l) => s + l.activations.length, 0),
+        deviceCount: lic.reduce((s, l) => s + l._count.activations, 0),
         plans: [...new Set(lic.map((l) => l.plan))].join(", "),
         isPremium: lic.some((l) => ["ENTERPRISE", "LIFETIME", "BUSINESS"].includes(l.plan)),
         totalCoins: orgCoinBal.reduce((s, c) => s + c.balance, 0),
@@ -66,7 +66,7 @@ export default async function OrganizationsPage() {
 
   const totalOrgs = orgEntries.length;
   const totalLicenses = licenses.length;
-  const totalDevices = licenses.reduce((s, l) => s + l.activations.length, 0);
+  const totalDevices = licenses.reduce((s, l) => s + l._count.activations, 0);
   const premiumOrgs = orgEntries.filter((o) => o.isPremium).length;
 
   const rows = orgEntries.map((o, i) => ({

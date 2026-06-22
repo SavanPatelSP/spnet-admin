@@ -33,7 +33,7 @@ export function LicensesTable({ licenses: initial }: { licenses: LicenseWithActi
       l.organization,
       l.plan,
       l.status,
-      String(l.activations.length),
+      String(l._count.activations),
       String(l.maxDevices),
       new Date(l.expiresAt).toISOString(),
       new Date(l.createdAt).toISOString(),
@@ -119,7 +119,7 @@ export function LicensesTable({ licenses: initial }: { licenses: LicenseWithActi
             key: l.key,
             organization: l.organization,
             plan: l.plan,
-            activations: `${l.activations.length}/${l.maxDevices}`,
+            activations: `${l._count.activations}/${l.maxDevices}`,
             expiresAt: expiry.toISOString(),
             status: l.status,
             actions: "",
@@ -130,7 +130,7 @@ export function LicensesTable({ licenses: initial }: { licenses: LicenseWithActi
             </Link>,
             <span key="organization">{l.organization}</span>,
             <span key="plan" className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium">{l.plan}</span>,
-            <span key="activations">{`${l.activations.length}/${l.maxDevices}`}</span>,
+            <span key="activations">{`${l._count.activations}/${l.maxDevices}`}</span>,
             <span key="expiresAt" className={color}>
               {new Intl.DateTimeFormat(DEFAULT_LOCALE, { day: "2-digit", month: "short", year: "numeric" }).format(expiry)}
               {days >= 0 && days <= EXPIRING_SOON_DAYS && <span className="ml-2 text-xs text-yellow-500">({days}d)</span>}

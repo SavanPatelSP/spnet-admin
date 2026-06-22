@@ -19,7 +19,7 @@ export default async function UsersPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.role.findMany({ orderBy: { name: "asc" } }),
-    prisma.session.findMany({ where: { expiresAt: { gt: new Date() } } }),
+    prisma.session.count({ where: { expiresAt: { gt: new Date() } } }),
     prisma.loginHistory.count(),
   ]);
 
@@ -27,7 +27,7 @@ export default async function UsersPage() {
   const suspendedMembers = teamMembers.filter((m) => m.status === "SUSPENDED").length;
   const lockedMembers = teamMembers.filter((m) => m.lockedUntil && m.lockedUntil > new Date()).length;
   const mfaEnabled = teamMembers.filter((m) => m.mfaEnabled).length;
-  const activeSessions = sessions.length;
+  const activeSessions = sessions;
 
   const departmentCounts = teamMembers.reduce<Record<string, number>>((acc, m) => {
     if (m.department) {

@@ -1,6 +1,6 @@
 import type { License, Activation, AuditLog, TeamMember, Role, Permission } from "@prisma/client";
 
-export type LicenseWithActivations = License & { activations: Activation[] };
+export type LicenseWithActivations = License & { _count: { activations: number } };
 export type ActivationWithLicense = Activation & { license: License };
 export type RoleWithPermissions = Role & { permissions: Permission[]; members: TeamMember[] };
 export type TeamMemberWithRole = TeamMember & { role: Role };

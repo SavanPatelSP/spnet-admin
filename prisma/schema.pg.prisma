@@ -260,6 +260,8 @@ model DeviceFingerprint {
   activationCount Int      @default(0)
   licenseIds      String?  // JSON
   activations     Activation[]
+
+  @@index([createdAt])
 }
 
 model AuditLog {
@@ -288,6 +290,12 @@ model AuditLog {
   description   String?
 
   createdAt     DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([actorEmail])
+  @@index([createdAt])
+  @@index([licenseId])
 }
 
 model TeamMember {
@@ -335,6 +343,10 @@ model TeamMember {
   loginHistory  LoginHistory[]
   mfaBackupCodes MfaBackupCode[]
   notifications Notification[]
+
+  @@index([roleId])
+  @@index([status])
+  @@index([email])
 }
 
 model Session {

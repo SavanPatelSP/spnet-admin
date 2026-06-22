@@ -19,7 +19,7 @@ import BulkCreateButton from "./BulkCreateButton";
 export default async function LicensesPage() {
   const [licenses, templates, trialLicenses, transferredLicenses] = await Promise.all([
     prisma.license.findMany({
-      include: { activations: true },
+      include: { _count: { select: { activations: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.licenseTemplate.findMany({ orderBy: { name: "asc" } }),
@@ -33,7 +33,7 @@ export default async function LicensesPage() {
 
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
-  const totalDevices = licenses.reduce((t, l) => t + l.activations.length, 0);
+  const totalDevices = licenses.reduce((t, l) => t + l._count.activations, 0);
   const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
   const utilization = calculateUtilization(totalDevices, totalCapacity);
   const expiringSoon = licenses.filter((l) => {
