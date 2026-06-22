@@ -34,7 +34,7 @@ const fetcher = async (url: string) => {
 
 export function SessionCountdown() {
   const { data, error, mutate } = useSWR("/api/sessions/me", fetcher, {
-    refreshInterval: 10000,
+    refreshInterval: 30000,
     revalidateOnFocus: true,
     dedupingInterval: 2000,
     onError: () => revokeAndLogout(),

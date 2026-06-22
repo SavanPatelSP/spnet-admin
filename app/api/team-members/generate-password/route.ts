@@ -5,6 +5,7 @@ import { checkRateLimit, rateLimitKey, RATE_LIMIT_CONFIGS } from "@/lib/security
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 interface GenerateRequest {
   memberId: string;
@@ -30,17 +31,17 @@ function generatePassword(config: { length: number; uppercase: boolean; lowercas
   if (!chars) chars = upper + lower + digits;
 
   let password = "";
-  if (config.uppercase) password += upper[Math.floor(Math.random() * upper.length)];
-  if (config.lowercase) password += lower[Math.floor(Math.random() * lower.length)];
-  if (config.numbers) password += digits[Math.floor(Math.random() * digits.length)];
-  if (config.symbols) password += sym[Math.floor(Math.random() * sym.length)];
+  if (config.uppercase) password += upper[crypto.randomInt(upper.length)];
+  if (config.lowercase) password += lower[crypto.randomInt(lower.length)];
+  if (config.numbers) password += digits[crypto.randomInt(digits.length)];
+  if (config.symbols) password += sym[crypto.randomInt(sym.length)];
 
   const all = chars;
   for (let i = password.length; i < config.length; i++) {
-    password += all[Math.floor(Math.random() * all.length)];
+    password += all[crypto.randomInt(all.length)];
   }
 
-  return password.split("").sort(() => Math.random() - 0.5).join("");
+  return password.split("").sort(() => crypto.randomInt(3) - 1).join("");
 }
 
 export async function POST(req: Request) {
@@ -82,8 +83,16 @@ export async function POST(req: Request) {
       return Response.json({ success: false, error: "Team member not found" }, { status: 404 });
     }
 
+    console.log("PASSWORD_GENERATE_START", JSON.stringify({ memberId, email: member.email }));
+
+    const oldHash = member.password;
+    const oldHashMasked = oldHash ? `${oldHash.slice(0, 7)}...${oldHash.slice(-4)}` : "none";
+    console.log("PASSWORD_HASH_CREATED", JSON.stringify({ oldHash: oldHashMasked, status: "before_update" }));
+
     const generatedPassword = generatePassword({ length, uppercase, lowercase, numbers, symbols });
     const hashedPassword = await bcrypt.hash(generatedPassword, 12);
+    const newHashMasked = `${hashedPassword.slice(0, 7)}...${hashedPassword.slice(-4)}`;
+    console.log("PASSWORD_HASH_CREATED", JSON.stringify({ newHash: newHashMasked, status: "hash_computed" }));
 
     await prisma.$transaction([
       prisma.teamMember.update({
@@ -107,6 +116,21 @@ export async function POST(req: Request) {
       }),
     ]);
 
+    console.log("PASSWORD_DB_UPDATE", JSON.stringify({ status: "transaction_complete" }));
+
+    // Post-save verification
+    const saved = await prisma.teamMember.findUnique({ where: { id: memberId }, select: { password: true, updatedAt: true } });
+    const savedHashMasked = saved ? `${saved.password.slice(0, 7)}...${saved.password.slice(-4)}` : "none";
+    const hashChanged = saved ? saved.password !== oldHash : false;
+    const bcryptResult = saved ? await bcrypt.compare(generatedPassword, saved.password) : false;
+    console.log("PASSWORD_DB_VERIFY", JSON.stringify({ savedHash: savedHashMasked, hashChanged }));
+    console.log("PASSWORD_BCRYPT_VERIFY", JSON.stringify({ result: bcryptResult }));
+
+    if (!saved || !bcryptResult) {
+      console.log("PASSWORD_GENERATE_FAILURE", JSON.stringify({ reason: "hash_verification_failed", hasSaved: !!saved, bcryptResult }));
+      throw new Error("Password hash verification failed after save");
+    }
+
     await logAudit(
       AUDIT_ACTIONS.GENERATED_TEAM_MEMBER_PASSWORD,
       undefined,
@@ -128,6 +152,14 @@ export async function POST(req: Request) {
         passwordLength: length,
       }
     );
+
+    console.log("PASSWORD_AUDIT_CREATED", JSON.stringify({ status: "audit_logged" }));
+    console.log("PASSWORD_GENERATE_SUCCESS", JSON.stringify({
+      dbRowUpdated: true,
+      hashChanged,
+      bcryptVerification: bcryptResult,
+      auditCreated: true,
+    }));
 
     return Response.json({
       success: true,

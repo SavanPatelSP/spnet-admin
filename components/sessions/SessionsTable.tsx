@@ -59,7 +59,7 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const id = setInterval(() => router.refresh(), 30000);
+    const id = setInterval(() => router.refresh(), 60000);
     return () => clearInterval(id);
   }, [autoRefresh, router]);
 

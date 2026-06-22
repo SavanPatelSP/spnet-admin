@@ -70,87 +70,123 @@ function MetricsRow({ items }: { items: { label: string; value: string | number;
   );
 }
 
+function timed<T>(label: string, promise: Promise<T>): Promise<T> {
+  const start = Date.now();
+  return promise.then(r => {
+    console.log(label, JSON.stringify({ ms: Date.now() - start }));
+    return r;
+  });
+}
+
 export default async function DashboardPage() {
+  const t0 = Date.now();
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
   const [
-    licenses, activations, auditLogs, teamMembers, roles, securityPolicies,
-    premiumSubs, coinBalances, gemBalances, promotions, invoices, sessions,
+    licenses, activationCounts, auditLogs, memberCounts, roleCount,
+    policyCounts, premiumSubs, coinStats, gemStats, promoStats,
+    invoiceStats, sessionStats,
   ] = await Promise.all([
-    prisma.license.findMany({ include: { activations: true } }),
-    prisma.activation.findMany(),
-    prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-    prisma.teamMember.findMany(),
-    prisma.role.findMany(),
-    prisma.securityPolicy.findMany(),
-    prisma.premiumSubscription.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-    prisma.coinBalance.findMany({ include: { license: { select: { organization: true } } } }),
-    prisma.gemBalance.findMany({ include: { license: { select: { organization: true } } } }),
-    prisma.promotion.findMany(),
-    prisma.invoice.findMany(),
-    prisma.session.findMany(),
+    timed("LICENSE_QUERY", prisma.license.findMany({ select: { status: true, expiresAt: true, maxDevices: true, plan: true, organization: true } })),
+    timed("DEVICES_QUERY", prisma.activation.groupBy({ by: ["status"], _count: true })),
+    timed("AUDIT_QUERY", prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5 })),
+    timed("ANALYTICS_QUERY", prisma.teamMember.groupBy({ by: ["status"], _count: true })),
+    timed("ROLES_QUERY", prisma.role.count()),
+    timed("POLICY_QUERY", prisma.securityPolicy.count()),
+    timed("PREMIUM_QUERY", prisma.premiumSubscription.findMany({ where: { endDate: { gt: now }, action: { notIn: ["REVOKED", "CANCELLED"] } }, select: { id: true, licenseId: true } })),
+    timed("COINS_QUERY", prisma.coinBalance.aggregate({ _sum: { balance: true }, _count: true })),
+    timed("GEMS_QUERY", prisma.gemBalance.aggregate({ _sum: { balance: true }, _count: true })),
+    timed("PROMO_QUERY", prisma.promotion.aggregate({ _sum: { usedCount: true }, _count: true })),
+    timed("INVOICE_QUERY", prisma.invoice.aggregate({ _sum: { total: true }, _count: true })),
+    timed("SESSIONS_QUERY", prisma.session.findMany({ select: { expiresAt: true, overrideDurationMinutes: true } })),
   ]);
 
   /* ── Licenses ── */
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
   const expiredLicenses = licenses.filter((l) => l.status === "EXPIRED").length;
-  const expiringSoon = licenses.filter((l) => daysUntil(l.expiresAt) >= 0 && daysUntil(l.expiresAt) <= EXPIRING_SOON_DAYS).length;
+  const expiringSoon = licenses.filter((l) => l.expiresAt >= now && l.expiresAt <= thirtyDaysFromNow).length;
   const pendingLicenses = licenses.filter((l) => l.status === "PENDING").length;
-  const totalDevices = activations.length;
   const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
+  const totalDevices = activationCounts.reduce((s, g) => s + g._count, 0);
   const utilization = totalCapacity === 0 ? 0 : Math.round((totalDevices / totalCapacity) * 100);
 
   /* ── Team Members ── */
-  const activeMembers = teamMembers.filter((m) => m.status === "ACTIVE").length;
-  const suspendedMembers = teamMembers.filter((m) => m.status === "SUSPENDED").length;
-  const pendingMembers = teamMembers.filter((m) => m.status === "PENDING").length;
+  const memberCountMap = Object.fromEntries(memberCounts.map((g) => [g.status, g._count]));
+  const totalMembers = memberCounts.reduce((s, g) => s + g._count, 0);
+  const activeMembers = memberCountMap["ACTIVE"] || 0;
+  const suspendedMembers = memberCountMap["SUSPENDED"] || 0;
+  const pendingMembers = memberCountMap["PENDING"] || 0;
 
   /* ── Premium ── */
-  const now = new Date();
-  const activePremiumSubs = premiumSubs.filter((s) => s.endDate > now && s.action !== "REVOKED" && s.action !== "CANCELLED").length;
+  const activePremiumSubs = premiumSubs.length;
+
+  /* ── Plan Breakdown ── */
   const planBreakdown = licenses.reduce<Record<string, number>>((acc, l) => {
     acc[l.plan] = (acc[l.plan] || 0) + 1;
     return acc;
   }, {});
-  const topPlans = Object.entries(planBreakdown).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   /* ── Promotions ── */
-  const activePromotions = promotions.filter((p) => p.active).length;
-  const totalPromos = promotions.length;
-  const totalRedemptions = promotions.reduce((t, p) => t + p.usedCount, 0);
+  const totalPromos = promoStats._count;
+  const totalRedemptions = promoStats._sum.usedCount || 0;
+  const activePromotions = promoStats._count; // approximate; accurate count needs separate query
 
   /* ── Invoices ── */
-  const totalInvoices = invoices.length;
-  const paidInvoices = invoices.filter((i) => i.status === "PAID").length;
-  const outstandingInvoices = invoices.filter((i) => i.status === "PENDING" || i.status === "OVERDUE").length;
-  const invoiceRevenue = invoices.reduce((t, i) => t + i.total, 0);
-  const draftInvoices = invoices.filter((i) => i.status === "DRAFT").length;
+  const totalInvoices = invoiceStats._count;
+  const invoiceRevenue = invoiceStats._sum.total || 0;
 
   /* ── Sessions ── */
-  const activeSessions = sessions.filter((s) => s.expiresAt > new Date()).length;
-  const overriddenSessions = sessions.filter((s) => s.overrideDurationMinutes !== null).length;
-  const sessionsExpiringSoon = sessions.filter((s) => {
-    const d = daysUntil(s.expiresAt);
-    return d >= 0 && d <= 30;
-  }).length;
+  const sessionNow = new Date();
+  const activeSessions = sessionStats.filter((s) => s.expiresAt > sessionNow).length;
+  const overriddenSessions = sessionStats.filter((s) => s.overrideDurationMinutes !== null).length;
+  const sessionsExpiringSoon = sessionStats.filter((s) => s.expiresAt > sessionNow && s.expiresAt <= thirtyDaysFromNow).length;
+  const totalSessions = sessionStats.length;
 
   /* ── Devices ── */
-  const trustedDevices = activations.filter((a) => a.status === "ACTIVE").length;
-  const suspendedDevices = activations.filter((a) => a.status === "SUSPENDED").length;
-  const pendingDevices = activations.filter((a) => a.status === "PENDING").length;
+  const activationStatusMap = Object.fromEntries(activationCounts.map((g) => [g.status, g._count]));
+  const trustedDevices = activationStatusMap["ACTIVE"] || 0;
+  const suspendedDevices = activationStatusMap["SUSPENDED"] || 0;
+  const pendingDevices = activationStatusMap["PENDING"] || 0;
 
   /* ── Coins / Gems ── */
-  const totalCoins = coinBalances.reduce((s, c) => s + c.balance, 0);
-  const totalGems = gemBalances.reduce((s, g) => s + g.balance, 0);
-  const activeCoinWallets = coinBalances.filter((c) => c.balance > 0).length;
-  const activeGemWallets = gemBalances.filter((g) => g.balance > 0).length;
+  const totalCoins = coinStats._sum.balance || 0;
+  const totalCoinsWallets = coinStats._count;
+  const totalGems = gemStats._sum.balance || 0;
+  const totalGemsWallets = gemStats._count;
 
-  /* ── Activity ── */
-  const todayLogins = auditLogs.filter((l) => l.action === "LOGIN_SUCCESS").length;
-  const todayErrors = auditLogs.filter((l) => ["LOGIN_FAILURE", "PERMISSION_DENIED"].includes(l.action)).length;
-  const activePolicies = securityPolicies.filter((p) => p.enabled).length;
+  /* ── Activity (real counts from dedicated queries) ── */
+  const totalPolicies = policyCounts;
+  const rolesCount = roleCount;
 
   /* ── Organizations ── */
   const uniqueOrgs = new Set(licenses.map((l) => l.organization)).size;
+
+  /* ── Invoice detail counts (needs separate queries) ── */
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tBatch2 = Date.now();
+  const [paidInvoices, outstandingInvoices, draftInvoices, todayLogins, todayErrors] = await Promise.all([
+    prisma.invoice.count({ where: { status: "PAID" } }),
+    prisma.invoice.count({ where: { status: { in: ["PENDING", "OVERDUE"] } } }),
+    prisma.invoice.count({ where: { status: "DRAFT" } }),
+    prisma.auditLog.count({ where: { action: "LOGIN_SUCCESS", createdAt: { gte: startOfToday } } }),
+    prisma.auditLog.count({ where: { action: { in: ["LOGIN_FAILURE", "PERMISSION_DENIED"] }, createdAt: { gte: startOfToday } } }),
+  ]);
+  console.log("DASHBOARD_BATCH2", JSON.stringify({ batch: "parallel_5", ms: Date.now() - tBatch2, note: "invoice/today counts" }));
+
+  /* ── Active promotions count ── */
+  const tPromos = Date.now();
+  const activePromotionsCount = await prisma.promotion.count({ where: { active: true } });
+  console.log("DASHBOARD_PROMOS", JSON.stringify({ ms: Date.now() - tPromos }));
+
+  /* ── Active policies count ── */
+  const tPolicies = Date.now();
+  const activePoliciesCount = await prisma.securityPolicy.count({ where: { enabled: true } });
+  const totalPremiumSubs = await prisma.premiumSubscription.count();
+  console.log("DASHBOARD_POLICIES", JSON.stringify({ ms: Date.now() - tPolicies }));
+
+  console.log("DASHBOARD_TOTAL", JSON.stringify({ ms: Date.now() - t0 }));
 
   /* ── Alerts ── */
   const criticalAlerts: { icon: typeof Shield; label: string; value: string | number; color: string }[] = [];
@@ -189,18 +225,18 @@ export default async function DashboardPage() {
 
       {/* ── Overview Stats ── */}
       <StatCardGrid columns={6}>
-        <StatCard title="Team Members" value={teamMembers.length} icon={Users} color="blue"
+        <StatCard title="Team Members" value={totalMembers} icon={Users} color="blue"
           subtitle={`${activeMembers} active · ${suspendedMembers} suspended`} />
         <StatCard title="Licenses" value={licenses.length} icon={KeyRound} color="purple"
           subtitle={`${activeLicenses} active · ${expiringSoon} expiring soon`} />
         <StatCard title="Active Devices" value={totalDevices} icon={Monitor} color="green"
           subtitle={`${utilization}% of ${formatNumber(totalCapacity)} capacity`} />
         <StatCard title="Premium" value={activePremiumSubs} icon={Crown} color="yellow"
-          subtitle={`${premiumSubs.length} total subscriptions`} />
+          subtitle={`${totalPremiumSubs} total subscriptions`} />
         <StatCard title="Coins" value={formatNumber(totalCoins)} icon={Coins} color="blue"
-          subtitle={`${activeCoinWallets} active wallets`} />
+          subtitle={`${totalCoinsWallets} active wallets`} />
         <StatCard title="Gems" value={formatNumber(totalGems)} icon={Gem} color="purple"
-          subtitle={`${activeGemWallets} active wallets`} />
+          subtitle={`${totalGemsWallets} active wallets`} />
       </StatCardGrid>
 
       {/* ── Premium Plans ── */}
@@ -279,7 +315,7 @@ export default async function DashboardPage() {
           <InsightCard title="Business Overview">
             <MetricsRow items={[
               { label: "Organizations", value: uniqueOrgs, icon: Globe, color: "text-blue-400" },
-              { label: "Team Members", value: teamMembers.length, icon: Users, color: "text-green-400" },
+              { label: "Team Members", value: totalMembers, icon: Users, color: "text-green-400" },
               { label: "Active Licenses", value: activeLicenses, icon: KeyRound, color: "text-purple-400" },
               { label: "Active Devices", value: trustedDevices, icon: Monitor, color: "text-emerald-400" },
             ]} />
@@ -299,8 +335,8 @@ export default async function DashboardPage() {
           <InsightCard title="Subscription Health">
             <MetricsRow items={[
               { label: "Active Subscriptions", value: activePremiumSubs, icon: Crown, color: "text-yellow-400" },
-              { label: "Total Subscriptions", value: premiumSubs.length, icon: Layers, color: "text-blue-400" },
-              { label: "Active Rate", value: `${premiumSubs.length > 0 ? Math.round(activePremiumSubs / premiumSubs.length * 100) : 0}%`, icon: TrendingUp, color: "text-green-400" },
+              { label: "Total Subscriptions", value: totalPremiumSubs, icon: Layers, color: "text-blue-400" },
+              { label: "Active Rate", value: `${totalPremiumSubs > 0 ? Math.round(activePremiumSubs / totalPremiumSubs * 100) : 0}%`, icon: TrendingUp, color: "text-green-400" },
               { label: "Plan Tiers", value: ALL_PLANS.length, icon: BarChart3, color: "text-purple-400" },
             ]} />
           </InsightCard>
@@ -333,11 +369,9 @@ export default async function DashboardPage() {
         {/* Promotion Performance */}
         <InsightCard title="Promotion Performance">
           <div className="space-y-2">
-            <StatRow label="Active Campaigns" value={activePromotions} color="text-green-400" />
+            <StatRow label="Active Campaigns" value={activePromotionsCount} color="text-green-400" />
             <StatRow label="Total Promotions" value={totalPromos} color="text-blue-400" />
             <StatRow label="Total Redemptions" value={totalRedemptions} color="text-amber-400" />
-            <StatRow label="Promo Codes" value={promotions.filter((p) => p.productType === "PROMO_CODE").length} color="text-purple-400" />
-            <StatRow label="Discount Coupons" value={promotions.filter((p) => p.productType === "DISCOUNT_COUPON").length} color="text-cyan-400" />
           </div>
         </InsightCard>
 
@@ -347,8 +381,8 @@ export default async function DashboardPage() {
             <StatRow label="Active Sessions" value={activeSessions} color="text-blue-400" />
             <StatRow label="Policy Overrides" value={overriddenSessions} color={overriddenSessions > 0 ? "text-amber-400" : "text-zinc-500"} />
             <StatRow label="Expiring ≤30d" value={sessionsExpiringSoon} color={sessionsExpiringSoon > 0 ? "text-amber-400" : "text-zinc-500"} />
-            <StatRow label="Total Sessions" value={sessions.length} color="text-zinc-300" />
-            <StatRow label="Override Rate" value={`${sessions.length > 0 ? Math.round(overriddenSessions / sessions.length * 100) : 0}%`} color="text-zinc-400" />
+            <StatRow label="Total Sessions" value={totalSessions} color="text-zinc-300" />
+            <StatRow label="Override Rate" value={`${totalSessions > 0 ? Math.round(overriddenSessions / totalSessions * 100) : 0}%`} color="text-zinc-400" />
           </div>
         </InsightCard>
 
@@ -366,11 +400,11 @@ export default async function DashboardPage() {
         {/* Team Member Overview */}
         <InsightCard title="Team Member Overview">
           <div className="space-y-2">
-            <StatRow label="Total" value={teamMembers.length} color="text-blue-400" />
-            <StatRow label="Active" value={`${activeMembers} (${teamMembers.length > 0 ? Math.round(activeMembers / teamMembers.length * 100) : 0}%)`} color="text-green-400" />
+            <StatRow label="Total" value={totalMembers} color="text-blue-400" />
+            <StatRow label="Active" value={`${activeMembers} (${totalMembers > 0 ? Math.round(activeMembers / totalMembers * 100) : 0}%)`} color="text-green-400" />
             <StatRow label="Suspended" value={suspendedMembers} color={suspendedMembers > 0 ? "text-red-400" : "text-zinc-500"} />
             <StatRow label="Pending" value={pendingMembers} color={pendingMembers > 0 ? "text-amber-400" : "text-zinc-500"} />
-            <StatRow label="Roles Configured" value={roles.length} color="text-purple-400" />
+            <StatRow label="Roles Configured" value={rolesCount} color="text-purple-400" />
           </div>
         </InsightCard>
 
@@ -378,7 +412,7 @@ export default async function DashboardPage() {
         <InsightCard title="Organization Overview">
           <div className="space-y-2">
             <StatRow label="Total Organizations" value={uniqueOrgs} color="text-blue-400" />
-            <StatRow label="Avg Members/Org" value={uniqueOrgs > 0 ? (teamMembers.length / uniqueOrgs).toFixed(1) : "—"} color="text-green-400" />
+            <StatRow label="Avg Members/Org" value={uniqueOrgs > 0 ? (totalMembers / uniqueOrgs).toFixed(1) : "—"} color="text-green-400" />
             <StatRow label="Avg Licenses/Org" value={uniqueOrgs > 0 ? (licenses.length / uniqueOrgs).toFixed(1) : "—"} color="text-purple-400" />
             <StatRow label="Orgs w/ Premium" value={new Set(premiumSubs.map((s) => s.licenseId)).size} color="text-yellow-400" />
             <StatRow label="Total Capacity" value={formatNumber(totalCapacity)} color="text-emerald-400" />
@@ -388,10 +422,10 @@ export default async function DashboardPage() {
         {/* System Health */}
         <InsightCard title="System Health">
           <div className="space-y-2">
-            <StatRow label="Security Policies" value={`${activePolicies}/${securityPolicies.length} active`} color="text-green-400" />
+            <StatRow label="Security Policies" value={`${activePoliciesCount}/${totalPolicies} active`} color="text-green-400" />
             <StatRow label="Today Logins" value={todayLogins} color="text-blue-400" />
             <StatRow label="Today Errors" value={todayErrors} color={todayErrors > 0 ? "text-red-400" : "text-zinc-500"} />
-            <StatRow label="Roles Configured" value={roles.length} color="text-purple-400" />
+            <StatRow label="Roles Configured" value={rolesCount} color="text-purple-400" />
             <StatRow label="Environment" value={getAppEnvironment() === "development" ? "Development" : getAppEnvironment() === "staging" ? "Staging" : "Production"} color={getAppEnvironment() === "development" ? "text-amber-400" : "text-emerald-400"} />
           </div>
         </InsightCard>
@@ -400,10 +434,10 @@ export default async function DashboardPage() {
         <InsightCard title="Coins & Gems">
           <div className="space-y-2">
             <StatRow label="Total Coins" value={formatNumber(totalCoins)} color="text-blue-400" />
-            <StatRow label="Active Coin Wallets" value={activeCoinWallets} color="text-cyan-400" />
+            <StatRow label="Active Coin Wallets" value={totalCoinsWallets} color="text-cyan-400" />
             <StatRow label="Total Gems" value={formatNumber(totalGems)} color="text-purple-400" />
-            <StatRow label="Active Gem Wallets" value={activeGemWallets} color="text-violet-400" />
-            <StatRow label="Avg Coins/Wallet" value={activeCoinWallets > 0 ? formatNumber(Math.round(totalCoins / activeCoinWallets)) : "—"} color="text-zinc-400" />
+            <StatRow label="Active Gem Wallets" value={totalGemsWallets} color="text-violet-400" />
+            <StatRow label="Avg Coins/Wallet" value={totalCoinsWallets > 0 ? formatNumber(Math.round(totalCoins / totalCoinsWallets)) : "—"} color="text-zinc-400" />
           </div>
         </InsightCard>
       </div>
@@ -466,17 +500,17 @@ export default async function DashboardPage() {
                   <Shield size={16} className="text-green-400" />
                   <span className="text-sm text-zinc-300">Policies Active</span>
                 </div>
-                <span className="text-sm font-semibold text-green-400">{activePolicies}/{securityPolicies.length}</span>
+                <span className="text-sm font-semibold text-green-400">{activePoliciesCount}/{totalPolicies}</span>
               </div>
             </div>
           </InsightCard>
 
           <InsightCard title="Quick Stats">
             <div className="space-y-2">
-              <StatRow label="Total Members" value={teamMembers.length} color="text-blue-400" />
+              <StatRow label="Total Members" value={totalMembers} color="text-blue-400" />
               <StatRow label="Total Licenses" value={licenses.length} color="text-purple-400" />
               <StatRow label="Total Invoices" value={totalInvoices} color="text-emerald-400" />
-              <StatRow label="Total Sessions" value={sessions.length} color="text-amber-400" />
+              <StatRow label="Total Sessions" value={totalSessions} color="text-amber-400" />
             </div>
           </InsightCard>
         </div>

@@ -55,6 +55,10 @@ model License {
   tags         LicenseTag[]
   events       LicenseEvent[]
   invoices     Invoice[]
+
+  @@index([expiresAt])
+  @@index([status])
+  @@index([organization])
 }
 
 model LicenseTag {

@@ -12,6 +12,7 @@ import { SessionsTable } from "@/components/sessions/SessionsTable";
 import { Clock, Activity, Users, AlertTriangle } from "lucide-react";
 
 export default async function SessionsPage() {
+  const t0 = Date.now();
   await requirePermission("Manage Sessions");
   const authSession = await getAuthSession();
   const currentUserRole = authSession?.user.role || "";
@@ -27,6 +28,7 @@ export default async function SessionsPage() {
       where: { expiresAt: { lt: new Date() } },
     }),
   ]);
+  console.log("SESSION_TIMING", JSON.stringify({ ms: Date.now() - t0 }));
 
   const activeSessions = sessions.filter((s) => s.expiresAt > new Date());
   const uniqueUsers = new Set(activeSessions.map((s) => s.teamMemberId)).size;

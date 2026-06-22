@@ -2,6 +2,9 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { DefaultSession } from "next-auth";
 import type { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
 import { AUTH } from "@/lib/constants";
 import { resolveGeoFromApi } from "@/lib/geo";
 
@@ -117,9 +120,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         licenseKey: { label: "License Key", type: "text" },
       },
       async authorize(credentials, req) {
-        const { prisma } = await import("@/lib/prisma");
+        const t0 = Date.now();
 
-        const headersList = await import("next/headers").then(m => m.headers());
+        const headersList = await headers();
         const ipAddress = headersList.get("x-forwarded-for")?.split(",")[0]?.trim()
           || headersList.get("x-real-ip")
           || "127.0.0.1";
@@ -148,8 +151,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const bcrypt = await import("bcryptjs");
-
         // 1. Find user by email
         let member: Prisma.TeamMemberGetPayload<{ include: { role: true; license: true } }> | null;
         try {
@@ -163,6 +164,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
+        console.log("TEAM_MEMBER_LOOKUP", JSON.stringify({ email, ms: Date.now() - t0 }));
         console.log("[AUTH]", JSON.stringify({ step: "find_user", email, userFound: !!member, memberId: member?.id, memberStatus: member?.status }));
 
         if (!member) {
@@ -197,8 +199,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         // 2. Verify password
         console.log("[AUTH]", JSON.stringify({ step: "password_check", hashLen: member.password.length }));
+        const tBcrypt = Date.now();
         const isValidPassword = await bcrypt.compare(password, member.password);
-          console.log("[AUTH]", JSON.stringify({ step: "password_result", isValidPassword }));
+        console.log("BCRYPT_COMPARE", JSON.stringify({ email, ms: Date.now() - tBcrypt, result: isValidPassword }));
+        console.log("[AUTH]", JSON.stringify({ step: "password_result", isValidPassword }));
         if (!isValidPassword) {
           console.log("AUTH_STEP=PASSWORD_CHECK", JSON.stringify({ email, memberId: member.id, failedLoginAttempts: member.failedLoginAttempts, bcryptResult: false }));
           const newAttempts = member.failedLoginAttempts + 1;
@@ -349,37 +353,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        console.log("[AUTH]", JSON.stringify({ step: "all_checks_passed" }));
-
-        // ---- Post-auth operations (isolated failures cannot block login) ----
-
-        // Reset failed attempts on success
-        try {
-          await prisma.teamMember.update({
-            where: { id: member.id },
-            data: { failedLoginAttempts: 0, lockedUntil: null, lastLogin: new Date() },
-          });
-        } catch (opErr) {
-          console.error("[AUTH] Post-auth operation failed (reset_attempts):", opErr);
-        }
-
-        // Session rotation: keep last 5
-        try {
-          const oldSessions = await prisma.session.findMany({
-            where: { teamMemberId: member.id },
-            orderBy: { createdAt: "desc" },
-            skip: 4,
-          });
-          if (oldSessions.length > 0) {
-            await prisma.session.deleteMany({
-              where: { id: { in: oldSessions.map(s => s.id) } },
-            });
-          }
-        } catch (opErr) {
-          console.error("[AUTH] Post-auth operation failed (session_rotation):", opErr);
-        }
+        // ── Critical path (must complete before return) ──
 
         // Create Session record
+        const tSession = Date.now();
         const sessionToken = crypto.randomUUID();
         const sessionCreatedAt = new Date();
         const sessionExpiresAt = new Date(sessionCreatedAt.getTime() + AUTH.SESSION_MAX_AGE_SECONDS * 1000);
@@ -398,75 +375,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch (opErr) {
           console.error("[AUTH] Post-auth operation failed (session_create):", opErr);
         }
-
-        // Update last login metadata
-        try {
-          await prisma.teamMember.update({
-            where: { id: member.id },
-            data: { lastLoginIp: ipAddress, lastUserAgent: userAgent },
-          });
-        } catch (opErr) {
-          console.error("[AUTH] Post-auth operation failed (last_login_meta):", opErr);
-        }
-
-        // Create LoginHistory record
-        try {
-          await prisma.loginHistory.create({
-            data: { teamMemberId: member.id, ipAddress, userAgent, success: true },
-          });
-        } catch (lhErr) {
-          console.error("[AUTH] LoginHistory create failed (success):", lhErr);
-        }
-
-        // Device activation tracking
-        try {
-          const deviceId = `device-${member.id}-${license.id}`;
-          const existingActivation = await prisma.activation.findFirst({ where: { deviceId } });
-          const os = userAgent.includes("Windows") ? "Windows"
-            : userAgent.includes("Mac") ? "macOS"
-            : userAgent.includes("Linux") ? "Linux"
-            : userAgent.includes("Android") ? "Android"
-            : userAgent.includes("iOS") ? "iOS"
-            : "Unknown";
-          const osVersion = userAgent.match(/(?:Windows NT |Mac OS X |Android )([\d._]+)/)?.[1]?.replace(/_/g, ".") ?? null;
-          const browser = userAgent.includes("Chrome") ? "Chrome"
-            : userAgent.includes("Firefox") ? "Firefox"
-            : userAgent.includes("Safari") && !userAgent.includes("Chrome") ? "Safari"
-            : userAgent.includes("Edge") ? "Edge"
-            : "Unknown";
-          const browserVersion = userAgent.match(/(?:Chrome|Firefox|Safari|Edge)\/([\d.]+)/)?.[1] ?? null;
-          const deviceType = userAgent.includes("Mobile") ? "MOBILE"
-            : userAgent.includes("Tablet") || userAgent.includes("iPad") ? "TABLET"
-            : "DESKTOP";
-          const geo = await resolveGeoFromApi(ipAddress);
-
-          if (existingActivation) {
-            await prisma.activation.update({
-              where: { id: existingActivation.id },
-              data: {
-                ipAddress, os, osVersion, browser, browserVersion, deviceType, userAgent,
-                country: geo.country, city: geo.city, isp: geo.isp,
-                lastSeenAt: new Date(),
-                trustScore: Math.min(100, existingActivation.trustScore + 5),
-              },
-            });
-          } else {
-            await prisma.activation.create({
-              data: {
-                deviceId,
-                deviceName: `${member.name || member.email}'s ${os} device`,
-                licenseId: license.id, ipAddress, os, osVersion, browser, browserVersion,
-                deviceType, userAgent,
-                country: geo.country, city: geo.city, isp: geo.isp,
-                trustScore: 50, status: "ACTIVE",
-              },
-            });
-          }
-        } catch (opErr) {
-          console.error("[AUTH] Post-auth operation failed (activation):", opErr);
-        }
+        console.log("SESSION_CREATE", JSON.stringify({ email, ms: Date.now() - tSession }));
 
         // Load permissions
+        const tPerm = Date.now();
         let permissions: string[] = [];
         try {
           permissions = (await prisma.permission.findMany({
@@ -476,13 +388,114 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch (opErr) {
           console.error("[AUTH] Post-auth operation failed (permissions):", opErr);
         }
+        console.log("PERMISSION_QUERY", JSON.stringify({ email, ms: Date.now() - tPerm }));
 
-        await logAuthEvent("LOGIN_SUCCESS", {
-          teamMemberId: member.id,
-          email,
-          description: `Login successful for ${email}`,
-        });
+        console.log("AUTH_TIMING_CRITICAL", JSON.stringify({ email, ms: Date.now() - t0 }));
 
+        // ── Non-critical operations (fire-and-forget) ──
+        (async () => {
+          // Reset failed attempts on success
+          try {
+            await prisma.teamMember.update({
+              where: { id: member.id },
+              data: { failedLoginAttempts: 0, lockedUntil: null, lastLogin: new Date() },
+            });
+          } catch (opErr) {
+            console.error("[AUTH] Post-auth operation failed (reset_attempts):", opErr);
+          }
+
+          // Session rotation: keep last 5
+          try {
+            const oldSessions = await prisma.session.findMany({
+              where: { teamMemberId: member.id },
+              orderBy: { createdAt: "desc" },
+              skip: 4,
+            });
+            if (oldSessions.length > 0) {
+              await prisma.session.deleteMany({
+                where: { id: { in: oldSessions.map(s => s.id) } },
+              });
+            }
+          } catch (opErr) {
+            console.error("[AUTH] Post-auth operation failed (session_rotation):", opErr);
+          }
+
+          // Update last login metadata
+          try {
+            await prisma.teamMember.update({
+              where: { id: member.id },
+              data: { lastLoginIp: ipAddress, lastUserAgent: userAgent },
+            });
+          } catch (opErr) {
+            console.error("[AUTH] Post-auth operation failed (last_login_meta):", opErr);
+          }
+
+          // Create LoginHistory record
+          try {
+            await prisma.loginHistory.create({
+              data: { teamMemberId: member.id, ipAddress, userAgent, success: true },
+            });
+          } catch (lhErr) {
+            console.error("[AUTH] LoginHistory create failed (success):", lhErr);
+          }
+
+          // Device activation tracking
+          try {
+            const deviceId = `device-${member.id}-${license.id}`;
+            const existingActivation = await prisma.activation.findFirst({ where: { deviceId } });
+            const os = userAgent.includes("Windows") ? "Windows"
+              : userAgent.includes("Mac") ? "macOS"
+              : userAgent.includes("Linux") ? "Linux"
+              : userAgent.includes("Android") ? "Android"
+              : userAgent.includes("iOS") ? "iOS"
+              : "Unknown";
+            const osVersion = userAgent.match(/(?:Windows NT |Mac OS X |Android )([\d._]+)/)?.[1]?.replace(/_/g, ".") ?? null;
+            const browser = userAgent.includes("Chrome") ? "Chrome"
+              : userAgent.includes("Firefox") ? "Firefox"
+              : userAgent.includes("Safari") && !userAgent.includes("Chrome") ? "Safari"
+              : userAgent.includes("Edge") ? "Edge"
+              : "Unknown";
+            const browserVersion = userAgent.match(/(?:Chrome|Firefox|Safari|Edge)\/([\d.]+)/)?.[1] ?? null;
+            const deviceType = userAgent.includes("Mobile") ? "MOBILE"
+              : userAgent.includes("Tablet") || userAgent.includes("iPad") ? "TABLET"
+              : "DESKTOP";
+            const geo = await resolveGeoFromApi(ipAddress);
+
+            if (existingActivation) {
+              await prisma.activation.update({
+                where: { id: existingActivation.id },
+                data: {
+                  ipAddress, os, osVersion, browser, browserVersion, deviceType, userAgent,
+                  country: geo.country, city: geo.city, isp: geo.isp,
+                  lastSeenAt: new Date(),
+                  trustScore: Math.min(100, existingActivation.trustScore + 5),
+                },
+              });
+            } else {
+              await prisma.activation.create({
+                data: {
+                  deviceId,
+                  deviceName: `${member.name || member.email}'s ${os} device`,
+                  licenseId: license.id, ipAddress, os, osVersion, browser, browserVersion,
+                  deviceType, userAgent,
+                  country: geo.country, city: geo.city, isp: geo.isp,
+                  trustScore: 50, status: "ACTIVE",
+                },
+              });
+            }
+          } catch (opErr) {
+            console.error("[AUTH] Post-auth operation failed (activation):", opErr);
+          }
+
+          await logAuthEvent("LOGIN_SUCCESS", {
+            teamMemberId: member.id,
+            email,
+            description: `Login successful for ${email}`,
+          });
+        })();
+
+        console.log("AUTH_TOTAL", JSON.stringify({ email, ms: Date.now() - t0 }));
+        console.log("AUTH_TIMING_LOGIN", JSON.stringify({ email, ms: Date.now() - t0 }));
         console.log("[AUTH]", JSON.stringify({ step: "return_success", memberId: member.id, email, role: member.role?.name ?? null, roleId: member.roleId }));
 
         return {
@@ -519,7 +532,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       } else if (token.licenseId) {
         // Validating license on every token read (each session access)
         try {
-          const { prisma } = await import("@/lib/prisma");
           const license = await prisma.license.findUnique({
             where: { id: token.licenseId as string },
             select: { status: true, expiresAt: true },
@@ -545,7 +557,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Server-driven session validation (non-fatal — JWT maxAge handles expiry)
         if (token.sessionRecordId) {
           try {
-            const { prisma } = await import("@/lib/prisma");
             const sessionRecord = await prisma.session.findUnique({
               where: { id: token.sessionRecordId as string },
               select: { id: true, createdAt: true, expiresAt: true },
@@ -583,7 +594,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!("token" in message) || !message.token?.sessionRecordId) return;
       const token = message.token;
       try {
-        const { prisma } = await import("@/lib/prisma");
         await prisma.session.update({
           where: { id: token.sessionRecordId as string },
           data: { expiresAt: new Date() },
