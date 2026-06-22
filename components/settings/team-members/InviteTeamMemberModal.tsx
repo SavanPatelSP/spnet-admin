@@ -349,7 +349,7 @@ export default function InviteTeamMemberModal({
     }
     setRegeneratingPassword(true);
     try {
-      const res = await fetch(API_ROUTES.TEAM_MEMBERS.TEMP_PASSWORD, {
+      const res = await fetch("/api/team-members/temp-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: result.member.id }),

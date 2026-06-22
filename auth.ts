@@ -159,7 +159,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               description: `Login failed: no account found for ${email}`,
             });
             await prisma.loginHistory.create({
-              data: { teamMemberId: "unknown", ipAddress, userAgent, success: false, failureReason: "No account found" },
+              data: { email, ipAddress, userAgent, success: false, failureReason: "No account found" },
             });
             return null;
           }

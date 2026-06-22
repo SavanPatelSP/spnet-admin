@@ -10,8 +10,10 @@ import { downloadCSV } from "@/lib/export";
 import { API_ROUTES } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/shared";
 import RoleSelector from "@/components/settings/team-members/RoleSelector";
+import dynamic from "next/dynamic";
 import MemberActions from "@/components/settings/team-members/MemberActions";
-import EditMemberModal from "@/components/settings/team-members/EditMemberModal";
+
+const EditMemberModal = dynamic(() => import("@/components/settings/team-members/EditMemberModal"), { ssr: false });
 import { Shield, ShieldOff, Clock, Smartphone } from "lucide-react";
 
 interface MemberRow {
@@ -252,7 +254,7 @@ export default function TeamMembersDataTable({ members, roles, currentUserRole }
                 }}
                 roles={roles}
               />
-              <MemberActions memberId={m.id} status={m.status} currentUserRole={currentUserRole} />
+              <MemberActions memberId={m.id} memberName={m.name} memberEmail={m.email} memberRole={m.roleName} status={m.status} currentUserRole={currentUserRole} />
             </div>,
           ],
         }))}

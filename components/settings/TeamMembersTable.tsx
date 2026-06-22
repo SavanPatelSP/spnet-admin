@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDate } from "@/lib/shared";
+import { getAuthSession } from "@/lib/auth-helpers";
 import MemberActions from "./team-members/MemberActions";
 import RoleSelector from "./team-members/RoleSelector";
 
 export default async function TeamMembersTable() {
+  const session = await getAuthSession();
+  const currentUserRole = session?.user?.role;
+
   const [members, roles] = await Promise.all([
     prisma.teamMember.findMany({ include: { role: true }, orderBy: { createdAt: "desc" } }),
     prisma.role.findMany({ orderBy: { name: "asc" } }),
@@ -48,7 +52,7 @@ export default async function TeamMembersTable() {
                 </td>
                 <td className="p-4 text-sm text-zinc-500">{formatDate(member.createdAt)}</td>
                 <td className="p-4">
-                  <MemberActions memberId={member.id} status={member.status} />
+                  <MemberActions memberId={member.id} memberName={member.name} memberEmail={member.email} memberRole={member.role.name} status={member.status} currentUserRole={currentUserRole} />
                 </td>
               </tr>
             ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, memo, type ReactNode } from "react";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { cn } from "@/lib/shared";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -39,7 +39,7 @@ interface DataTableProps {
   emptyTitle?: string;
 }
 
-export function DataTable({
+export const DataTable = memo(function DataTable({
   columns,
   rows,
   onRowClick,
@@ -287,4 +287,4 @@ export function DataTable({
       )}
     </div>
   );
-}
+});

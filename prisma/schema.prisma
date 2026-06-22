@@ -284,6 +284,12 @@ model AuditLog {
   description   String?
 
   createdAt     DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([actorEmail])
+  @@index([createdAt])
+  @@index([licenseId])
 }
 
 model TeamMember {
@@ -330,13 +336,18 @@ model TeamMember {
   sessions      Session[]
   loginHistory  LoginHistory[]
   mfaBackupCodes MfaBackupCode[]
+  notifications Notification[]
+
+  @@index([roleId])
+  @@index([status])
+  @@index([email])
 }
 
 model Session {
   id            String   @id @default(cuid())
   teamMemberId  String
   teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
-  token         String
+  token         String   @unique
   ipAddress     String?
   userAgent     String?
   expiresAt     DateTime
@@ -345,17 +356,24 @@ model Session {
   overrideDurationMinutes  Int?   // custom duration in minutes when policy is overridden
   overrideCooldownMinutes  Int?   // cooldown in minutes before next override is allowed
   lastOverrideAt           DateTime? // when the last override was applied
+
+  @@index([teamMemberId])
+  @@index([expiresAt])
 }
 
 model LoginHistory {
-  id            String   @id @default(cuid())
-  teamMemberId  String
-  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  teamMemberId  String?
+  teamMember    TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  email         String?
   ipAddress     String?
   userAgent     String?
   success       Boolean
   failureReason String?
   createdAt     DateTime @default(now())
+
+  @@index([teamMemberId])
+  @@index([createdAt])
 }
 
 model MfaBackupCode {
@@ -423,7 +441,7 @@ model SupportNote {
   note       String
   isInternal Boolean  @default(true)
   createdBy  String?
-  createdAt  DateTime @default(now())
+  createdAt     DateTime @default(now())
 }
 
 model ModerationReport {
@@ -469,6 +487,20 @@ model Broadcast {
   createdBy    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  title         String
+  message       String
+  type          String   @default("INFO")
+  read          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([teamMemberId, read])
+  @@index([teamMemberId, createdAt])
 }
 
 model SecurityPolicy {
