@@ -132,18 +132,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = String(credentials?.password ?? "");
         const licenseKey = String(credentials?.licenseKey ?? "").trim();
 
-        console.log("[AUTH]", JSON.stringify({ step: "start", email, hasPassword: !!password, hasLicenseKey: !!licenseKey }));
-
         if (!email || !password || !licenseKey) {
-          console.log("[AUTH]", JSON.stringify({ step: "missing_fields" }));
-          console.log("AUTH_STEP=MISSING_FIELDS", JSON.stringify({ email }));
           return null;
         }
 
         const ipCheck = checkIpRateLimit(ipAddress);
         if (!ipCheck.allowed) {
-          console.log("[AUTH]", JSON.stringify({ step: "ip_blocked", ipAddress, retryAfter: ipCheck.retryAfter }));
-          console.log("AUTH_STEP=IP_BLOCKED", JSON.stringify({ email, ipAddress, retryAfter: ipCheck.retryAfter }));
           logAuthEvent("LOGIN_FAILURE", {
             email,
             description: `Login blocked: IP rate limit exceeded for ${ipAddress}, retry after ${ipCheck.retryAfter}s`,
@@ -158,37 +152,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             where: { email },
             include: { role: true, license: true },
           });
-        } catch (qErr) {
-          console.error("[AUTH] Query failed (find_user):", qErr);
-          console.log("AUTH_STEP=QUERY_FAILED", JSON.stringify({ email }));
+        } catch {
           return null;
         }
 
-        console.log("TEAM_MEMBER_LOOKUP", JSON.stringify({ email, ms: Date.now() - t0 }));
-        console.log("[AUTH]", JSON.stringify({ step: "find_user", email, userFound: !!member, memberId: member?.id, memberStatus: member?.status }));
-
         if (!member) {
-          console.log("[AUTH]", JSON.stringify({ step: "no_account" }));
-          console.log("AUTH_STEP=EMAIL_LOOKUP", JSON.stringify({ email }));
           logAuthEvent("LOGIN_FAILURE", {
             email,
             description: `Login failed: no account found for ${email}`,
           });
-          try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: "unknown", email: email, ipAddress, userAgent, success: false, failureReason: "No account found" },
-            });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (no_account):", lhErr);
-          }
+          prisma.loginHistory.create({
+            data: { teamMemberId: "unknown", email: email, ipAddress, userAgent, success: false, failureReason: "No account found" },
+          }).catch(() => {});
           return null;
         }
 
-        // Check lockout (progressive duration)
-        console.log("[AUTH]", JSON.stringify({ step: "lockout_check", lockedUntil: member.lockedUntil?.toISOString(), isLocked: !!(member.lockedUntil && member.lockedUntil > new Date()) }));
         if (member.lockedUntil && member.lockedUntil > new Date()) {
-          console.log("[AUTH]", JSON.stringify({ step: "account_locked" }));
-          console.log("AUTH_STEP=ACCOUNT_LOCKED", JSON.stringify({ email, memberId: member.id, lockedUntil: member.lockedUntil.toISOString() }));
           logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
             email,
@@ -197,18 +176,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // 2. Verify password
-        console.log("[AUTH]", JSON.stringify({ step: "password_check", hashLen: member.password.length }));
-        const tBcrypt = Date.now();
         const isValidPassword = await bcrypt.compare(password, member.password);
-        console.log("BCRYPT_COMPARE", JSON.stringify({ email, ms: Date.now() - tBcrypt, result: isValidPassword }));
-        console.log("[AUTH]", JSON.stringify({ step: "password_result", isValidPassword }));
         if (!isValidPassword) {
-          console.log("AUTH_STEP=PASSWORD_CHECK", JSON.stringify({ email, memberId: member.id, failedLoginAttempts: member.failedLoginAttempts, bcryptResult: false }));
           const newAttempts = member.failedLoginAttempts + 1;
-          const strikeCount = member.failedLoginAttempts >= AUTH.MAX_LOGIN_ATTEMPTS
-            ? member.failedLoginAttempts
-            : 0;
           const lockoutDuration = computeLockoutDuration(Math.floor(newAttempts / AUTH.MAX_LOGIN_ATTEMPTS));
           const update: {
             failedLoginAttempts: number;
@@ -220,19 +190,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             update.lockedUntil = new Date(Date.now() + Math.max(lockoutDuration, AUTH.LOCKOUT_DURATION_MINUTES * 60 * 1000));
             update.failedLoginAttempts = 0;
           }
-          try {
-            await prisma.teamMember.update({ where: { id: member.id }, data: update });
-          } catch (uErr) {
-            console.error("[AUTH] Update failed (failedLoginAttempts):", uErr);
-          }
+          prisma.teamMember.update({ where: { id: member.id }, data: update }).catch(() => {});
 
-          try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid password" },
-            });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (invalid_password):", lhErr);
-          }
+          prisma.loginHistory.create({
+            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid password" },
+          }).catch(() => {});
 
           logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
@@ -242,52 +204,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // 3. Check user has a license assigned
-        console.log("[AUTH]", JSON.stringify({ step: "license_assigned", licenseFound: !!member.license, licenseId: member.licenseId }));
         if (!member.license) {
-          console.log("[AUTH]", JSON.stringify({ step: "no_license" }));
-          console.log("AUTH_STEP=LICENSE_ASSIGNED", JSON.stringify({ email, memberId: member.id, licenseId: member.licenseId }));
           logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
             email,
             description: `Login failed: no license assigned to ${email}`,
           });
-          try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "No license assigned" },
-            });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (no_license):", lhErr);
-          }
+          prisma.loginHistory.create({
+            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "No license assigned" },
+          }).catch(() => {});
           return null;
         }
 
         const license = member.license;
-        console.log("[AUTH]", JSON.stringify({ step: "license_details", keyInDb: license.key, keySubmitted: licenseKey, expiresAt: license.expiresAt.toISOString(), isExpired: license.expiresAt < new Date(), status: license.status }));
 
-        // 4. License key matches
         if (license.key !== licenseKey) {
-          console.log("[AUTH]", JSON.stringify({ step: "license_key_mismatch" }));
-          console.log("AUTH_STEP=LICENSE_KEY_MATCH", JSON.stringify({ email, memberId: member.id, licenseId: license.id }));
           logAuthEvent("INVALID_LICENSE_KEY", {
             teamMemberId: member.id,
             email,
             description: `Login failed: invalid license key provided for ${email}`,
           });
-          try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid license key" },
-            });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (invalid_license_key):", lhErr);
-          }
+          prisma.loginHistory.create({
+            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid license key" },
+          }).catch(() => {});
           return null;
         }
 
-        // 5. License belongs to this user
         if (member.licenseId !== license.id) {
-          console.log("[AUTH]", JSON.stringify({ step: "license_ownership_mismatch" }));
-          console.log("AUTH_STEP=LICENSE_OWNERSHIP", JSON.stringify({ email, memberId: member.id, memberLicenseId: member.licenseId, licenseId: license.id }));
           logAuthEvent("INVALID_LICENSE_KEY", {
             teamMemberId: member.id,
             email,
@@ -296,60 +239,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // 6. License is not EXPIRED
         if (license.expiresAt < new Date()) {
-          console.log("[AUTH]", JSON.stringify({ step: "license_expired" }));
-          console.log("AUTH_STEP=LICENSE_EXPIRY", JSON.stringify({ email, memberId: member.id, licenseId: license.id, expiresAt: license.expiresAt.toISOString() }));
           logAuthEvent("LICENSE_EXPIRED_DENIAL", {
             teamMemberId: member.id,
             email,
             description: `Login denied: license ${license.key} expired on ${license.expiresAt.toISOString()}`,
           });
-          try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License expired" },
-            });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (license_expired):", lhErr);
-          }
+          prisma.loginHistory.create({
+            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License expired" },
+          }).catch(() => {});
           return null;
         }
 
-        // 7. License is not SUSPENDED
         if (license.status === "SUSPENDED") {
-          console.log("[AUTH]", JSON.stringify({ step: "license_suspended" }));
-          console.log("AUTH_STEP=LICENSE_STATUS", JSON.stringify({ email, memberId: member.id, licenseId: license.id, status: license.status }));
           logAuthEvent("LICENSE_SUSPENDED_DENIAL", {
             teamMemberId: member.id,
             email,
             description: `Login denied: license ${license.key} is suspended`,
           });
-          try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License suspended" },
-            });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (license_suspended):", lhErr);
-          }
+          prisma.loginHistory.create({
+            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License suspended" },
+          }).catch(() => {});
           return null;
         }
 
-        // 8. License is ACTIVE
         if (license.status !== "ACTIVE") {
-          console.log("[AUTH]", JSON.stringify({ step: "license_not_active", status: license.status }));
-          console.log("AUTH_STEP=LICENSE_STATUS", JSON.stringify({ email, memberId: member.id, licenseId: license.id, status: license.status }));
           logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
             email,
             description: `Login denied: license ${license.key} has status ${license.status}`,
           });
-          try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: `License status: ${license.status}` },
-            });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (license_status):", lhErr);
-          }
+          prisma.loginHistory.create({
+            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: `License status: ${license.status}` },
+          }).catch(() => {});
           return null;
         }
 
@@ -380,27 +302,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           ]);
           sessionRecordId = sessionRecord.id;
           permissions = permissionRows.map(p => p.permission);
-        } catch (opErr) {
-          console.error("[AUTH] Post-auth operation failed (parallel_critical):", opErr);
+        } catch {
+          // Session/permission query failed — null return will prevent login
         }
-        console.log("SESSION_CREATE", JSON.stringify({ email, ms: Date.now() - tParallel }));
-        console.log("PERMISSION_QUERY", JSON.stringify({ email, ms: Date.now() - tParallel }));
-
-        console.log("AUTH_TIMING_CRITICAL", JSON.stringify({ email, ms: Date.now() - t0 }));
 
         // ── Non-critical operations (fire-and-forget) ──
         (async () => {
-          // Reset failed attempts on success
           try {
             await prisma.teamMember.update({
               where: { id: member.id },
-              data: { failedLoginAttempts: 0, lockedUntil: null, lastLogin: new Date() },
+              data: { failedLoginAttempts: 0, lockedUntil: null, lastLogin: new Date(), lastLoginIp: ipAddress, lastUserAgent: userAgent },
             });
-          } catch (opErr) {
-            console.error("[AUTH] Post-auth operation failed (reset_attempts):", opErr);
-          }
-
-          // Session rotation: keep last 5
+          } catch {}
           try {
             const oldSessions = await prisma.session.findMany({
               where: { teamMemberId: member.id },
@@ -412,30 +325,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 where: { id: { in: oldSessions.map(s => s.id) } },
               });
             }
-          } catch (opErr) {
-            console.error("[AUTH] Post-auth operation failed (session_rotation):", opErr);
-          }
-
-          // Update last login metadata
-          try {
-            await prisma.teamMember.update({
-              where: { id: member.id },
-              data: { lastLoginIp: ipAddress, lastUserAgent: userAgent },
-            });
-          } catch (opErr) {
-            console.error("[AUTH] Post-auth operation failed (last_login_meta):", opErr);
-          }
-
-          // Create LoginHistory record
+          } catch {}
           try {
             await prisma.loginHistory.create({
               data: { teamMemberId: member.id, ipAddress, userAgent, success: true },
             });
-          } catch (lhErr) {
-            console.error("[AUTH] LoginHistory create failed (success):", lhErr);
-          }
-
-          // Device activation tracking
+          } catch {}
           try {
             const deviceId = `device-${member.id}-${license.id}`;
             const existingActivation = await prisma.activation.findFirst({ where: { deviceId } });
@@ -456,7 +351,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               : userAgent.includes("Tablet") || userAgent.includes("iPad") ? "TABLET"
               : "DESKTOP";
             const geo = await resolveGeoFromApi(ipAddress);
-
             if (existingActivation) {
               await prisma.activation.update({
                 where: { id: existingActivation.id },
@@ -479,20 +373,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 },
               });
             }
-          } catch (opErr) {
-            console.error("[AUTH] Post-auth operation failed (activation):", opErr);
-          }
-
-          await logAuthEvent("LOGIN_SUCCESS", {
+          } catch {}
+          logAuthEvent("LOGIN_SUCCESS", {
             teamMemberId: member.id,
             email,
             description: `Login successful for ${email}`,
           });
         })();
-
-        console.log("AUTH_TOTAL", JSON.stringify({ email, ms: Date.now() - t0 }));
-        console.log("AUTH_TIMING_LOGIN", JSON.stringify({ email, ms: Date.now() - t0 }));
-        console.log("[AUTH]", JSON.stringify({ step: "return_success", memberId: member.id, email, role: member.role?.name ?? null, roleId: member.roleId }));
 
         return {
           id: member.id,

@@ -70,39 +70,43 @@ function MetricsRow({ items }: { items: { label: string; value: string | number;
   );
 }
 
-function timed<T>(label: string, promise: Promise<T>): Promise<T> {
-  const start = Date.now();
-  return promise.then(r => {
-    console.log(label, JSON.stringify({ ms: Date.now() - start }));
-    return r;
-  });
-}
-
 export default async function DashboardPage() {
-  const t0 = Date.now();
   const now = new Date();
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const [
     licenses, activationCounts, auditLogs, memberCounts, roleCount,
     policyCounts, premiumSubs, coinStats, gemStats, promoStats,
-    invoiceStats, sessionStats,
+    invoiceStats, activeSessionCount, overriddenSessionCount, sessionsExpiringSoonCount,
+    paidInvoices, outstandingInvoices, draftInvoices, todayLogins, todayErrors,
+    activePromotionsCount, activePoliciesCount, totalPremiumSubs, totalSessionCount,
   ] = await Promise.all([
-    timed("LICENSE_QUERY", prisma.license.findMany({ select: { status: true, expiresAt: true, maxDevices: true, plan: true, organization: true } })),
-    timed("DEVICES_QUERY", prisma.activation.groupBy({ by: ["status"], _count: true })),
-    timed("AUDIT_QUERY", prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5 })),
-    timed("ANALYTICS_QUERY", prisma.teamMember.groupBy({ by: ["status"], _count: true })),
-    timed("ROLES_QUERY", prisma.role.count()),
-    timed("POLICY_QUERY", prisma.securityPolicy.count()),
-    timed("PREMIUM_QUERY", prisma.premiumSubscription.findMany({ where: { endDate: { gt: now }, action: { notIn: ["REVOKED", "CANCELLED"] } }, select: { id: true, licenseId: true } })),
-    timed("COINS_QUERY", prisma.coinBalance.aggregate({ _sum: { balance: true }, _count: true })),
-    timed("GEMS_QUERY", prisma.gemBalance.aggregate({ _sum: { balance: true }, _count: true })),
-    timed("PROMO_QUERY", prisma.promotion.aggregate({ _sum: { usedCount: true }, _count: true })),
-    timed("INVOICE_QUERY", prisma.invoice.aggregate({ _sum: { total: true }, _count: true })),
-    timed("SESSIONS_QUERY", prisma.session.findMany({ select: { expiresAt: true, overrideDurationMinutes: true } })),
+    prisma.license.findMany({ select: { status: true, expiresAt: true, maxDevices: true, plan: true, organization: true } }),
+    prisma.activation.groupBy({ by: ["status"], _count: true }),
+    prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    prisma.teamMember.groupBy({ by: ["status"], _count: true }),
+    prisma.role.count(),
+    prisma.securityPolicy.count(),
+    prisma.premiumSubscription.findMany({ where: { endDate: { gt: now }, action: { notIn: ["REVOKED", "CANCELLED"] } }, select: { id: true, licenseId: true } }),
+    prisma.coinBalance.aggregate({ _sum: { balance: true }, _count: true }),
+    prisma.gemBalance.aggregate({ _sum: { balance: true }, _count: true }),
+    prisma.promotion.aggregate({ _sum: { usedCount: true }, _count: true }),
+    prisma.invoice.aggregate({ _sum: { total: true }, _count: true }),
+    prisma.session.count({ where: { expiresAt: { gt: now } } }),
+    prisma.session.count({ where: { overrideDurationMinutes: { not: null } } }),
+    prisma.session.count({ where: { expiresAt: { gt: now, lte: thirtyDaysFromNow } } }),
+    prisma.invoice.count({ where: { status: "PAID" } }),
+    prisma.invoice.count({ where: { status: { in: ["PENDING", "OVERDUE"] } } }),
+    prisma.invoice.count({ where: { status: "DRAFT" } }),
+    prisma.auditLog.count({ where: { action: "LOGIN_SUCCESS", createdAt: { gte: startOfToday } } }),
+    prisma.auditLog.count({ where: { action: { in: ["LOGIN_FAILURE", "PERMISSION_DENIED"] }, createdAt: { gte: startOfToday } } }),
+    prisma.promotion.count({ where: { active: true } }),
+    prisma.securityPolicy.count({ where: { enabled: true } }),
+    prisma.premiumSubscription.count(),
+    prisma.session.count(),
   ]);
 
-  /* ── Licenses ── */
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
   const expiredLicenses = licenses.filter((l) => l.status === "EXPIRED").length;
@@ -111,82 +115,31 @@ export default async function DashboardPage() {
   const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
   const totalDevices = activationCounts.reduce((s, g) => s + g._count, 0);
   const utilization = totalCapacity === 0 ? 0 : Math.round((totalDevices / totalCapacity) * 100);
-
-  /* ── Team Members ── */
   const memberCountMap = Object.fromEntries(memberCounts.map((g) => [g.status, g._count]));
   const totalMembers = memberCounts.reduce((s, g) => s + g._count, 0);
   const activeMembers = memberCountMap["ACTIVE"] || 0;
   const suspendedMembers = memberCountMap["SUSPENDED"] || 0;
   const pendingMembers = memberCountMap["PENDING"] || 0;
-
-  /* ── Premium ── */
   const activePremiumSubs = premiumSubs.length;
-
-  /* ── Plan Breakdown ── */
   const planBreakdown = licenses.reduce<Record<string, number>>((acc, l) => {
     acc[l.plan] = (acc[l.plan] || 0) + 1;
     return acc;
   }, {});
-
-  /* ── Promotions ── */
   const totalPromos = promoStats._count;
   const totalRedemptions = promoStats._sum.usedCount || 0;
-  const activePromotions = promoStats._count; // approximate; accurate count needs separate query
-
-  /* ── Invoices ── */
   const totalInvoices = invoiceStats._count;
   const invoiceRevenue = invoiceStats._sum.total || 0;
-
-  /* ── Sessions ── */
-  const sessionNow = new Date();
-  const activeSessions = sessionStats.filter((s) => s.expiresAt > sessionNow).length;
-  const overriddenSessions = sessionStats.filter((s) => s.overrideDurationMinutes !== null).length;
-  const sessionsExpiringSoon = sessionStats.filter((s) => s.expiresAt > sessionNow && s.expiresAt <= thirtyDaysFromNow).length;
-  const totalSessions = sessionStats.length;
-
-  /* ── Devices ── */
   const activationStatusMap = Object.fromEntries(activationCounts.map((g) => [g.status, g._count]));
   const trustedDevices = activationStatusMap["ACTIVE"] || 0;
   const suspendedDevices = activationStatusMap["SUSPENDED"] || 0;
   const pendingDevices = activationStatusMap["PENDING"] || 0;
-
-  /* ── Coins / Gems ── */
   const totalCoins = coinStats._sum.balance || 0;
   const totalCoinsWallets = coinStats._count;
   const totalGems = gemStats._sum.balance || 0;
   const totalGemsWallets = gemStats._count;
-
-  /* ── Activity (real counts from dedicated queries) ── */
   const totalPolicies = policyCounts;
   const rolesCount = roleCount;
-
-  /* ── Organizations ── */
   const uniqueOrgs = new Set(licenses.map((l) => l.organization)).size;
-
-  /* ── Invoice detail counts (needs separate queries) ── */
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tBatch2 = Date.now();
-  const [paidInvoices, outstandingInvoices, draftInvoices, todayLogins, todayErrors] = await Promise.all([
-    prisma.invoice.count({ where: { status: "PAID" } }),
-    prisma.invoice.count({ where: { status: { in: ["PENDING", "OVERDUE"] } } }),
-    prisma.invoice.count({ where: { status: "DRAFT" } }),
-    prisma.auditLog.count({ where: { action: "LOGIN_SUCCESS", createdAt: { gte: startOfToday } } }),
-    prisma.auditLog.count({ where: { action: { in: ["LOGIN_FAILURE", "PERMISSION_DENIED"] }, createdAt: { gte: startOfToday } } }),
-  ]);
-  console.log("DASHBOARD_BATCH2", JSON.stringify({ batch: "parallel_5", ms: Date.now() - tBatch2, note: "invoice/today counts" }));
-
-  /* ── Active promotions count ── */
-  const tPromos = Date.now();
-  const activePromotionsCount = await prisma.promotion.count({ where: { active: true } });
-  console.log("DASHBOARD_PROMOS", JSON.stringify({ ms: Date.now() - tPromos }));
-
-  /* ── Active policies count ── */
-  const tPolicies = Date.now();
-  const activePoliciesCount = await prisma.securityPolicy.count({ where: { enabled: true } });
-  const totalPremiumSubs = await prisma.premiumSubscription.count();
-  console.log("DASHBOARD_POLICIES", JSON.stringify({ ms: Date.now() - tPolicies }));
-
-  console.log("DASHBOARD_TOTAL", JSON.stringify({ ms: Date.now() - t0 }));
 
   /* ── Alerts ── */
   const criticalAlerts: { icon: typeof Shield; label: string; value: string | number; color: string }[] = [];
@@ -378,11 +331,10 @@ export default async function DashboardPage() {
         {/* Session Activity */}
         <InsightCard title="Session Activity">
           <div className="space-y-2">
-            <StatRow label="Active Sessions" value={activeSessions} color="text-blue-400" />
-            <StatRow label="Policy Overrides" value={overriddenSessions} color={overriddenSessions > 0 ? "text-amber-400" : "text-zinc-500"} />
-            <StatRow label="Expiring ≤30d" value={sessionsExpiringSoon} color={sessionsExpiringSoon > 0 ? "text-amber-400" : "text-zinc-500"} />
-            <StatRow label="Total Sessions" value={totalSessions} color="text-zinc-300" />
-            <StatRow label="Override Rate" value={`${totalSessions > 0 ? Math.round(overriddenSessions / totalSessions * 100) : 0}%`} color="text-zinc-400" />
+            <StatRow label="Active Sessions" value={activeSessionCount} color="text-blue-400" />
+            <StatRow label="Policy Overrides" value={overriddenSessionCount} color={overriddenSessionCount > 0 ? "text-amber-400" : "text-zinc-500"} />
+            <StatRow label="Expiring ≤30d" value={sessionsExpiringSoonCount} color={sessionsExpiringSoonCount > 0 ? "text-amber-400" : "text-zinc-500"} />
+            <StatRow label="Override Rate" value={`${activeSessionCount > 0 ? Math.round(overriddenSessionCount / activeSessionCount * 100) : 0}%`} color="text-zinc-400" />
           </div>
         </InsightCard>
 
@@ -510,7 +462,7 @@ export default async function DashboardPage() {
               <StatRow label="Total Members" value={totalMembers} color="text-blue-400" />
               <StatRow label="Total Licenses" value={licenses.length} color="text-purple-400" />
               <StatRow label="Total Invoices" value={totalInvoices} color="text-emerald-400" />
-              <StatRow label="Total Sessions" value={totalSessions} color="text-amber-400" />
+              <StatRow label="Total Sessions" value={totalSessionCount} color="text-amber-400" />
             </div>
           </InsightCard>
         </div>
