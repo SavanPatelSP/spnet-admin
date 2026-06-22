@@ -122,6 +122,11 @@ export function SessionPolicyOverrideModal({
 
   const hasCostImpact = costImpact > 0;
 
+  const cooldownCost = useMemo(() => {
+    if (cooldownOption === "restore") return 0;
+    return (SESSION_EXTENSION_PRICE_PER_MINUTE || 0) * selectedCooldownMinutes;
+  }, [cooldownOption, selectedCooldownMinutes]);
+
   async function handleSubmit() {
     setSaving(true);
     try {
@@ -136,8 +141,8 @@ export function SessionPolicyOverrideModal({
           body.customCooldown = customCooldown;
         }
       } else {
-        body.option = "custom";
-        body.customMinutes = 60;
+        body.cooldownOnly = true;
+        body.cooldownOption = cooldownOption;
         body.customCooldown = selectedCooldownMinutes;
       }
 
@@ -306,6 +311,9 @@ export function SessionPolicyOverrideModal({
                 <div className="flex justify-between"><span className="text-zinc-400">New Cooldown</span><span className="font-bold text-zinc-100">
                   {cooldownOption === "restore" ? "Default" : selectedCooldownMinutes >= 0 ? `${selectedCooldownMinutes} minutes` : "Default"}
                 </span></div>
+                <div className="flex justify-between border-t border-amber-500/20 pt-2"><span className="text-zinc-400">Est. Impact on Re-auth</span><span className="font-bold text-zinc-100">
+                  {cooldownOption === "restore" ? "Platform default wait time" : selectedCooldownMinutes >= 0 ? `+${formatDuration(selectedCooldownMinutes)} before retry` : "No change"}
+                </span></div>
               </div>
             </div>
           </>
@@ -341,40 +349,40 @@ export function SessionPolicyOverrideModal({
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
             <p className="flex items-center gap-2 text-xs font-medium text-zinc-400"><DollarSign size={14} /> Cost Impact</p>
-            <p className={`mt-1 text-sm font-medium ${tab === "policy" && hasCostImpact ? "text-red-400" : "text-zinc-200"}`}>
-              {tab === "policy" ? (hasCostImpact ? formatPrice(costImpact, "$") : "No charge") : "No charge"}
+            <p className={`mt-1 text-sm font-medium ${tab === "policy" && hasCostImpact ? "text-red-400" : tab === "cooldown" && cooldownCost > 0 ? "text-red-400" : "text-zinc-200"}`}>
+              {tab === "policy" ? (hasCostImpact ? formatPrice(costImpact, "$") : "No charge") : cooldownCost > 0 ? formatPrice(cooldownCost, "$") : "No charge"}
             </p>
             <p className="text-[10px] text-zinc-500">
-              {tab === "policy" ? (hasCostImpact ? "Override billed." : "Default policy.") : "Cooldown changes are free."}
+              {tab === "policy" ? (hasCostImpact ? "Override billed." : "Default policy.") : cooldownCost > 0 ? "Tenure change billed." : "Cooldown changes within standard range."}
             </p>
           </div>
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
             <p className="flex items-center gap-2 text-xs font-medium text-zinc-400"><TrendingUp size={14} /> Revenue Impact</p>
             <p className="mt-1 text-sm font-medium text-emerald-400">
-              {tab === "policy" ? (hasCostImpact ? `+${formatPrice(costImpact, "$")}` : "No revenue") : "No revenue"}
+              {tab === "policy" ? (hasCostImpact ? `+${formatPrice(costImpact, "$")}` : "No revenue") : cooldownCost > 0 ? `+${formatPrice(cooldownCost, "$")}` : "No revenue"}
             </p>
             <p className="text-[10px] text-zinc-500">
-              {tab === "policy" && hasCostImpact ? "Invoice generated." : "No billing impact."}
+              {(tab === "policy" && hasCostImpact) || (tab === "cooldown" && cooldownCost > 0) ? "Invoice generated." : "No billing impact."}
             </p>
           </div>
         </div>
 
-        {tab === "policy" && hasCostImpact && (
+        {(tab === "policy" && hasCostImpact) || (tab === "cooldown" && cooldownCost > 0) ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
             <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500"><FileText size={14} /> Invoice Preview</p>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between border-b border-zinc-800 pb-2">
-                <span className="text-zinc-400">Session policy override &mdash; {newPolicyLabel}</span>
-                <span className="text-zinc-200">{formatPrice(costImpact, "$")}</span>
+                <span className="text-zinc-400">{tab === "policy" ? `Session policy override — ${newPolicyLabel}` : `Login tenure override — ${formatDuration(selectedCooldownMinutes)} cooldown`}</span>
+                <span className="text-zinc-200">{formatPrice(tab === "policy" ? costImpact : cooldownCost, "$")}</span>
               </div>
               <div className="flex justify-between font-medium">
                 <span className="text-zinc-300">Total</span>
-                <span className="text-zinc-100">{formatPrice(costImpact, "$")}</span>
+                <span className="text-zinc-100">{formatPrice(tab === "policy" ? costImpact : cooldownCost, "$")}</span>
               </div>
-              <p className="text-[10px] text-zinc-500">Auto-generated invoice. Category: Session - Policy Override. Due in 30 days.</p>
+              <p className="text-[10px] text-zinc-500">Auto-generated invoice. Category: Session - {tab === "policy" ? "Policy Override" : "Login Tenure"}. Due in 30 days.</p>
             </div>
           </div>
-        )}
+        ) : null}
 
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
           <div className="mb-2 flex items-center gap-2">
@@ -392,9 +400,12 @@ export function SessionPolicyOverrideModal({
               </>
             )}
             {tab === "cooldown" && (
-              <div className="flex"><span className="w-28 text-zinc-500">Cooldown</span><span className="text-zinc-300">{selectedCooldownMinutes >= 0 ? `${selectedCooldownMinutes} min` : "Default"}</span></div>
+              <>
+                <div className="flex"><span className="w-28 text-zinc-500">Cooldown</span><span className="text-zinc-300">{selectedCooldownMinutes >= 0 ? `${formatDuration(selectedCooldownMinutes)}` : "Default"}</span></div>
+                <div className="flex"><span className="w-28 text-zinc-500">Session</span><span className="text-zinc-300">Remains at current expiry</span></div>
+              </>
             )}
-            <div className="flex"><span className="w-28 text-zinc-500">Cost</span><span className={hasCostImpact ? "text-red-400" : "text-zinc-500"}>{hasCostImpact ? formatPrice(costImpact, "$") : "No charge"}</span></div>
+            <div className="flex"><span className="w-28 text-zinc-500">Cost</span><span className={(tab === "policy" && hasCostImpact) || (tab === "cooldown" && cooldownCost > 0) ? "text-red-400" : "text-zinc-500"}>{(tab === "policy" && hasCostImpact) ? formatPrice(costImpact, "$") : (tab === "cooldown" && cooldownCost > 0) ? formatPrice(cooldownCost, "$") : "No charge"}</span></div>
           </div>
         </div>
 

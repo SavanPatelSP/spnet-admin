@@ -4,25 +4,11 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, GEM_PACKAGES } from "@/lib/constants";
+import { API_ROUTES } from "@/lib/constants";
+import { getGemPrice, formatGemValue } from "@/lib/economy-pricing";
 import { Gem, ArrowRight, TrendingUp, Crown, Shield, ShoppingCart, SlidersHorizontal } from "lucide-react";
 
 function fmt(n: number) { return n.toLocaleString(); }
-
-function estimateGemValue(amount: number): number {
-  if (amount <= 0) return 0;
-  const sorted = [...GEM_PACKAGES].sort((a, b) => a.amount - b.amount);
-  if (amount <= sorted[0].amount) return Math.round((amount / sorted[0].amount) * sorted[0].price);
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const low = sorted[i], high = sorted[i + 1];
-    if (amount >= low.amount && amount <= high.amount) {
-      const t = (amount - low.amount) / (high.amount - low.amount);
-      return Math.round(low.price + t * (high.price - low.price));
-    }
-  }
-  const last = sorted[sorted.length - 1];
-  return Math.round((amount / last.amount) * last.price);
-}
 
 interface SetGemsModalProps {
   licenseId: string;
@@ -44,8 +30,8 @@ export default function SetGemsModal({ licenseId, organization, currentBalance, 
   const isIncrease = diff > 0;
   const isDecrease = diff < 0;
   const pctChange = currentBalance > 0 ? ((balance - currentBalance) / currentBalance) * 100 : 0;
-  const diffValue = useMemo(() => estimateGemValue(Math.abs(diff)), [diff]);
-  const newValue = useMemo(() => estimateGemValue(balance), [balance]);
+  const diffValue = useMemo(() => getGemPrice(Math.abs(diff)), [diff]);
+  const newValue = useMemo(() => getGemPrice(balance), [balance]);
   const premiumEligible = balance >= 100;
   const licenseEligible = balance >= 50;
   const wasPremiumEligible = currentBalance >= 100;
@@ -109,7 +95,7 @@ export default function SetGemsModal({ licenseId, organization, currentBalance, 
                 {fmt(currentBalance)}
               </div>
               <div className="text-zinc-500">Current Value</div>
-              <div className="text-xs text-zinc-400">₹{estimateGemValue(currentBalance).toLocaleString()}</div>
+              <div className="text-xs text-zinc-400">{formatGemValue(currentBalance)}</div>
               <div className="text-zinc-500">Current Type</div>
               <span className="inline-flex w-fit rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-200">{type}</span>
             </div>
@@ -209,7 +195,7 @@ export default function SetGemsModal({ licenseId, organization, currentBalance, 
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-500">Value Impact</span>
                       <span className={isIncrease ? "text-green-400" : "text-red-400"}>
-                        {isIncrease ? "+" : "-"}₹{diffValue.toLocaleString()}
+                        {isIncrease ? "+" : "-"}${diffValue.toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -218,7 +204,7 @@ export default function SetGemsModal({ licenseId, organization, currentBalance, 
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/30 px-4 py-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-500">Total Value</span>
-                  <span className="text-purple-400">₹{newValue.toLocaleString()}</span>
+                  <span className="text-purple-400">${newValue.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -295,7 +281,7 @@ export default function SetGemsModal({ licenseId, organization, currentBalance, 
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Value</span>
-                <span className="text-zinc-300">₹{newValue.toLocaleString()}</span>
+                <span className="text-zinc-300">${newValue.toFixed(2)}</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Premium Power</span>

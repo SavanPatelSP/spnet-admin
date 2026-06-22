@@ -3,6 +3,8 @@ import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
+import { getGemPackage } from "@/lib/economy-pricing";
+import { createInvoice } from "@/lib/invoices";
 
 export async function POST(req: Request) {
   try {
@@ -58,6 +60,30 @@ export async function POST(req: Request) {
       `Granted ${amount} gems to ${license.organization}${reason ? ` (${reason})` : ""}`,
       session.user.email
     );
+
+    try {
+      const gemPkg = getGemPackage(amount);
+      const price = gemPkg ? gemPkg.price : 0;
+      if (price > 0) {
+        await createInvoice({
+          licenseId,
+          category: "GEM",
+          action: "GRANT",
+          status: "PENDING",
+          type: "SALE",
+          subtotal: price,
+          lineItems: [
+            { description: `Gems grant — ${amount} gems${rewardRelation ? ` (reward: ${rewardRelation.name})` : ""}`, quantity: 1, unitPrice: Math.round(price * 100), total: Math.round(price * 100) },
+          ],
+          dueDays: 30,
+          notes: `Auto-generated invoice for granting ${amount} gems. ${reason || ""}`.trim(),
+          relatedEntityType: "GEM_GRANT",
+          relatedEntityId: licenseId,
+        });
+      }
+    } catch {
+      // Invoice generation is best-effort.
+    }
 
     return Response.json(result);
   } catch (error) {

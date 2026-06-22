@@ -348,14 +348,18 @@ model Session {
 }
 
 model LoginHistory {
-  id            String   @id @default(cuid())
-  teamMemberId  String
-  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  teamMemberId  String?
+  teamMember    TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  email         String?
   ipAddress     String?
   userAgent     String?
   success       Boolean
   failureReason String?
   createdAt     DateTime @default(now())
+
+  @@index([teamMemberId])
+  @@index([createdAt])
 }
 
 model MfaBackupCode {

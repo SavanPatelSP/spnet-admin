@@ -12,7 +12,7 @@ import { API_ROUTES } from "@/lib/constants";
 import {
   RefreshCw, Trash2, CheckCircle, Clock, AlertCircle, XCircle, RotateCcw,
   FileText, Eye, Search, TrendingUp, DollarSign, FileSpreadsheet, Printer,
-  Share2, Archive, Filter,
+  Share2, Archive, Filter, ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 interface Invoice {
@@ -81,21 +81,26 @@ export function InvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
 
-  const fetchInvoices = useCallback(async () => {
+  const fetchInvoices = useCallback(async (p: number) => {
     setLoading(true);
     try {
       const url = new URL(API_ROUTES.INVOICES.LIST, window.location.origin);
+      url.searchParams.set("page", String(p));
+      url.searchParams.set("pageSize", "100");
       const res = await fetch(url.toString());
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "Failed to load invoices");
       setInvoices(data.invoices || []);
+      setTotal(data.total || 0);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to load invoices", "error");
     } finally {
@@ -104,8 +109,8 @@ export function InvoicesPage() {
   }, [showToast]);
 
   useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices]);
+    fetchInvoices(page);
+  }, [fetchInvoices, page]);
 
   const filtered = useMemo(() => {
     return invoices.filter((inv) => {
@@ -284,7 +289,7 @@ export function InvoicesPage() {
               <TrendingUp size={16} /> Analytics
             </button>
             <button
-              onClick={fetchInvoices}
+              onClick={() => fetchInvoices(page)}
               disabled={loading}
               className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700 disabled:opacity-50"
             >
@@ -358,6 +363,27 @@ export function InvoicesPage() {
             searchPlaceholder="Search invoices..."
             emptyMessage="No matching invoices."
           />
+          {total > 100 && (
+            <div className="flex items-center justify-between border-t border-zinc-800 px-5 py-3">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span className="text-sm text-zinc-500">
+                Page {page} of {Math.max(1, Math.ceil(total / 100))} ({total} total)
+              </span>
+              <button
+                disabled={page >= Math.ceil(total / 100)}
+                onClick={() => setPage((p) => p + 1)}
+                className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

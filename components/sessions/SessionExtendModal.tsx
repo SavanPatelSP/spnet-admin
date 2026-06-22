@@ -321,6 +321,40 @@ export function SessionExtendModal({
             </div>
           </div>
         )}
+
+        {/* Audit Preview */}
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/30 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit Preview</h4>
+          </div>
+          <div className="space-y-1 font-mono text-xs">
+            <div className="flex">
+              <span className="w-28 text-zinc-500">Action</span>
+              <span className="text-blue-400">SESSION_EXTENDED</span>
+            </div>
+            <div className="flex">
+              <span className="w-28 text-zinc-500">Target</span>
+              <span className="text-zinc-300">{session.teamMember?.email || session.id}</span>
+            </div>
+            <div className="flex">
+              <span className="w-28 text-zinc-500">Duration</span>
+              <span className="text-zinc-300">+{formatMinutes(effectiveMinutes)}</span>
+            </div>
+            <div className="flex">
+              <span className="w-28 text-zinc-500">New Expiry</span>
+              <span className="text-blue-400">{formatDateTime(newExpiry)}</span>
+            </div>
+            <div className="flex">
+              <span className="w-28 text-zinc-500">Quality</span>
+              <span className={premium ? "text-amber-400" : "text-zinc-300"}>{premium ? "Premium" : "Standard"}</span>
+            </div>
+            <div className="flex">
+              <span className="w-28 text-zinc-500">Cost</span>
+              <span className={hasCostImpact ? "text-red-400" : "text-zinc-500"}>{hasCostImpact ? formatPrice(costImpact, "$") : "No charge"}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </Modal>
   );

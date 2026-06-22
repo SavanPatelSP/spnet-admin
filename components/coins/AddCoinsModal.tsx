@@ -5,27 +5,10 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, COIN_PACKAGES } from "@/lib/constants";
+import { getCoinPrice, getCoinPackage, formatCoinValue } from "@/lib/economy-pricing";
 import { Coins, Wallet, TrendingUp, Package, ShoppingCart, ArrowRight, Sparkles } from "lucide-react";
 
 function fmt(n: number) { return n.toLocaleString(); }
-
-function estimateCoinValue(amount: number): number {
-  if (amount <= 0) return 0;
-  const sorted = [...COIN_PACKAGES].sort((a, b) => a.amount - b.amount);
-  if (amount <= sorted[0].amount) {
-    return Math.round((amount / sorted[0].amount) * sorted[0].price);
-  }
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const low = sorted[i];
-    const high = sorted[i + 1];
-    if (amount >= low.amount && amount <= high.amount) {
-      const t = (amount - low.amount) / (high.amount - low.amount);
-      return Math.round(low.price + t * (high.price - low.price));
-    }
-  }
-  const last = sorted[sorted.length - 1];
-  return Math.round((amount / last.amount) * last.price);
-}
 
 interface AddCoinsModalProps {
   licenseId: string;
@@ -45,9 +28,9 @@ export default function AddCoinsModal({ licenseId, organization, currentBalance 
 
   const afterBalance = currentBalance + amount;
   const pctChange = currentBalance > 0 ? ((afterBalance - currentBalance) / currentBalance) * 100 : 100;
-  const selectedPkg = COIN_PACKAGES.find((p) => p.amount === amount);
-  const estimatedValue = useMemo(() => estimateCoinValue(amount), [amount]);
-  const isCustomAmount = !COIN_PACKAGES.some((p) => p.amount === amount);
+  const selectedPkg = getCoinPackage(amount);
+  const coinPrice = useMemo(() => getCoinPrice(amount), [amount]);
+  const isCustomAmount = !getCoinPackage(amount);
 
   async function handleAdd() {
     setError("");
@@ -155,9 +138,9 @@ export default function AddCoinsModal({ licenseId, organization, currentBalance 
               {amount > 0 && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500">
                   <ShoppingCart size={11} className="text-zinc-500" />
-                  Estimated value: <span className="font-medium text-amber-400">₹{estimatedValue.toLocaleString()}</span>
-                  {isCustomAmount && estimatedValue > 0 && (
-                    <span className="text-zinc-600">({fmt(amount)} coins at ~₹{(estimatedValue / amount).toFixed(2)}/coin)</span>
+                  Estimated value: <span className="font-medium text-amber-400">{formatCoinValue(amount)}</span>
+                  {isCustomAmount && coinPrice > 0 && (
+                    <span className="text-zinc-600">({fmt(amount)} coins at ~${(coinPrice / amount).toFixed(4)}/coin)</span>
                   )}
                 </p>
               )}
@@ -236,8 +219,8 @@ export default function AddCoinsModal({ licenseId, organization, currentBalance 
 
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/30 px-4 py-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-500">Estimated value</span>
-                  <span className="text-xs font-medium text-amber-400">₹{estimatedValue.toLocaleString()}</span>
+                  <span className="text-xs text-zinc-500">Package value</span>
+                  <span className="text-xs font-medium text-amber-400">{formatCoinValue(amount)}</span>
                 </div>
               </div>
             </div>
@@ -279,8 +262,8 @@ export default function AddCoinsModal({ licenseId, organization, currentBalance 
                 <span className="text-green-400">+{pctChange.toFixed(1)}%</span>
               </div>
               <div className="flex">
-                <span className="w-28 text-zinc-500">Value</span>
-                <span className="text-zinc-300">₹{estimatedValue.toLocaleString()}</span>
+                <span className="w-28 text-zinc-500">Package Value</span>
+                <span className="text-zinc-300">{formatCoinValue(amount)}</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Reason</span>

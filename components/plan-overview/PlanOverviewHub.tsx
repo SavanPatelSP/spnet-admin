@@ -27,7 +27,7 @@ const categories = [
     title: "Coin Packages",
     description: "Virtual currency packages for platform economy operations.",
     planCount: 4,
-    summary: "Starter · Growth · Pro · Enterprise — $9.90 to $249.90",
+    summary: "Starter · Growth · Pro · Enterprise — $9.99 to $349.99",
     color: "yellow",
   },
   {
@@ -36,7 +36,7 @@ const categories = [
     title: "Gem Packages",
     description: "Premium gem packages with purchasing power for Premium and Licenses.",
     planCount: 4,
-    summary: "Starter · Growth · Pro · Enterprise — $9.90 to $249.90",
+    summary: "Starter · Growth · Pro · Enterprise — $9.99 to $349.99",
     color: "blue",
   },
   {

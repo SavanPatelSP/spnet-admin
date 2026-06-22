@@ -5,7 +5,8 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatPrice } from "@/lib/shared";
 import { ALL_PLANS, PLAN_META } from "@/lib/premium";
-import { COIN_PACKAGES, GEM_PACKAGES, LICENSE_TIERS, PLAN_PRICES } from "@/lib/constants";
+import { LICENSE_TIERS, PLAN_PRICES } from "@/lib/constants";
+import { getCoinPackage, getGemPackage } from "@/lib/economy-pricing";
 import {
   Ticket, Percent, Megaphone, Timer, Gift, ArrowUpRight,
   TrendingUp, DollarSign, Users, Sparkles, Clock, FileText,
@@ -69,6 +70,7 @@ function toDateInputValue(date: string | null) {
 }
 
 const planOptions = ALL_PLANS.map((p) => ({ value: p, label: PLAN_META[p]?.label || p }));
+import { COIN_PACKAGES, GEM_PACKAGES } from "@/lib/constants";
 const coinOptions = COIN_PACKAGES.map((p) => ({ value: p.label, label: `${p.label} — ${p.amount} coins` }));
 const gemOptions = GEM_PACKAGES.map((p) => ({ value: p.label, label: `${p.label} — ${p.amount} gems` }));
 const licenseOptions = LICENSE_TIERS.map((t) => ({ value: t.label, label: t.label }));
@@ -84,8 +86,8 @@ function targetOptions(appliesTo: string | null) {
 function getProductPrice(appliesTo: string, targetPlan: string): number | undefined {
   if (!appliesTo || !targetPlan) return undefined;
   if (appliesTo === "PREMIUM") return PLAN_PRICES[targetPlan as keyof typeof PLAN_PRICES];
-  if (appliesTo === "COIN") return COIN_PACKAGES.find((p) => p.label === targetPlan)?.price;
-  if (appliesTo === "GEM") return GEM_PACKAGES.find((p) => p.label === targetPlan)?.price;
+  if (appliesTo === "COIN") return getCoinPackage(targetPlan)?.price;
+  if (appliesTo === "GEM") return getGemPackage(targetPlan)?.price;
   if (appliesTo === "LICENSE") return LICENSE_TIERS.find((t) => t.label === targetPlan)?.price;
   return undefined;
 }

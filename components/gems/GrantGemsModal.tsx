@@ -5,24 +5,10 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, GEM_PACKAGES } from "@/lib/constants";
+import { getGemPrice, getGemPackage, formatGemValue } from "@/lib/economy-pricing";
 import { Gem, TrendingUp, Crown, ArrowRight, Sparkles, ShoppingCart, Shield, Zap, Diamond } from "lucide-react";
 
 function fmt(n: number) { return n.toLocaleString(); }
-
-function estimateGemValue(amount: number): number {
-  if (amount <= 0) return 0;
-  const sorted = [...GEM_PACKAGES].sort((a, b) => a.amount - b.amount);
-  if (amount <= sorted[0].amount) return Math.round((amount / sorted[0].amount) * sorted[0].price);
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const low = sorted[i], high = sorted[i + 1];
-    if (amount >= low.amount && amount <= high.amount) {
-      const t = (amount - low.amount) / (high.amount - low.amount);
-      return Math.round(low.price + t * (high.price - low.price));
-    }
-  }
-  const last = sorted[sorted.length - 1];
-  return Math.round((amount / last.amount) * last.price);
-}
 
 interface GemRewardOption {
   id: string;
@@ -51,9 +37,9 @@ export default function GrantGemsModal({ licenseId, organization, currentBalance
 
   const newBalance = currentBalance + amount;
   const pctChange = currentBalance > 0 ? ((newBalance - currentBalance) / currentBalance) * 100 : 100;
-  const selectedPkg = GEM_PACKAGES.find((p) => p.amount === amount);
-  const isCustomAmount = !GEM_PACKAGES.some((p) => p.amount === amount) && !rewardId;
-  const estimatedValue = useMemo(() => estimateGemValue(amount), [amount]);
+  const selectedPkg = getGemPackage(amount);
+  const isCustomAmount = !getGemPackage(amount) && !rewardId;
+  const gemPrice = useMemo(() => getGemPrice(amount), [amount]);
   const premiumEligible = amount >= 100;
   const licenseEligible = amount >= 50;
 
@@ -190,9 +176,9 @@ export default function GrantGemsModal({ licenseId, organization, currentBalance
               {amount > 0 && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500">
                   <ShoppingCart size={11} className="text-zinc-500" />
-                  Estimated value: <span className="font-medium text-purple-400">₹{estimatedValue.toLocaleString()}</span>
-                  {isCustomAmount && estimatedValue > 0 && (
-                    <span className="text-zinc-600">({fmt(amount)} gems at ~₹{(estimatedValue / amount).toFixed(2)}/gem)</span>
+                  Estimated value: <span className="font-medium text-purple-400">{formatGemValue(amount)}</span>
+                  {isCustomAmount && gemPrice > 0 && (
+                    <span className="text-zinc-600">({fmt(amount)} gems at ~${(gemPrice / amount).toFixed(4)}/gem)</span>
                   )}
                 </p>
               )}
@@ -275,10 +261,10 @@ export default function GrantGemsModal({ licenseId, organization, currentBalance
             <div className="mb-4 flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5">
               <ShoppingCart size={14} className="text-purple-400" />
               <span className="text-xs text-zinc-400">
-                Estimated value: <strong className="text-purple-400">₹{estimatedValue.toLocaleString()}</strong>
+                Package value: <strong className="text-purple-400">{formatGemValue(amount)}</strong>
               </span>
               <span className="text-[10px] text-zinc-600">
-                {fmt(amount)} gems at ~₹{(estimatedValue / Math.max(amount, 1)).toFixed(2)}/gem
+                {fmt(amount)} gems at ~${(gemPrice / Math.max(amount, 1)).toFixed(4)}/gem
               </span>
             </div>
 
@@ -359,8 +345,8 @@ export default function GrantGemsModal({ licenseId, organization, currentBalance
                 <span className="text-green-400">+{pctChange.toFixed(1)}%</span>
               </div>
               <div className="flex">
-                <span className="w-28 text-zinc-500">Value</span>
-                <span className="text-zinc-300">₹{estimatedValue.toLocaleString()}</span>
+                <span className="w-28 text-zinc-500">Package Value</span>
+                <span className="text-zinc-300">{formatGemValue(amount)}</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Premium Power</span>

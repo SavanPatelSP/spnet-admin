@@ -347,7 +347,7 @@ model Session {
   id            String   @id @default(cuid())
   teamMemberId  String
   teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
-  token         String   @unique
+  token         String
   ipAddress     String?
   userAgent     String?
   expiresAt     DateTime

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/shared";
-import { COIN_PACKAGES, GEM_PACKAGES, LICENSE_TIERS, PLAN_PRICES } from "@/lib/constants";
+import { LICENSE_TIERS, PLAN_PRICES } from "@/lib/constants";
+import { getCoinPackage, getGemPackage } from "@/lib/economy-pricing";
 
 export type InvoiceStatus = "DRAFT" | "PENDING" | "PAID" | "OVERDUE" | "CANCELLED" | "REFUNDED";
 export type InvoiceType = "SALE" | "REFUND" | "CREDIT";
@@ -201,8 +202,8 @@ export async function createInvoiceForPremiumAction(
 function getProductBasePrice(appliesTo: string | null, targetPlan: string | null): number | undefined {
   if (!appliesTo || !targetPlan) return undefined;
   if (appliesTo === "PREMIUM") return PLAN_PRICES[targetPlan];
-  if (appliesTo === "COIN") return COIN_PACKAGES.find((p) => p.label === targetPlan)?.price;
-  if (appliesTo === "GEM") return GEM_PACKAGES.find((p) => p.label === targetPlan)?.price;
+  if (appliesTo === "COIN") return getCoinPackage(targetPlan)?.price;
+  if (appliesTo === "GEM") return getGemPackage(targetPlan)?.price;
   if (appliesTo === "LICENSE") return LICENSE_TIERS.find((t) => t.label === targetPlan)?.price;
   return undefined;
 }

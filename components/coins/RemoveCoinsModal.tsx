@@ -4,25 +4,11 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, COIN_PACKAGES } from "@/lib/constants";
+import { API_ROUTES } from "@/lib/constants";
+import { getCoinPrice, formatCoinValue } from "@/lib/economy-pricing";
 import { Coins, Wallet, TrendingDown, AlertTriangle, ArrowRight, MinusCircle, ShoppingCart } from "lucide-react";
 
 function fmt(n: number) { return n.toLocaleString(); }
-
-function estimateCoinValue(amount: number): number {
-  if (amount <= 0) return 0;
-  const sorted = [...COIN_PACKAGES].sort((a, b) => a.amount - b.amount);
-  if (amount <= sorted[0].amount) return Math.round((amount / sorted[0].amount) * sorted[0].price);
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const low = sorted[i], high = sorted[i + 1];
-    if (amount >= low.amount && amount <= high.amount) {
-      const t = (amount - low.amount) / (high.amount - low.amount);
-      return Math.round(low.price + t * (high.price - low.price));
-    }
-  }
-  const last = sorted[sorted.length - 1];
-  return Math.round((amount / last.amount) * last.price);
-}
 
 interface RemoveCoinsModalProps {
   licenseId: string;
@@ -43,7 +29,7 @@ export default function RemoveCoinsModal({ licenseId, organization, currentBalan
   const afterBalance = currentBalance - amount;
   const pctChange = currentBalance > 0 ? ((afterBalance - currentBalance) / currentBalance) * 100 : 0;
   const exceeds = amount > currentBalance;
-  const estimatedValue = useMemo(() => estimateCoinValue(amount), [amount]);
+  const coinPrice = useMemo(() => getCoinPrice(amount), [amount]);
 
   async function handleRemove() {
     setError("");
@@ -131,7 +117,7 @@ export default function RemoveCoinsModal({ licenseId, organization, currentBalan
               {amount > 0 && !exceeds && (
                 <div className="mt-2 flex items-center gap-2 rounded-lg border border-orange-500/10 bg-orange-500/5 px-3 py-2 text-xs">
                   <ShoppingCart size={11} className="text-zinc-500" />
-                  Estimated value of removed coins: <span className="font-medium text-orange-400">₹{estimatedValue.toLocaleString()}</span>
+                  Estimated value of removed coins: <span className="font-medium text-orange-400">{formatCoinValue(amount)}</span>
                 </div>
               )}
             </div>
@@ -262,7 +248,7 @@ export default function RemoveCoinsModal({ licenseId, organization, currentBalan
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Value Lost</span>
-                <span className="text-zinc-300">₹{estimatedValue.toLocaleString()}</span>
+                <span className="text-zinc-300">{formatCoinValue(amount)}</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Reason</span>

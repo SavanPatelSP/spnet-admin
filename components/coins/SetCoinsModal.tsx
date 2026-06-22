@@ -4,25 +4,11 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, COIN_PACKAGES } from "@/lib/constants";
+import { API_ROUTES } from "@/lib/constants";
+import { getCoinPrice, formatCoinValue } from "@/lib/economy-pricing";
 import { Coins, Wallet, ArrowRight, TrendingUp, ShoppingCart, SlidersHorizontal } from "lucide-react";
 
 function fmt(n: number) { return n.toLocaleString(); }
-
-function estimateCoinValue(amount: number): number {
-  if (amount <= 0) return 0;
-  const sorted = [...COIN_PACKAGES].sort((a, b) => a.amount - b.amount);
-  if (amount <= sorted[0].amount) return Math.round((amount / sorted[0].amount) * sorted[0].price);
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const low = sorted[i], high = sorted[i + 1];
-    if (amount >= low.amount && amount <= high.amount) {
-      const t = (amount - low.amount) / (high.amount - low.amount);
-      return Math.round(low.price + t * (high.price - low.price));
-    }
-  }
-  const last = sorted[sorted.length - 1];
-  return Math.round((amount / last.amount) * last.price);
-}
 
 interface SetCoinsModalProps {
   licenseId: string;
@@ -44,8 +30,8 @@ export default function SetCoinsModal({ licenseId, organization, currentBalance,
   const isIncrease = diff > 0;
   const isDecrease = diff < 0;
   const pctChange = currentBalance > 0 ? ((balance - currentBalance) / currentBalance) * 100 : 0;
-  const diffValue = useMemo(() => estimateCoinValue(Math.abs(diff)), [diff]);
-  const newValue = useMemo(() => estimateCoinValue(balance), [balance]);
+  const diffValue = useMemo(() => getCoinPrice(Math.abs(diff)), [diff]);
+  const newValue = useMemo(() => getCoinPrice(balance), [balance]);
 
   async function handleSet() {
     if (balance < 0) { setError("Balance must be non-negative"); return; }
@@ -106,7 +92,7 @@ export default function SetCoinsModal({ licenseId, organization, currentBalance,
                 {fmt(currentBalance)}
               </div>
               <div className="text-zinc-500">Current Value</div>
-              <div className="text-xs text-zinc-400">₹{estimateCoinValue(currentBalance).toLocaleString()}</div>
+              <div className="text-xs text-zinc-400">{formatCoinValue(currentBalance)}</div>
             </div>
           </div>
 
@@ -204,7 +190,7 @@ export default function SetCoinsModal({ licenseId, organization, currentBalance,
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-500">Value Impact</span>
                       <span className={isIncrease ? "text-green-400" : "text-red-400"}>
-                        {isIncrease ? "+" : "-"}₹{diffValue.toLocaleString()}
+                        {isIncrease ? "+" : "-"}${diffValue.toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -213,7 +199,7 @@ export default function SetCoinsModal({ licenseId, organization, currentBalance,
               <div className="rounded-lg border border-zinc-700 bg-zinc-800/30 px-4 py-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-500">Total Value</span>
-                  <span className="text-amber-400">₹{newValue.toLocaleString()}</span>
+                  <span className="text-amber-400">${newValue.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -258,7 +244,7 @@ export default function SetCoinsModal({ licenseId, organization, currentBalance,
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Value</span>
-                <span className="text-zinc-300">₹{newValue.toLocaleString()}</span>
+                <span className="text-zinc-300">${newValue.toFixed(2)}</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Reason</span>

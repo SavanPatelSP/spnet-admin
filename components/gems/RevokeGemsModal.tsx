@@ -4,25 +4,11 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, GEM_PACKAGES } from "@/lib/constants";
+import { API_ROUTES } from "@/lib/constants";
+import { getGemPrice, formatGemValue } from "@/lib/economy-pricing";
 import { Gem, TrendingDown, AlertTriangle, Crown, Shield, ArrowRight, MinusCircle, ShoppingCart, Ban } from "lucide-react";
 
 function fmt(n: number) { return n.toLocaleString(); }
-
-function estimateGemValue(amount: number): number {
-  if (amount <= 0) return 0;
-  const sorted = [...GEM_PACKAGES].sort((a, b) => a.amount - b.amount);
-  if (amount <= sorted[0].amount) return Math.round((amount / sorted[0].amount) * sorted[0].price);
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const low = sorted[i], high = sorted[i + 1];
-    if (amount >= low.amount && amount <= high.amount) {
-      const t = (amount - low.amount) / (high.amount - low.amount);
-      return Math.round(low.price + t * (high.price - low.price));
-    }
-  }
-  const last = sorted[sorted.length - 1];
-  return Math.round((amount / last.amount) * last.price);
-}
 
 interface RevokeGemsModalProps {
   licenseId: string;
@@ -43,7 +29,7 @@ export default function RevokeGemsModal({ licenseId, organization, currentBalanc
   const newBalance = currentBalance - amount;
   const pctChange = currentBalance > 0 ? ((newBalance - currentBalance) / currentBalance) * 100 : 0;
   const exceeds = amount > currentBalance;
-  const estimatedValue = useMemo(() => estimateGemValue(amount), [amount]);
+  const gemPrice = useMemo(() => getGemPrice(amount), [amount]);
   const wasPremiumEligible = currentBalance >= 100;
   const wasLicenseEligible = currentBalance >= 50;
   const stillPremiumEligible = newBalance >= 100;
@@ -138,7 +124,7 @@ export default function RevokeGemsModal({ licenseId, organization, currentBalanc
               {amount > 0 && !exceeds && (
                 <div className="mt-2 flex items-center gap-2 rounded-lg border border-orange-500/10 bg-orange-500/5 px-3 py-2 text-xs">
                   <ShoppingCart size={11} className="text-zinc-500" />
-                  Estimated value of revoked gems: <span className="font-medium text-orange-400">₹{estimatedValue.toLocaleString()}</span>
+                  Estimated value of revoked gems: <span className="font-medium text-orange-400">{formatGemValue(amount)}</span>
                 </div>
               )}
             </div>
@@ -296,7 +282,7 @@ export default function RevokeGemsModal({ licenseId, organization, currentBalanc
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Value Lost</span>
-                <span className="text-zinc-300">₹{estimatedValue.toLocaleString()}</span>
+                <span className="text-zinc-300">{formatGemValue(amount)}</span>
               </div>
               <div className="flex">
                 <span className="w-28 text-zinc-500">Premium Power</span>

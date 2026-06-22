@@ -4,12 +4,13 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
-import { formatDate } from "@/lib/shared";
+import { formatDate, parseUA } from "@/lib/shared";
 import { API_ROUTES } from "@/lib/constants";
 import { SessionExtendModal } from "./SessionExtendModal";
 import { SessionForceLogoutModal } from "./SessionForceLogoutModal";
 import { SessionPolicyOverrideModal } from "./SessionPolicyOverrideModal";
-import { Clock, XCircle, LogOut, ArrowUpCircle, Search, Crown, RefreshCw } from "lucide-react";
+import { SessionDetailDrawer } from "./SessionDetailDrawer";
+import { Clock, XCircle, LogOut, ArrowUpCircle, Search, Crown, RefreshCw, Monitor, Smartphone, Globe } from "lucide-react";
 
 interface SessionRow {
   id: string;
@@ -33,6 +34,7 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
   const [extendTarget, setExtendTarget] = useState<SessionRow | null>(null);
   const [logoutTarget, setLogoutTarget] = useState<SessionRow | null>(null);
   const [overrideTarget, setOverrideTarget] = useState<SessionRow | null>(null);
+  const [detailTarget, setDetailTarget] = useState<SessionRow | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -184,11 +186,12 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
       ]}
       rows={filtered.map((s) => {
         const isActive = s.expiresAt > new Date();
+        const parsed = s.userAgent ? parseUA(s.userAgent) : null;
         return {
           id: s.id,
           values: {
             user: s.teamMember?.name || s.teamMember?.email || "Unknown",
-            device: s.userAgent || "Unknown",
+            device: parsed ? `${parsed.os} / ${parsed.browser}` : "Unknown",
             ipAddress: s.ipAddress || "",
             status: isActive ? "Active" : "Expired",
             createdAt: s.createdAt.toISOString(),
@@ -203,7 +206,18 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
                 <span className="mt-1 inline-block rounded-full bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-400">{s.teamMember.role.name}</span>
               )}
             </div>,
-            <span key="device" className="hidden max-w-[200px] truncate text-xs text-zinc-400 lg:table-cell">{s.userAgent || "-"}</span>,
+            <button key="device" onClick={() => setDetailTarget(s)} className="hidden max-w-[200px] truncate text-left text-xs text-zinc-400 transition-colors hover:text-blue-400 lg:table-cell">
+              {parsed ? (
+                <span className="flex items-center gap-1.5">
+                  {parsed.deviceType === "MOBILE" || parsed.deviceType === "TABLET" ? (
+                    <Smartphone size={10} className="shrink-0 text-zinc-500" />
+                  ) : (
+                    <Monitor size={10} className="shrink-0 text-zinc-500" />
+                  )}
+                  <span className="truncate">{parsed.os} / {parsed.browser}</span>
+                </span>
+              ) : <span className="text-zinc-600">-</span>}
+            </button>,
             <span key="ip" className="font-mono text-xs text-zinc-400">{s.ipAddress || "-"}</span>,
             <span key="status">
               {isActive ? (
@@ -274,6 +288,13 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
           session={logoutTarget}
           onClose={() => setLogoutTarget(null)}
           onSuccess={() => { setLogoutTarget(null); setRefreshKey((k) => k + 1); router.refresh(); }}
+        />
+      )}
+
+      {detailTarget && (
+        <SessionDetailDrawer
+          session={detailTarget}
+          onClose={() => setDetailTarget(null)}
         />
       )}
     </>

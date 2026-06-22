@@ -160,9 +160,21 @@ export default function InvoiceDetailClient({ invoice: initialInvoice, auditHist
     showToast("CSV downloaded", "success");
   }
 
-  function downloadPDF() {
-    window.print();
-    showToast("Print dialog opened", "info");
+  async function downloadPDF() {
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/pdf`);
+      if (!res.ok) throw new Error("PDF generation failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice-${invoice.invoiceNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("PDF downloaded", "success");
+    } catch {
+      showToast("Failed to generate PDF", "error");
+    }
   }
 
   function printInvoice() {

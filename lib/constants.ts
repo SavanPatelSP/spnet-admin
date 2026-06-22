@@ -37,35 +37,8 @@ export const PLAN_PRICES: Record<string, number> = {
   FREE: 0, BASIC: 4, STUDENT: 6, PLUS: 9, PRO: 29, BUSINESS: 99, ENTERPRISE: 299, SP_PLAN: 599,
 };
 
-export interface CoinPackage {
-  label: string;
-  amount: number;
-  price: number;
-  currency: string;
-  description?: string;
-}
-
-export const COIN_PACKAGES: CoinPackage[] = [
-  { label: "Starter", amount: 1000, price: 9.9, currency: "$", description: "Entry-level coin pack for testing and light engagement" },
-  { label: "Growth", amount: 5000, price: 39.9, currency: "$", description: "Higher-volume pack suitable for small teams" },
-  { label: "Pro", amount: 10000, price: 69.9, currency: "$", description: "Professional-grade pack with meaningful per-coin savings" },
-  { label: "Enterprise", amount: 50000, price: 249.9, currency: "$", description: "Maximum-volume pack with the best overall value" },
-];
-
-export interface GemPackage {
-  label: string;
-  amount: number;
-  price: number;
-  currency: string;
-  description?: string;
-}
-
-export const GEM_PACKAGES: GemPackage[] = [
-  { label: "Starter", amount: 10, price: 9.9, currency: "$", description: "Entry-level gem pack for quick engagement and small rewards" },
-  { label: "Growth", amount: 50, price: 39.9, currency: "$", description: "Mid-volume pack with improved value per gem" },
-  { label: "Pro", amount: 100, price: 69.9, currency: "$", description: "Premium reward pack with full purchasing power unlocks" },
-  { label: "Enterprise", amount: 500, price: 249.9, currency: "$", description: "Enterprise-scale grant pack with maximum efficiency" },
-];
+export type { CoinPackage, GemPackage } from "./economy-pricing";
+export { COIN_PACKAGES, GEM_PACKAGES } from "./economy-pricing";
 
 export interface LicenseTier {
   label: string;
@@ -440,6 +413,7 @@ export const AUDIT_ACTIONS = {
 
   SESSION_EXTENDED: "SESSION_EXTENDED",
   SESSION_POLICY_OVERRIDDEN: "SESSION_POLICY_OVERRIDDEN",
+  LOGIN_TENURE_OVERRIDDEN: "LOGIN_TENURE_OVERRIDDEN",
   FORCE_LOGOUT: "FORCE_LOGOUT",
 
   // License Management

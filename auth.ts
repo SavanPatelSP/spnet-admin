@@ -517,6 +517,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
+  events: {
+    async signOut(message) {
+      if (!("token" in message) || !message.token?.sessionRecordId) return;
+      const token = message.token;
+      try {
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.session.update({
+          where: { id: token.sessionRecordId as string },
+          data: { expiresAt: new Date() },
+        }).catch(() => {});
+        await prisma.auditLog.create({
+          data: {
+            action: "LOGOUT",
+            actorEmail: (token.email as string) || "unknown",
+            actorName: (token.name as string) || null,
+            actorRole: (token.role as string) || null,
+            entityType: "session",
+            entityId: token.sessionRecordId as string,
+            description: `User logged out: session ${(token.sessionRecordId as string).slice(0, 12)}...`,
+          },
+        }).catch(() => {});
+      } catch {
+        // Swallow errors during sign-out
+      }
+    },
+  },
   session: {
     strategy: "jwt",
     maxAge: AUTH.SESSION_MAX_AGE_SECONDS,

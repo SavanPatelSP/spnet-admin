@@ -10,7 +10,8 @@ import {
   TrendingUp, DollarSign, Users, Sparkles, Clock,
 } from "lucide-react";
 import { ALL_PLANS, PLAN_META } from "@/lib/premium";
-import { COIN_PACKAGES, GEM_PACKAGES, LICENSE_TIERS, PLAN_PRICES } from "@/lib/constants";
+import { LICENSE_TIERS, PLAN_PRICES } from "@/lib/constants";
+import { getCoinPackage, getGemPackage } from "@/lib/economy-pricing";
 import { PromoCodeModal } from "./PromoCodeModal";
 import { DiscountCouponModal } from "./DiscountCouponModal";
 import { CampaignModal } from "./CampaignModal";
@@ -69,8 +70,8 @@ const typeColors: Record<PromotionType, { text: string; bg: string; border: stri
 function getProductPrice(appliesTo: string, targetPlan: string): number | undefined {
   if (!appliesTo || !targetPlan) return undefined;
   if (appliesTo === "PREMIUM") return PLAN_PRICES[targetPlan as keyof typeof PLAN_PRICES];
-  if (appliesTo === "COIN") return COIN_PACKAGES.find((p) => p.label === targetPlan)?.price;
-  if (appliesTo === "GEM") return GEM_PACKAGES.find((p) => p.label === targetPlan)?.price;
+  if (appliesTo === "COIN") return getCoinPackage(targetPlan)?.price;
+  if (appliesTo === "GEM") return getGemPackage(targetPlan)?.price;
   if (appliesTo === "LICENSE") return LICENSE_TIERS.find((t) => t.label === targetPlan)?.price;
   return undefined;
 }
