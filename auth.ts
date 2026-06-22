@@ -85,6 +85,7 @@ declare module "@auth/core/jwt" {
     sessionRecordId: string | null;
     sessionCreatedAt: string | null;
     sessionExpiresAt: string | null;
+    licenseLastVerifiedAt: string | null;
   }
 }
 
@@ -97,7 +98,6 @@ async function logAuthEvent(
   }
 ) {
   try {
-    const { prisma } = await import("@/lib/prisma");
     await prisma.auditLog.create({
       data: {
         action,
@@ -144,7 +144,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!ipCheck.allowed) {
           console.log("[AUTH]", JSON.stringify({ step: "ip_blocked", ipAddress, retryAfter: ipCheck.retryAfter }));
           console.log("AUTH_STEP=IP_BLOCKED", JSON.stringify({ email, ipAddress, retryAfter: ipCheck.retryAfter }));
-          await logAuthEvent("LOGIN_FAILURE", {
+          logAuthEvent("LOGIN_FAILURE", {
             email,
             description: `Login blocked: IP rate limit exceeded for ${ipAddress}, retry after ${ipCheck.retryAfter}s`,
           });
@@ -170,7 +170,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!member) {
           console.log("[AUTH]", JSON.stringify({ step: "no_account" }));
           console.log("AUTH_STEP=EMAIL_LOOKUP", JSON.stringify({ email }));
-          await logAuthEvent("LOGIN_FAILURE", {
+          logAuthEvent("LOGIN_FAILURE", {
             email,
             description: `Login failed: no account found for ${email}`,
           });
@@ -189,7 +189,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (member.lockedUntil && member.lockedUntil > new Date()) {
           console.log("[AUTH]", JSON.stringify({ step: "account_locked" }));
           console.log("AUTH_STEP=ACCOUNT_LOCKED", JSON.stringify({ email, memberId: member.id, lockedUntil: member.lockedUntil.toISOString() }));
-          await logAuthEvent("LOGIN_FAILURE", {
+          logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
             email,
             description: `Login blocked: account locked until ${member.lockedUntil.toISOString()}`,
@@ -207,7 +207,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           console.log("AUTH_STEP=PASSWORD_CHECK", JSON.stringify({ email, memberId: member.id, failedLoginAttempts: member.failedLoginAttempts, bcryptResult: false }));
           const newAttempts = member.failedLoginAttempts + 1;
           const strikeCount = member.failedLoginAttempts >= AUTH.MAX_LOGIN_ATTEMPTS
-            ? (await prisma.teamMember.findUnique({ where: { id: member.id }, select: { failedLoginAttempts: true } }))?.failedLoginAttempts ?? 0
+            ? member.failedLoginAttempts
             : 0;
           const lockoutDuration = computeLockoutDuration(Math.floor(newAttempts / AUTH.MAX_LOGIN_ATTEMPTS));
           const update: {
@@ -234,7 +234,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             console.error("[AUTH] LoginHistory create failed (invalid_password):", lhErr);
           }
 
-          await logAuthEvent("LOGIN_FAILURE", {
+          logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
             email,
             description: `Login failed: invalid password (attempt ${newAttempts})`,
@@ -247,7 +247,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!member.license) {
           console.log("[AUTH]", JSON.stringify({ step: "no_license" }));
           console.log("AUTH_STEP=LICENSE_ASSIGNED", JSON.stringify({ email, memberId: member.id, licenseId: member.licenseId }));
-          await logAuthEvent("LOGIN_FAILURE", {
+          logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
             email,
             description: `Login failed: no license assigned to ${email}`,
@@ -269,7 +269,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (license.key !== licenseKey) {
           console.log("[AUTH]", JSON.stringify({ step: "license_key_mismatch" }));
           console.log("AUTH_STEP=LICENSE_KEY_MATCH", JSON.stringify({ email, memberId: member.id, licenseId: license.id }));
-          await logAuthEvent("INVALID_LICENSE_KEY", {
+          logAuthEvent("INVALID_LICENSE_KEY", {
             teamMemberId: member.id,
             email,
             description: `Login failed: invalid license key provided for ${email}`,
@@ -288,7 +288,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (member.licenseId !== license.id) {
           console.log("[AUTH]", JSON.stringify({ step: "license_ownership_mismatch" }));
           console.log("AUTH_STEP=LICENSE_OWNERSHIP", JSON.stringify({ email, memberId: member.id, memberLicenseId: member.licenseId, licenseId: license.id }));
-          await logAuthEvent("INVALID_LICENSE_KEY", {
+          logAuthEvent("INVALID_LICENSE_KEY", {
             teamMemberId: member.id,
             email,
             description: `License ${license.key} does not belong to ${email}`,
@@ -300,7 +300,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (license.expiresAt < new Date()) {
           console.log("[AUTH]", JSON.stringify({ step: "license_expired" }));
           console.log("AUTH_STEP=LICENSE_EXPIRY", JSON.stringify({ email, memberId: member.id, licenseId: license.id, expiresAt: license.expiresAt.toISOString() }));
-          await logAuthEvent("LICENSE_EXPIRED_DENIAL", {
+          logAuthEvent("LICENSE_EXPIRED_DENIAL", {
             teamMemberId: member.id,
             email,
             description: `Login denied: license ${license.key} expired on ${license.expiresAt.toISOString()}`,
@@ -319,7 +319,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (license.status === "SUSPENDED") {
           console.log("[AUTH]", JSON.stringify({ step: "license_suspended" }));
           console.log("AUTH_STEP=LICENSE_STATUS", JSON.stringify({ email, memberId: member.id, licenseId: license.id, status: license.status }));
-          await logAuthEvent("LICENSE_SUSPENDED_DENIAL", {
+          logAuthEvent("LICENSE_SUSPENDED_DENIAL", {
             teamMemberId: member.id,
             email,
             description: `Login denied: license ${license.key} is suspended`,
@@ -338,7 +338,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (license.status !== "ACTIVE") {
           console.log("[AUTH]", JSON.stringify({ step: "license_not_active", status: license.status }));
           console.log("AUTH_STEP=LICENSE_STATUS", JSON.stringify({ email, memberId: member.id, licenseId: license.id, status: license.status }));
-          await logAuthEvent("LOGIN_FAILURE", {
+          logAuthEvent("LOGIN_FAILURE", {
             teamMemberId: member.id,
             email,
             description: `Login denied: license ${license.key} has status ${license.status}`,
@@ -355,40 +355,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         // ── Critical path (must complete before return) ──
 
-        // Create Session record
-        const tSession = Date.now();
+        // Session + permissions are independent — run in parallel
+        const tParallel = Date.now();
         const sessionToken = crypto.randomUUID();
         const sessionCreatedAt = new Date();
         const sessionExpiresAt = new Date(sessionCreatedAt.getTime() + AUTH.SESSION_MAX_AGE_SECONDS * 1000);
         let sessionRecordId: string | null = null;
-        try {
-          const sessionRecord = await prisma.session.create({
-            data: {
-              teamMemberId: member.id,
-              token: sessionToken,
-              ipAddress,
-              userAgent,
-              expiresAt: sessionExpiresAt,
-            },
-          });
-          sessionRecordId = sessionRecord.id;
-        } catch (opErr) {
-          console.error("[AUTH] Post-auth operation failed (session_create):", opErr);
-        }
-        console.log("SESSION_CREATE", JSON.stringify({ email, ms: Date.now() - tSession }));
-
-        // Load permissions
-        const tPerm = Date.now();
         let permissions: string[] = [];
         try {
-          permissions = (await prisma.permission.findMany({
-            where: { roleId: member.roleId },
-            select: { permission: true },
-          })).map(p => p.permission);
+          const [sessionRecord, permissionRows] = await Promise.all([
+            prisma.session.create({
+              data: {
+                teamMemberId: member.id,
+                token: sessionToken,
+                ipAddress,
+                userAgent,
+                expiresAt: sessionExpiresAt,
+              },
+            }),
+            prisma.permission.findMany({
+              where: { roleId: member.roleId },
+              select: { permission: true },
+            }),
+          ]);
+          sessionRecordId = sessionRecord.id;
+          permissions = permissionRows.map(p => p.permission);
         } catch (opErr) {
-          console.error("[AUTH] Post-auth operation failed (permissions):", opErr);
+          console.error("[AUTH] Post-auth operation failed (parallel_critical):", opErr);
         }
-        console.log("PERMISSION_QUERY", JSON.stringify({ email, ms: Date.now() - tPerm }));
+        console.log("SESSION_CREATE", JSON.stringify({ email, ms: Date.now() - tParallel }));
+        console.log("PERMISSION_QUERY", JSON.stringify({ email, ms: Date.now() - tParallel }));
 
         console.log("AUTH_TIMING_CRITICAL", JSON.stringify({ email, ms: Date.now() - t0 }));
 
@@ -529,48 +525,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.sessionRecordId = (user as { sessionRecordId: string | null }).sessionRecordId;
         token.sessionCreatedAt = (user as { sessionCreatedAt: string | null }).sessionCreatedAt;
         token.sessionExpiresAt = (user as { sessionExpiresAt: string | null }).sessionExpiresAt;
+        token.licenseLastVerifiedAt = new Date().toISOString();
       } else if (token.licenseId) {
-        // Validating license on every token read (each session access)
-        try {
-          const license = await prisma.license.findUnique({
-            where: { id: token.licenseId as string },
-            select: { status: true, expiresAt: true },
-          });
-
-          if (!license) {
-            return null;
+        // License re-validation with 5-minute cache window
+        const LICENSE_REFRESH_MS = 5 * 60 * 1000;
+        const lastVerified = token.licenseLastVerifiedAt
+          ? new Date(token.licenseLastVerifiedAt).getTime()
+          : 0;
+        if (Date.now() - lastVerified > LICENSE_REFRESH_MS) {
+          try {
+            const license = await prisma.license.findUnique({
+              where: { id: token.licenseId as string },
+              select: { status: true, expiresAt: true },
+            });
+            if (!license) return null;
+            if (license.expiresAt < new Date() || license.status !== "ACTIVE") return null;
+            if (token.licenseStatus !== license.status) {
+              token.licenseStatus = license.status;
+            }
+            token.licenseLastVerifiedAt = new Date().toISOString();
+          } catch (e) {
+            console.error("License validation error in JWT callback:", e);
           }
-
-          const isExpired = license.expiresAt < new Date();
-
-          if (isExpired || license.status !== "ACTIVE") {
-            return null;
-          }
-
-          if (token.licenseStatus !== license.status) {
-            token.licenseStatus = license.status;
-          }
-        } catch (e) {
-          console.error("License validation error in JWT callback:", e);
         }
 
-        // Server-driven session validation (non-fatal — JWT maxAge handles expiry)
-        if (token.sessionRecordId) {
-          try {
-            const sessionRecord = await prisma.session.findUnique({
-              where: { id: token.sessionRecordId as string },
-              select: { id: true, createdAt: true, expiresAt: true },
-            });
-
-            if (sessionRecord) {
-              token.sessionCreatedAt = sessionRecord.createdAt.toISOString();
-              token.sessionExpiresAt = sessionRecord.expiresAt.toISOString();
-            } else {
-              console.warn("JWT callback: sessionRecord not found for id", token.sessionRecordId);
-            }
-          } catch (e) {
-            console.error("Session validation error in JWT callback:", e);
-          }
+        // Server-driven session expiry check (no DB query — trust JWT maxAge)
+        // The SessionCountdown component polls /api/sessions/me every 30s for fresh data.
+        // The JWT's own maxAge is the authoritative session expiry.
+        if (token.sessionExpiresAt && new Date(token.sessionExpiresAt) < new Date()) {
+          return null;
         }
       }
       return token;
