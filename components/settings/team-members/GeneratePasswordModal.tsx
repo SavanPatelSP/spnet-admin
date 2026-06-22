@@ -281,7 +281,7 @@ export default function GeneratePasswordModal({
             </div>
           ) : (
             <div className="flex items-center justify-center rounded-xl border border-dashed border-zinc-700 p-6">
-              <p className="text-sm text-zinc-500">Click "Generate New Password" to create a password</p>
+              <p className="text-sm text-zinc-500">Click {'\u201C'}Generate New Password{'\u201D'} to create a password</p>
             </div>
           )}
 

@@ -204,10 +204,6 @@ export const PERMISSION_META: Record<string, PermissionMeta> = {
     friendlyName: "Manage Password Policy",
     description: "Allows the user to configure password policy rules and requirements.",
   },
-  "Setup Password Links": {
-    friendlyName: "Setup Password Links",
-    description: "Allows the user to generate password setup links for new members.",
-  },
   "Generate Temp Passwords": {
     friendlyName: "Generate Temp Passwords",
     description: "Allows the user to generate temporary passwords for team members.",

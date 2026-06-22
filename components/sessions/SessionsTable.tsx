@@ -38,6 +38,24 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [sessionUpdates, setSessionUpdates] = useState<Map<string, Date>>(new Map());
+
+  useEffect(() => {
+    function onSessionUpdated(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.sessionId && detail?.expiresAt) {
+        const newDate = new Date(detail.expiresAt);
+        setSessionUpdates((prev) => {
+          if (prev.get(detail.sessionId)?.getTime() === newDate.getTime()) return prev;
+          const next = new Map(prev);
+          next.set(detail.sessionId, newDate);
+          return next;
+        });
+      }
+    }
+    window.addEventListener("session-updated", onSessionUpdated);
+    return () => window.removeEventListener("session-updated", onSessionUpdated);
+  }, []);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -57,10 +75,14 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
     [sessions]
   );
 
+  function effExpiresAt(s: SessionRow): Date {
+    return sessionUpdates.get(s.id) || s.expiresAt;
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sessions.filter((s) => {
-      const isActive = s.expiresAt > new Date();
+      const isActive = effExpiresAt(s) > new Date();
       if (statusFilter === "active" && !isActive) return false;
       if (statusFilter === "expired" && isActive) return false;
       if (userFilter && s.teamMember?.email !== userFilter) return false;
@@ -72,7 +94,7 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
       }
       return true;
     });
-  }, [sessions, userFilter, statusFilter, roleFilter, ipFilter, search]);
+  }, [sessions, userFilter, statusFilter, roleFilter, ipFilter, search, sessionUpdates]);
 
   async function bulkRevoke() {
     if (!confirm(`Revoke ${selectedIds.size} session${selectedIds.size > 1 ? "s" : ""}?`)) return;
@@ -185,7 +207,8 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
         { key: "actions", label: "Actions", className: "w-40" },
       ]}
       rows={filtered.map((s) => {
-        const isActive = s.expiresAt > new Date();
+        const ea = effExpiresAt(s);
+        const isActive = ea > new Date();
         const parsed = s.userAgent ? parseUA(s.userAgent) : null;
         return {
           id: s.id,
@@ -195,7 +218,7 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
             ipAddress: s.ipAddress || "",
             status: isActive ? "Active" : "Expired",
             createdAt: s.createdAt.toISOString(),
-            expiresAt: s.expiresAt.toISOString(),
+            expiresAt: ea.toISOString(),
             actions: "",
           },
           cells: [
@@ -233,7 +256,7 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
             <span key="created" className="text-xs text-zinc-400">{formatDate(s.createdAt)}</span>,
             <span key="expires" className="flex items-center gap-1 text-xs text-zinc-400">
               <Clock size={10} />
-              {formatDate(s.expiresAt)}
+              {formatDate(ea)}
             </span>,
             <div key="actions" className="flex flex-wrap items-center gap-2">
               {isActive && (

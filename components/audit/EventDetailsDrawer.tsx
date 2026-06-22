@@ -33,9 +33,9 @@ const entityIcons: Record<string, typeof Shield> = {
   settings: FileText,
 };
 
-function getEntityIcon(entityType: string | null) {
-  if (!entityType) return Shield;
-  return entityIcons[entityType.toLowerCase()] || Shield;
+function renderEntityIcon(entityType: string | null, size: number, className?: string) {
+  const Icon = entityIcons[entityType?.toLowerCase() || ""] || Shield;
+  return <Icon size={size} className={className} />;
 }
 
 function extractChanges(metadata: Record<string, unknown> | null) {
@@ -51,7 +51,6 @@ export function EventDetailsDrawer({ event, onClose }: EventDetailsDrawerProps) 
   if (!event) return null;
 
   const changes = extractChanges(event.metadata);
-  const EntityIcon = getEntityIcon(event.entityType);
 
   const tabs = [
     { id: "overview" as const, label: "Overview", count: null },
@@ -71,7 +70,7 @@ export function EventDetailsDrawer({ event, onClose }: EventDetailsDrawerProps) 
           <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-800">
-                <EntityIcon size={18} className="text-zinc-400" />
+                {renderEntityIcon(event.entityType, 18, "text-zinc-400")}
               </div>
               <div>
                 <h2 className="text-lg font-bold text-zinc-100">{event.action.replace(/_/g, " ")}</h2>

@@ -22,7 +22,10 @@ export type AuthSession = {
 
 export async function getAuthSession(): Promise<AuthSession | null> {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) {
+    console.error("AUTH SESSION FAIL: auth() returned", JSON.stringify(session));
+    return null;
+  }
   return session as AuthSession;
 }
 
@@ -104,10 +107,12 @@ export async function requireApiPermission(permission: string): Promise<AuthSess
   if (session.user.permissions.includes(permission)) {
     return session;
   }
+  console.warn(`requireApiPermission: "${permission}" not in token permissions for ${session.user.email}, checking DB...`);
   const perm = await prisma.permission.findFirst({
     where: { roleId: session.user.roleId, permission },
   });
   if (!perm) {
+    console.error(`requireApiPermission: "${permission}" not found in DB for roleId ${session.user.roleId}`);
     await prisma.auditLog.create({
       data: {
         action: "PERMISSION_DENIED",

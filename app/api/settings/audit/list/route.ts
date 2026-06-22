@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 
@@ -43,9 +44,9 @@ export async function GET(request: Request) {
     }
 
     const [total, events] = await Promise.all([
-      prisma.auditLog.count({ where: where as any }),
+      prisma.auditLog.count({ where: where as Prisma.AuditLogWhereInput }),
       prisma.auditLog.findMany({
-        where: where as any,
+        where: where as Prisma.AuditLogWhereInput,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,

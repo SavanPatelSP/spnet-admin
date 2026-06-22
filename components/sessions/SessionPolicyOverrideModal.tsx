@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSWRConfig } from "swr";
 import { Modal } from "@/components/ui/Modal";
 import { API_ROUTES, AUTH, SESSION_EXTENSION_PRICE_PER_MINUTE } from "@/lib/constants";
 import { formatDateTime, formatPrice } from "@/lib/shared";
@@ -73,6 +74,7 @@ export function SessionPolicyOverrideModal({
   onSuccess: () => void;
 }) {
   const { showToast } = useToast();
+  const { mutate } = useSWRConfig();
   const [tab, setTab] = useState<"policy" | "cooldown">("policy");
 
   // Policy state
@@ -84,6 +86,12 @@ export function SessionPolicyOverrideModal({
   const [customCooldown, setCustomCooldown] = useState(10);
 
   const [saving, setSaving] = useState(false);
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const policyDurationMinutes = AUTH.SESSION_MAX_AGE_SECONDS / 60;
   const currentExpiry = session.expiresAt;
@@ -92,8 +100,8 @@ export function SessionPolicyOverrideModal({
     if (policyOption === "restore") return new Date(session.createdAt.getTime() + policyDurationMinutes * 60000);
     if (policyOption === "unlimited") return new Date("2099-12-31T23:59:59.999Z");
     const mins = policyOption === "custom" ? customMinutes : OPTION_MINUTES[policyOption];
-    return new Date(Date.now() + mins * 60000);
-  }, [policyOption, customMinutes, session.createdAt, policyDurationMinutes]);
+    return new Date(now + mins * 60000);
+  }, [policyOption, customMinutes, session.createdAt, policyDurationMinutes, now]);
 
   const selectedMinutes = useMemo(() => {
     if (policyOption === "unlimited" || policyOption === "restore") return 0;
@@ -153,6 +161,11 @@ export function SessionPolicyOverrideModal({
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "Override failed");
+      const newExpiresAt = data.session?.expiresAt;
+      mutate("/api/sessions/me");
+      if (newExpiresAt) {
+        window.dispatchEvent(new CustomEvent("session-updated", { detail: { sessionId: session.id, expiresAt: newExpiresAt } }));
+      }
       showToast(
         tab === "policy" ? "Session policy overridden" : "Login tenure cooldown updated",
         "success"

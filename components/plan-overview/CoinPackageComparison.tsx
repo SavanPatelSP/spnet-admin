@@ -130,25 +130,9 @@ export function CoinPackageComparison() {
   const first = packages.find((p) => p.label === firstLabel)!;
   const second = packages.find((p) => p.label === secondLabel)!;
 
-  if (!first || !second) return null;
-
-  const basePrice = packages[0].price;
-  const baseAmount = packages[0].amount;
-  const firstExpected = (first.amount / baseAmount) * basePrice;
-  const secondExpected = (second.amount / baseAmount) * basePrice;
-  const firstEfficiency = (firstExpected / first.price) * 100;
-  const secondEfficiency = (secondExpected / second.price) * 100;
-
-  const metricRows = [
-    { label: "Coin Amount", first: fmt(first.amount), second: fmt(second.amount), better: first.amount > second.amount ? 1 : first.amount < second.amount ? -1 : 0 },
-    { label: "Package Price", first: formatPrice(first.price, first.currency), second: formatPrice(second.price, second.currency), better: first.price < second.price ? 1 : first.price > second.price ? -1 : 0 },
-    { label: "Per Coin", first: (first.price / first.amount).toFixed(4), second: (second.price / second.amount).toFixed(4), better: (first.price / first.amount) < (second.price / second.amount) ? 1 : (first.price / first.amount) > (second.price / second.amount) ? -1 : 0 },
-    { label: "Value Score", first: `${firstEfficiency.toFixed(0)}%`, second: `${secondEfficiency.toFixed(0)}%`, better: firstEfficiency > secondEfficiency ? 1 : firstEfficiency < secondEfficiency ? -1 : 0 },
-  ];
-
-  const features1 = COIN_FEATURES_BY_CATEGORY[first.label] || {};
-  const features2 = COIN_FEATURES_BY_CATEGORY[second.label] || {};
-  const allCategories = [...new Set([...getCoinCategories(first.label), ...getCoinCategories(second.label)])];
+  const features1 = COIN_FEATURES_BY_CATEGORY[first?.label || ""] || {};
+  const features2 = COIN_FEATURES_BY_CATEGORY[second?.label || ""] || {};
+  const allCategories = [...new Set([...getCoinCategories(first?.label || ""), ...getCoinCategories(second?.label || "")])];
 
   const categoryData = useMemo(() => {
     return allCategories.map((cat) => {
@@ -164,6 +148,22 @@ export function CoinPackageComparison() {
       };
     });
   }, [firstLabel, secondLabel]);
+
+  if (!first || !second) return null;
+
+  const basePrice = packages[0].price;
+  const baseAmount = packages[0].amount;
+  const firstExpected = (first.amount / baseAmount) * basePrice;
+  const secondExpected = (second.amount / baseAmount) * basePrice;
+  const firstEfficiency = (firstExpected / first.price) * 100;
+  const secondEfficiency = (secondExpected / second.price) * 100;
+
+  const metricRows = [
+    { label: "Coin Amount", first: fmt(first.amount), second: fmt(second.amount), better: first.amount > second.amount ? 1 : first.amount < second.amount ? -1 : 0 },
+    { label: "Package Price", first: formatPrice(first.price, first.currency), second: formatPrice(second.price, second.currency), better: first.price < second.price ? 1 : first.price > second.price ? -1 : 0 },
+    { label: "Per Coin", first: (first.price / first.amount).toFixed(4), second: (second.price / second.amount).toFixed(4), better: (first.price / first.amount) < (second.price / second.amount) ? 1 : (first.price / first.amount) > (second.price / second.amount) ? -1 : 0 },
+    { label: "Value Score", first: `${firstEfficiency.toFixed(0)}%`, second: `${secondEfficiency.toFixed(0)}%`, better: firstEfficiency > secondEfficiency ? 1 : firstEfficiency < secondEfficiency ? -1 : 0 },
+  ];
 
   const { added: allAdded } = getCoinComparison(first.label, second.label);
 

@@ -14,10 +14,25 @@ import {
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#6366f1"];
 
+interface AnalyticsSummary {
+  totalRevenue: number;
+  outstanding: number;
+  totalInvoices: number;
+}
+
+interface AnalyticsData {
+  success: boolean;
+  summary: AnalyticsSummary;
+  revenueByCategory: { name: string; value: number }[];
+  revenueByAction: { name: string; value: number }[];
+  growth: { date: string; revenue: number; count: number }[];
+  countsByStatus: Record<string, number>;
+}
+
 export default function InvoiceAnalyticsPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,11 +88,11 @@ export default function InvoiceAnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {categoryData.map((_: any, idx: number) => (
+                  {categoryData.map((_: Record<string, unknown>, idx: number) => (
                     <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: any) => formatPrice(Number(value) / 100, "$")} />
+                <Tooltip formatter={(value: unknown, _name: unknown, _item: unknown, _index: number, _payload: unknown) => formatPrice(Number(value ?? 0) / 100, "$")} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -90,7 +105,7 @@ export default function InvoiceAnalyticsPage() {
               <BarChart data={actionData}>
                 <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} />
                 <YAxis tick={{ fill: "#71717a", fontSize: 10 }} tickFormatter={(v) => `$${v / 100}`} />
-                <Tooltip formatter={(value: any) => formatPrice(Number(value) / 100, "$")} />
+                <Tooltip formatter={(value: unknown, _name: unknown, _item: unknown, _index: number, _payload: unknown) => formatPrice(Number(value ?? 0) / 100, "$")} />
                 <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -106,7 +121,7 @@ export default function InvoiceAnalyticsPage() {
                 <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 10 }} />
                 <YAxis yAxisId="left" tick={{ fill: "#71717a", fontSize: 10 }} tickFormatter={(v) => `$${v / 100}`} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fill: "#71717a", fontSize: 10 }} />
-                <Tooltip formatter={(value: any, name: any) => name === "revenue" ? formatPrice(Number(value) / 100, "$") : value} />
+                <Tooltip formatter={(value: unknown, name: unknown, _item: unknown, _index: number, _payload: unknown) => String(name) === "revenue" ? formatPrice(Number(value ?? 0) / 100, "$") : String(value)} />
                 <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} />
                 <Line yAxisId="right" type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} />
               </LineChart>

@@ -47,8 +47,28 @@ export function ContentManager({ initialData, initialTotal }: { initialData: Con
   }, [search, status, page]);
 
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (search) params.set("search", search);
+        if (status !== "ALL") params.set("status", status);
+        params.set("page", String(page));
+        params.set("pageSize", String(pageSize));
+        const res = await fetch(`/api/content/list?${params}`);
+        const json = await res.json();
+        if (!cancelled && json.success) {
+          setItems(json.data);
+          setTotal(json.total);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, status, page]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 

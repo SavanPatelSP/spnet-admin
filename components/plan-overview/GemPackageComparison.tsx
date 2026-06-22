@@ -144,6 +144,25 @@ export function GemPackageComparison() {
   const first = packages.find((p) => p.label === firstLabel)!;
   const second = packages.find((p) => p.label === secondLabel)!;
 
+  const features1 = GEM_FEATURES_BY_CATEGORY[first?.label || ""] || {};
+  const features2 = GEM_FEATURES_BY_CATEGORY[second?.label || ""] || {};
+  const allCategories = [...new Set([...getGemCategories(first?.label || ""), ...getGemCategories(second?.label || "")])];
+
+  const categoryData = useMemo(() => {
+    return allCategories.map((cat) => {
+      const f1 = features1[cat] || [];
+      const f2 = features2[cat] || [];
+      const f1Set = new Set(f1);
+      const f2Set = new Set(f2);
+      return {
+        category: cat,
+        common: f1.filter((f) => f2Set.has(f)),
+        added: f2.filter((f) => !f1Set.has(f)),
+        removed: f1.filter((f) => !f2Set.has(f)),
+      };
+    });
+  }, [firstLabel, secondLabel]);
+
   if (!first || !second) return null;
 
   const firstPremium = first.amount >= 100;
@@ -166,25 +185,6 @@ export function GemPackageComparison() {
     { label: "Premium Power", first: firstPremium ? "Yes" : "No", second: secondPremium ? "Yes" : "No", better: firstPremium === secondPremium ? 0 : firstPremium ? 1 : -1 },
     { label: "License Power", first: firstLicense ? "Yes" : "No", second: secondLicense ? "Yes" : "No", better: firstLicense === secondLicense ? 0 : firstLicense ? 1 : -1 },
   ];
-
-  const features1 = GEM_FEATURES_BY_CATEGORY[first.label] || {};
-  const features2 = GEM_FEATURES_BY_CATEGORY[second.label] || {};
-  const allCategories = [...new Set([...getGemCategories(first.label), ...getGemCategories(second.label)])];
-
-  const categoryData = useMemo(() => {
-    return allCategories.map((cat) => {
-      const f1 = features1[cat] || [];
-      const f2 = features2[cat] || [];
-      const f1Set = new Set(f1);
-      const f2Set = new Set(f2);
-      return {
-        category: cat,
-        common: f1.filter((f) => f2Set.has(f)),
-        added: f2.filter((f) => !f1Set.has(f)),
-        removed: f1.filter((f) => !f2Set.has(f)),
-      };
-    });
-  }, [firstLabel, secondLabel]);
 
   const { added: allAdded } = getGemComparison(first.label, second.label);
 

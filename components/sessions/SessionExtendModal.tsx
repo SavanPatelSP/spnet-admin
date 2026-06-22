@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSWRConfig } from "swr";
 import { Modal } from "@/components/ui/Modal";
 import { API_ROUTES, AUTH, SESSION_EXTENSION_PRICE_PER_MINUTE } from "@/lib/constants";
 import { formatDateTime, formatPrice } from "@/lib/shared";
@@ -58,12 +59,13 @@ export function SessionExtendModal({
   onSuccess: () => void;
 }) {
   const { showToast } = useToast();
+  const { mutate } = useSWRConfig();
   const [minutes, setMinutes] = useState(60);
   const [customMinutes, setCustomMinutes] = useState(60);
   const [useCustom, setUseCustom] = useState(false);
   const [premium, setPremium] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [now, setNow] = useState<number>(Date.now());
+  const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -101,6 +103,11 @@ export function SessionExtendModal({
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "Extension failed");
+      const newExpiresAt = data.session?.expiresAt;
+      mutate("/api/sessions/me");
+      if (newExpiresAt) {
+        window.dispatchEvent(new CustomEvent("session-updated", { detail: { sessionId: session.id, expiresAt: newExpiresAt } }));
+      }
       showToast(
         premium ? `Premium session extended by ${effectiveMinutes} minutes` : `Session extended by ${effectiveMinutes} minutes`,
         "success"

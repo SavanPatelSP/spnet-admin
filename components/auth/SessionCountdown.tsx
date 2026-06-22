@@ -2,6 +2,7 @@
 
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { cn } from "@/lib/shared";
 import { Clock, Shield, AlertTriangle, LogOut, ChevronDown } from "lucide-react";
 
@@ -24,42 +25,32 @@ async function revokeAndLogout() {
   signOut({ callbackUrl: "/login?expired=1" });
 }
 
+const fetcher = async (url: string) => {
+  const res = await fetch(url, { cache: "no-store" });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error("Session expired");
+  return data.session;
+};
+
 export function SessionCountdown() {
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const { data, error, mutate } = useSWR("/api/sessions/me", fetcher, {
+    refreshInterval: 10000,
+    revalidateOnFocus: true,
+    dedupingInterval: 2000,
+    onError: () => revokeAndLogout(),
+  });
+
   const [remaining, setRemaining] = useState(0);
   const [open, setOpen] = useState(false);
 
-  async function fetchSession() {
-    try {
-      const res = await fetch("/api/sessions/me", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        revokeAndLogout();
-        return;
-      }
-      setExpiresAt(data.session.expiresAt);
-    } catch {
-      revokeAndLogout();
-    }
-  }
+  useEffect(() => {
+    window.addEventListener("session-updated", () => mutate());
+    return () => window.removeEventListener("session-updated", () => mutate());
+  }, [mutate]);
 
   useEffect(() => {
-    fetchSession();
-    const id = setInterval(fetchSession, 10_000);
-    function onVisibility() {
-      if (document.visibilityState === "visible") fetchSession();
-    }
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!expiresAt) return;
-    const target = new Date(expiresAt).getTime();
+    if (!data?.expiresAt) return;
+    const target = new Date(data.expiresAt).getTime();
     function tick() {
       const seconds = Math.max(0, Math.floor((target - Date.now()) / 1000));
       setRemaining(seconds);
@@ -70,9 +61,9 @@ export function SessionCountdown() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [expiresAt]);
+  }, [data?.expiresAt]);
 
-  if (!expiresAt) return null;
+  if (error || !data?.expiresAt) return null;
 
   const warning = remaining < 300;
   const critical = remaining < 60;

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
-    const dateFilter: any = {};
+    const dateFilter: { issuedAt?: { gte?: Date; lte?: Date } } = {};
     if (from || to) {
       dateFilter.issuedAt = {};
       if (from) dateFilter.issuedAt.gte = new Date(from);

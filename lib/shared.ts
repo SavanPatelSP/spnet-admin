@@ -103,7 +103,7 @@ export function formatCurrency(amount: number, currency = "USD"): string {
 
 export function formatPrice(amount: number, currency = "$"): string {
   const formatted = amount.toLocaleString(DEFAULT_LOCALE, {
-    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
   return `${currency}${formatted}`;

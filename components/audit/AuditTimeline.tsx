@@ -34,17 +34,19 @@ const entityIcons: Record<string, LucideIcon> = {
   settings: FileText,
 };
 
-function getEntityIcon(entityType: string | null): LucideIcon {
-  if (!entityType) return Shield;
-  return entityIcons[entityType.toLowerCase()] || Shield;
+function renderEntityIcon(entityType: string | null, size: number, className?: string) {
+  const Icon = entityIcons[entityType?.toLowerCase() || ""] || Shield;
+  return <Icon size={size} className={className} />;
 }
 
-function getActionIcon(action: string): LucideIcon {
+function renderActionIcon(action: string, size: number, className?: string) {
   const lower = action.toLowerCase();
-  if (lower.includes("delete") || lower.includes("revoke") || lower.includes("blacklist")) return AlertTriangle;
-  if (lower.includes("fail") || lower.includes("denied") || lower.includes("suspend")) return AlertCircle;
-  if (lower.includes("create") || lower.includes("grant") || lower.includes("enable")) return Info;
-  return Circle;
+  let Icon: LucideIcon;
+  if (lower.includes("delete") || lower.includes("revoke") || lower.includes("blacklist")) Icon = AlertTriangle;
+  else if (lower.includes("fail") || lower.includes("denied") || lower.includes("suspend")) Icon = AlertCircle;
+  else if (lower.includes("create") || lower.includes("grant") || lower.includes("enable")) Icon = Info;
+  else Icon = Circle;
+  return <Icon size={size} className={className} />;
 }
 
 function getRelativeDay(dateStr: string): string {
@@ -93,10 +95,7 @@ export function AuditTimeline({ events, onEventClick }: AuditTimelineProps) {
           <h3 className="mb-4 text-sm font-semibold text-zinc-500">{day}</h3>
           <div className="relative space-y-2 pl-8 before:absolute before:bottom-2 before:left-[11px] before:top-2 before:w-px before:bg-zinc-800">
             {dayEvents.map((event) => {
-              const EntityIcon = getEntityIcon(event.entityType);
-              const ActionIcon = getActionIcon(event.action);
-
-              return (
+                return (
                 <button
                   key={event.id}
                   onClick={() => onEventClick(event)}
@@ -107,7 +106,7 @@ export function AuditTimeline({ events, onEventClick }: AuditTimelineProps) {
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
-                      <EntityIcon size={14} className="text-zinc-400" />
+                      {renderEntityIcon(event.entityType, 14, "text-zinc-400")}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-4">
@@ -125,7 +124,7 @@ export function AuditTimeline({ events, onEventClick }: AuditTimelineProps) {
                         <span className="text-xs text-zinc-600">{formatDateTime(event.createdAt)}</span>
                         {event.entityType && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500">
-                            <ActionIcon size={8} />
+                            {renderActionIcon(event.action, 8)}
                             {event.entityType}
                           </span>
                         )}

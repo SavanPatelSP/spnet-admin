@@ -8,9 +8,27 @@ interface SharePageProps {
   params: Promise<{ token: string }>;
 }
 
+interface InvoiceData {
+  invoiceNumber: string;
+  type: string;
+  category: string;
+  status: string;
+  customerName: string | null;
+  customerEmail: string | null;
+  organization: string | null;
+  lineItems: string | null;
+  notes: string | null;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  issuedAt: string;
+  dueAt: string | null;
+}
+
 export default function ShareInvoicePage({ params }: SharePageProps) {
   const { token } = use(params);
-  const [invoice, setInvoice] = useState<any>(null);
+  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,7 +63,8 @@ export default function ShareInvoicePage({ params }: SharePageProps) {
     );
   }
 
-  const lineItems = invoice.lineItems ? JSON.parse(invoice.lineItems) : [];
+  type LineItem = { description: string; quantity: number; unitPrice: number; total: number };
+  const lineItems: LineItem[] = invoice?.lineItems ? JSON.parse(invoice.lineItems) : [];
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 text-zinc-100">
@@ -92,7 +111,7 @@ export default function ShareInvoicePage({ params }: SharePageProps) {
               </tr>
             </thead>
             <tbody>
-              {lineItems.map((item: any, idx: number) => (
+              {lineItems.map((item, idx: number) => (
                 <tr key={idx} className="border-b border-zinc-800">
                   <td className="py-3">{item.description}</td>
                   <td className="py-3 text-right">{item.quantity}</td>

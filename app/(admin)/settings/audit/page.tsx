@@ -77,39 +77,40 @@ export default function AuditSettingsPage() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-
-  const fetchEvents = useCallback(async (p: number, ps: number) => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams();
-      params.set("page", String(p));
-      params.set("pageSize", String(ps));
-      if (actionFilter) params.set("action", actionFilter);
-      if (severityFilter) params.set("severity", severityFilter);
-      if (dateFrom) params.set("from", new Date(dateFrom).toISOString());
-      if (dateTo) params.set("to", new Date(dateTo).toISOString());
-      if (search) params.set("search", search);
-
-      const res = await fetch(`${API_ROUTES.AUDIT.LIST}?${params}`);
-      if (!res.ok) throw new Error("Failed to load audit logs");
-      const json: AuditResponse = await res.json();
-      if (json.success) {
-        setEvents(json.data.events);
-        setTotal(json.data.total);
-      } else {
-        throw new Error("API returned unsuccessful");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load audit logs");
-    } finally {
-      setLoading(false);
-    }
-  }, [actionFilter, severityFilter, dateFrom, dateTo, search]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetchEvents(page, pageSize);
-  }, [fetchEvents, page, pageSize]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        params.set("pageSize", String(pageSize));
+        if (actionFilter) params.set("action", actionFilter);
+        if (severityFilter) params.set("severity", severityFilter);
+        if (dateFrom) params.set("from", new Date(dateFrom).toISOString());
+        if (dateTo) params.set("to", new Date(dateTo).toISOString());
+        if (search) params.set("search", search);
+
+        const res = await fetch(`${API_ROUTES.AUDIT.LIST}?${params}`);
+        if (!res.ok) throw new Error("Failed to load audit logs");
+        const json: AuditResponse = await res.json();
+        if (!cancelled && json.success) {
+          setEvents(json.data.events);
+          setTotal(json.data.total);
+        } else if (!cancelled) {
+          throw new Error("API returned unsuccessful");
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load audit logs");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [actionFilter, severityFilter, dateFrom, dateTo, search, page, pageSize, refreshKey]);
 
   const todayCount = useMemo(
     () => events.filter((e) => new Date(e.createdAt).toDateString() === new Date().toDateString()).length,
@@ -274,7 +275,7 @@ export default function AuditSettingsPage() {
                 </button>
               </div>
               <button
-                onClick={() => { setPage(1); fetchEvents(1, pageSize); }}
+                onClick={() => { setPage(1); setRefreshKey(k => k + 1); }}
                 className="flex items-center gap-1.5 rounded-xl border border-zinc-700 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
               >
                 <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -359,7 +360,7 @@ export default function AuditSettingsPage() {
             <AlertTriangle size={36} className="text-red-400" />
             <p className="mt-4 text-sm text-zinc-500">{error}</p>
             <button
-              onClick={() => fetchEvents(page, pageSize)}
+                onClick={() => setRefreshKey(k => k + 1)}
               className="mt-4 rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
             >
               Retry

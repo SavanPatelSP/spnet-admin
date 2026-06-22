@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Bell, X, CheckCheck } from "lucide-react";
+import { useState, useCallback } from "react";
+import useSWR from "swr";
+import { Bell, CheckCheck } from "lucide-react";
 import { SessionStatus } from "@/components/auth/SessionStatus";
 import { SessionCountdown } from "@/components/auth/SessionCountdown";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
@@ -16,39 +17,43 @@ interface Notification {
   createdAt: string;
 }
 
+interface NotifResponse {
+  success: boolean;
+  notifications: Notification[];
+  unreadCount: number;
+}
+
+const fetcher = async (url: string): Promise<NotifResponse> => {
+  const res = await fetch(url);
+  const data = await res.json();
+  return data;
+};
+
 export default function AdminHeader() {
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchNotifications = useCallback(async () => {
+  const { data, mutate } = useSWR("/api/notifications", fetcher, {
+    refreshInterval: 30000,
+    revalidateOnFocus: true,
+    dedupingInterval: 5000,
+  });
+
+  const notifications = data?.notifications || [];
+  const unreadCount = data?.unreadCount || 0;
+
+  const markAllRead = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications");
-      const data = await res.json();
-      if (data.success) {
-        setNotifications(data.notifications);
-        setUnreadCount(data.unreadCount);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  async function markAllRead() {
-    try {
-      await fetch("/api/notifications", {
+      const res = await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ markAll: true }),
       });
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      const result = await res.json();
+      if (result.success) {
+        mutate({ ...data!, notifications: notifications.map((n) => ({ ...n, read: true })), unreadCount: 0 }, false);
+      }
     } catch {}
-  }
+  }, [data, mutate, notifications]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/80 px-6 py-3 backdrop-blur-xl">
@@ -97,7 +102,7 @@ export default function AdminHeader() {
                         className={`border-b border-zinc-800/50 p-4 transition-colors hover:bg-zinc-800/30 ${!n.read ? "bg-blue-500/5" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className={`text-sm ${!n.read ? "font-semibold text-zinc-100" : "text-zinc-300"}`}>
                               {n.title}
                             </p>

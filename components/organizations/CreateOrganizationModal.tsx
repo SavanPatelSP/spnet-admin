@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
@@ -45,8 +45,15 @@ export default function CreateOrganizationModal({
   const finalPrice = useCustomPricing ? customPrice : defaultPrice;
 
   const computedExpiry = expiresAt ? new Date(expiresAt) : null;
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
   const durationMonths = computedExpiry
-    ? Math.max(1, Math.round((computedExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)))
+    ? Math.max(1, Math.round((computedExpiry.getTime() - now) / (1000 * 60 * 60 * 24 * 30)))
     : 12;
 
   const annualCost = useMemo(() => {

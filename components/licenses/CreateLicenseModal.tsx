@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
@@ -48,6 +48,12 @@ export default function CreateLicenseModal() {
   const [useDuration, setUseDuration] = useState(false);
   const [durationValue, setDurationValue] = useState(1);
   const [durationUnit, setDurationUnit] = useState<"days" | "weeks" | "months" | "years">("years");
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const computedEndDate = useMemo(() => {
     if (!useDuration) return null;
@@ -67,15 +73,15 @@ export default function CreateLicenseModal() {
     if (price === 0) return { perMonth: 0, total: 0, label: "Free", billingValue: 0 };
     const perMonth = price;
     if (useDuration && computedEndDate) {
-      const months = Math.max(1, Math.round((computedEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)));
+      const months = Math.max(1, Math.round((computedEndDate.getTime() - now) / (1000 * 60 * 60 * 24 * 30)));
       return { perMonth, total: perMonth * months, label: `${formatPrice(perMonth, "$")}/mo for ${months}mo`, billingValue: perMonth * months };
     }
     if (expiresAt) {
-      const months = Math.max(1, Math.round((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)));
+      const months = Math.max(1, Math.round((new Date(expiresAt).getTime() - now) / (1000 * 60 * 60 * 24 * 30)));
       return { perMonth, total: perMonth * months, label: `${formatPrice(perMonth, "$")}/mo for ${months}mo`, billingValue: perMonth * months };
     }
     return { perMonth, total: perMonth * 12, label: `${formatPrice(perMonth, "$")}/mo (annual)`, billingValue: perMonth * 12 };
-  }, [plan, useDuration, computedEndDate, expiresAt]);
+  }, [plan, useDuration, computedEndDate, expiresAt, now]);
 
   async function createLicense() {
     setError("");

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
     const pageSize = Math.max(1, Math.min(100, Number(searchParams.get("pageSize") || "20")));
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (status) where.status = status;
     if (category) where.category = category;
     if (licenseId) where.licenseId = licenseId;

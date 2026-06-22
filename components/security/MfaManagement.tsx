@@ -47,7 +47,24 @@ export function MfaManagement() {
     }
   }
 
-  useEffect(() => { fetchMembers(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(API_ROUTES.TEAM_MEMBERS.MFA_LIST);
+        if (!res.ok) throw new Error("Failed to load team members");
+        const json = await res.json();
+        if (!cancelled) setMembers(json.data || []);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load team members");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleEnable(member: TeamMemberMfa) {
     setActionLoadingId(member.id);

@@ -478,7 +478,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           console.error("License validation error in JWT callback:", e);
         }
 
-        // Server-driven session validation
+        // Server-driven session validation (non-fatal — JWT maxAge handles expiry)
         if (token.sessionRecordId) {
           try {
             const { prisma } = await import("@/lib/prisma");
@@ -487,15 +487,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               select: { id: true, createdAt: true, expiresAt: true },
             });
 
-            if (!sessionRecord || sessionRecord.expiresAt < new Date()) {
-              if (sessionRecord) {
-                await prisma.session.delete({ where: { id: sessionRecord.id } }).catch(() => {});
-              }
-              return null;
+            if (sessionRecord) {
+              token.sessionCreatedAt = sessionRecord.createdAt.toISOString();
+              token.sessionExpiresAt = sessionRecord.expiresAt.toISOString();
+            } else {
+              console.warn("JWT callback: sessionRecord not found for id", token.sessionRecordId);
             }
-
-            token.sessionCreatedAt = sessionRecord.createdAt.toISOString();
-            token.sessionExpiresAt = sessionRecord.expiresAt.toISOString();
           } catch (e) {
             console.error("Session validation error in JWT callback:", e);
           }

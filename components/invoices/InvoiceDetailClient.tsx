@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 import { API_ROUTES } from "@/lib/constants";
 import { formatDateTime, formatPrice } from "@/lib/shared";
 import {
-  ArrowLeft, Download, Printer, Share2, FileText, Edit3,
+  ArrowLeft, Share2, FileText, Edit3,
   Archive, ArchiveRestore, CheckCircle, Clock, AlertCircle,
-  Copy, FileSpreadsheet, XCircle,
+  Copy, FileSpreadsheet, XCircle, Building2, User, KeyRound,
+  ShieldCheck, Receipt, CalendarDays, Wallet, Banknote,
 } from "lucide-react";
 
 interface Invoice {
@@ -48,6 +48,13 @@ interface Invoice {
   license: { key: string; organization: string; plan: string; teamMember: { name: string; email: string } | null } | null;
 }
 
+interface LineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
 interface AuditEvent {
   id: string;
   action: string;
@@ -57,9 +64,60 @@ interface AuditEvent {
   createdAt: string;
 }
 
+const STATUS_STYLES: Record<string, string> = {
+  DRAFT: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+  PENDING: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  PAID: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  OVERDUE: "bg-red-500/10 text-red-400 border-red-500/20",
+  CANCELLED: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+  REFUNDED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  ARCHIVED: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+};
+
+const STATUS_ICONS: Record<string, typeof CheckCircle> = {
+  PAID: CheckCircle, PENDING: Clock, OVERDUE: AlertCircle,
+  CANCELLED: XCircle, REFUNDED: Archive, DRAFT: Clock, ARCHIVED: Archive,
+};
+
+function StatusBadge({ status, className = "" }: { status: string; className?: string }) {
+  const Icon = STATUS_ICONS[status] || Clock;
+  const style = STATUS_STYLES[status] || STATUS_STYLES.DRAFT;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${style} ${className}`}>
+      <Icon size={12} />
+      {status}
+    </span>
+  );
+}
+
 interface Props {
   invoice: Invoice;
   auditHistory: AuditEvent[];
+}
+
+function DetailRow({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ size?: number; className?: string }> }) {
+  return (
+    <div className="flex items-start gap-2.5 border-b border-zinc-800/50 py-2 last:border-0">
+      {Icon && <Icon size={14} className="mt-0.5 shrink-0 text-zinc-500" />}
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{label}</p>
+        <p className="mt-0.5 text-sm text-zinc-200">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-xl border border-zinc-800 bg-zinc-800/30 p-4 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function formatDate(date: string): string {
+  const d = new Date(date);
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
 export default function InvoiceDetailClient({ invoice: initialInvoice, auditHistory }: Props) {
@@ -70,9 +128,8 @@ export default function InvoiceDetailClient({ invoice: initialInvoice, auditHist
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
-  const lineItems = useMemo(() => {
+  const lineItems: LineItem[] = useMemo(() => {
     if (!invoice.lineItems) return [];
     try {
       return JSON.parse(invoice.lineItems);
@@ -143,13 +200,13 @@ export default function InvoiceDetailClient({ invoice: initialInvoice, auditHist
 
   function downloadCSV() {
     const headers = ["Description", "Quantity", "Unit Price", "Total"];
-    const rows = lineItems.map((item: any) => [
+    const rows = lineItems.map((item) => [
       item.description,
       item.quantity,
       (item.unitPrice / 100).toFixed(2),
       (item.total / 100).toFixed(2),
     ]);
-    const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -177,214 +234,303 @@ export default function InvoiceDetailClient({ invoice: initialInvoice, auditHist
     }
   }
 
-  function printInvoice() {
-    window.print();
-  }
-
   function copy(text: string) {
     navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard", "success"));
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title={`Invoice ${invoice.invoiceNumber}`}
         description={`${invoice.type} invoice for ${invoice.category || "OTHER"}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <ActionButton variant="secondary" onClick={() => router.push("/invoices")}>
-              <ArrowLeft size={14} /> Back
+              <ArrowLeft size={14} /> <span className="hidden sm:inline">Back</span>
             </ActionButton>
             <ActionButton variant="secondary" onClick={downloadCSV}>
-              <FileSpreadsheet size={14} /> CSV
+              <FileSpreadsheet size={14} /> <span className="hidden sm:inline">CSV</span>
             </ActionButton>
             <ActionButton variant="secondary" onClick={downloadPDF}>
-              <FileText size={14} /> PDF
-            </ActionButton>
-            <ActionButton variant="secondary" onClick={printInvoice}>
-              <Printer size={14} /> Print
+              <FileText size={14} /> <span className="hidden sm:inline">PDF</span>
             </ActionButton>
             <ActionButton variant="secondary" onClick={generateShareLink} loading={loading}>
-              <Share2 size={14} /> Share
+              <Share2 size={14} /> <span className="hidden sm:inline">Share</span>
             </ActionButton>
             <ActionButton variant="secondary" onClick={() => setEditOpen(true)}>
-              <Edit3 size={14} /> Edit
+              <Edit3 size={14} /> <span className="hidden sm:inline">Edit</span>
             </ActionButton>
             <ActionButton variant={invoice.isArchived ? "primary" : "danger"} onClick={toggleArchive} loading={loading}>
               {invoice.isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-              {invoice.isArchived ? "Restore" : "Archive"}
+              <span className="hidden sm:inline">{invoice.isArchived ? "Restore" : "Archive"}</span>
             </ActionButton>
           </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <div ref={printRef} className="rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
-            <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white">{invoice.invoiceNumber}</h2>
-                <p className="mt-1 text-sm text-zinc-400">{invoice.type} &middot; {invoice.category || "OTHER"}</p>
-              </div>
-              <div className="flex items-center gap-2">
+      {/* Premium Invoice Card */}
+      <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+        {/* Cover Header */}
+        <div className="relative bg-zinc-800/50 px-5 py-6 sm:px-8 sm:py-7">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+            {/* Left */}
+            <div>
+              <h2 className="text-xl font-bold text-white sm:text-2xl">SP NET INC</h2>
+              <p className="mt-0.5 text-xs text-zinc-500 sm:text-sm">SP NET GRAM ADMIN PANEL</p>
+              <p className="mt-0.5 text-xs text-zinc-500">Official Administrative Billing System</p>
+            </div>
+            {/* Center */}
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-white sm:text-xl">INVOICE</h3>
+              <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">Invoice Document</p>
+            </div>
+            {/* Right */}
+            <div className="text-left sm:text-right">
+              <p className="font-mono text-sm font-bold text-white sm:text-base">#{invoice.invoiceNumber}</p>
+              <p className="mt-0.5 text-xs text-zinc-400">Issued: {formatDate(invoice.issuedAt)}</p>
+              <p className="text-xs text-zinc-400">Due: {invoice.dueAt ? formatDate(invoice.dueAt) : "—"}</p>
+              <div className="mt-2">
                 <StatusBadge status={invoice.status} />
-                {invoice.isArchived && <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">Archived</span>}
               </div>
             </div>
+          </div>
+        </div>
 
-            <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-800/30 p-4">
-                <p className="mb-1 text-xs font-medium uppercase text-zinc-500">Billed To</p>
-                <p className="font-medium text-zinc-200">{invoice.customerName || invoice.organization || invoice.license?.organization || "—"}</p>
-                <p className="text-sm text-zinc-400">{invoice.customerEmail}</p>
-                {invoice.organization && <p className="text-sm text-zinc-500">{invoice.organization}</p>}
+        <div className="p-5 sm:p-8">
+          {/* FROM / BILL TO */}
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Card>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">FROM</p>
+              <p className="text-lg font-bold text-white">SP NET INC</p>
+              <p className="text-sm text-zinc-400">SP NET GRAM ADMIN PANEL</p>
+              <div className="mt-3 space-y-1 text-sm text-zinc-500">
+                <p>support@sp-net.in</p>
+                <p>www.sp-net.in</p>
               </div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-800/30 p-4">
-                <p className="mb-1 text-xs font-medium uppercase text-zinc-500">Actor / Target</p>
-                <p className="text-sm text-zinc-400">Actor: {invoice.actorName || invoice.actorEmail || "—"}</p>
-                <p className="text-sm text-zinc-400">Target: {invoice.targetName || invoice.targetId || "—"}</p>
+              <p className="mt-3 text-[10px] text-zinc-600">Organization Information · Support Contact · System Info</p>
+            </Card>
+            <Card>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">BILL TO</p>
+              <div className="space-y-1">
+                <DetailRow label="Customer" value={invoice.customerName || "—"} icon={User} />
+                <DetailRow label="Organization" value={invoice.organization || invoice.license?.organization || "—"} icon={Building2} />
+                <DetailRow label="License" value={invoice.license?.key || "—"} icon={KeyRound} />
+                <DetailRow label="Account Type" value={invoice.license?.plan || "—"} icon={ShieldCheck} />
               </div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-800/30 p-4">
-                <p className="mb-1 text-xs font-medium uppercase text-zinc-500">License</p>
-                {invoice.license ? (
-                  <>
-                    <p className="font-medium text-zinc-200">{invoice.license.key}</p>
-                    <p className="text-sm text-zinc-400">{invoice.license.organization} &middot; {invoice.license.plan}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-zinc-500">No license attached</p>
-                )}
-              </div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-800/30 p-4">
-                <p className="mb-1 text-xs font-medium uppercase text-zinc-500">Dates</p>
-                <p className="text-sm text-zinc-400">Issued: {formatDateTime(invoice.issuedAt)}</p>
-                <p className="text-sm text-zinc-400">Due: {invoice.dueAt ? formatDateTime(invoice.dueAt) : "—"}</p>
-                <p className="text-sm text-zinc-400">Paid: {invoice.paidAt ? formatDateTime(invoice.paidAt) : "—"}</p>
-              </div>
-            </div>
-
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-left text-zinc-500">
-                  <th className="pb-2">Description</th>
-                  <th className="pb-2 text-right">Qty</th>
-                  <th className="pb-2 text-right">Unit Price</th>
-                  <th className="pb-2 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lineItems.length === 0 ? (
-                  <tr><td colSpan={4} className="py-4 text-center text-zinc-500">No line items</td></tr>
-                ) : lineItems.map((item: any, idx: number) => (
-                  <tr key={idx} className="border-b border-zinc-800">
-                    <td className="py-3 text-zinc-200">{item.description}</td>
-                    <td className="py-3 text-right text-zinc-400">{item.quantity}</td>
-                    <td className="py-3 text-right text-zinc-400">{formatPrice(item.unitPrice / 100, "$")}</td>
-                    <td className="py-3 text-right font-medium text-zinc-200">{formatPrice(item.total / 100, "$")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="mt-6 space-y-2 text-sm">
-              <div className="flex justify-between text-zinc-400">
-                <span>Subtotal</span>
-                <span>{formatPrice(invoice.subtotal / 100, "$")}</span>
-              </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>Discounts</span>
-                <span>{formatPrice(invoice.discount / 100, "$")}</span>
-              </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>Taxes</span>
-                <span>{formatPrice(invoice.tax / 100, "$")}</span>
-              </div>
-              <div className="flex justify-between border-t border-zinc-800 pt-2 text-lg font-bold text-white">
-                <span>Final Total</span>
-                <span>{formatPrice(invoice.total / 100, "$")}</span>
-              </div>
-            </div>
-
-            {invoice.notes && (
-              <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-800/30 p-4 text-sm text-zinc-400">
-                <p className="mb-1 text-xs font-medium uppercase text-zinc-500">Notes</p>
-                {invoice.notes}
-              </div>
-            )}
+            </Card>
           </div>
 
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-400">Audit History</h3>
-            <div className="space-y-3">
-              {auditHistory.length === 0 ? (
-                <p className="text-sm text-zinc-500">No audit events found.</p>
-              ) : auditHistory.map((event) => (
-                <div key={event.id} className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-800/30 p-3">
-                  <Clock size={14} className="mt-0.5 text-zinc-500" />
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">{event.action}</p>
-                    <p className="text-xs text-zinc-400">{event.description}</p>
-                    <p className="mt-1 text-[10px] text-zinc-600">{event.actorEmail} &middot; {formatDateTime(event.createdAt)}</p>
+          {/* Invoice Details */}
+          <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-800/20 p-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
+              {[
+                { label: "Invoice Number", value: invoice.invoiceNumber, icon: Receipt },
+                { label: "Type", value: invoice.type, icon: FileText },
+                { label: "Category", value: invoice.category || "—", icon: Wallet },
+                { label: "Issued", value: formatDate(invoice.issuedAt), icon: CalendarDays },
+                { label: "Due", value: invoice.dueAt ? formatDate(invoice.dueAt) : "—", icon: CalendarDays },
+                { label: "Paid", value: invoice.paidAt ? formatDate(invoice.paidAt) : "—", icon: Banknote },
+              ].map((d) => (
+                <div key={d.label} className="flex items-start gap-2.5">
+                  <d.icon size={14} className="mt-0.5 shrink-0 text-zinc-500" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{d.label}</p>
+                    <p className="mt-0.5 truncate text-sm font-medium text-zinc-200">{d.value}</p>
                   </div>
                 </div>
               ))}
             </div>
+            {invoice.license && (
+              <div className="mt-3 border-t border-zinc-800 pt-3">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">License</p>
+                <p className="mt-0.5 font-mono text-sm text-zinc-200">{invoice.license.key} <span className="text-zinc-500">· {invoice.license.plan}</span></p>
+              </div>
+            )}
           </div>
-        </div>
 
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-400">Status Actions</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {["DRAFT", "PENDING", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => updateStatus(s)}
-                  disabled={invoice.status === s || loading}
-                  className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                    invoice.status === s
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                      : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  } disabled:opacity-50`}
-                >
-                  {s}
-                </button>
-              ))}
+          {/* Line Items Table */}
+          <div className="mb-6 overflow-x-auto">
+            <table className="w-full min-w-[400px] text-xs sm:text-sm">
+              <thead>
+                <tr className="border-b border-zinc-700 bg-zinc-800/50 text-left">
+                  <th className="px-3 py-2.5 font-semibold text-zinc-400">Description</th>
+                  <th className="px-3 py-2.5 text-right font-semibold text-zinc-400">Qty</th>
+                  <th className="hidden px-3 py-2.5 text-right font-semibold text-zinc-400 sm:table-cell">Unit Price</th>
+                  <th className="px-3 py-2.5 text-right font-semibold text-zinc-400">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineItems.length === 0 ? (
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-zinc-500">No line items</td></tr>
+                ) : lineItems.map((item, idx: number) => (
+                  <tr key={idx} className="border-b border-zinc-800/50 hover:bg-zinc-800/20">
+                    <td className="px-3 py-3 text-zinc-200">{item.description}</td>
+                    <td className="px-3 py-3 text-right text-zinc-400">{item.quantity}</td>
+                    <td className="hidden px-3 py-3 text-right text-zinc-400 sm:table-cell">{formatPrice(item.unitPrice / 100, "$")}</td>
+                    <td className="px-3 py-3 text-right font-medium text-zinc-200">{formatPrice(item.total / 100, "$")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Financial Summary Card */}
+          <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-800/20 p-5">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Financial Summary</p>
+            <div className="w-full space-y-2 border-b border-zinc-800 pb-3 text-sm">
+              <div className="flex justify-between text-zinc-400">
+                <span className="text-zinc-500">Subtotal</span>
+                <span>{formatPrice(invoice.subtotal / 100, "$")}</span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span className="text-zinc-500">Discount</span>
+                <span>{formatPrice(invoice.discount / 100, "$")}</span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span className="text-zinc-500">Tax</span>
+                <span>{formatPrice(invoice.tax / 100, "$")}</span>
+              </div>
+              <div className="flex justify-between text-zinc-500">
+                <span className="text-zinc-500">Additional Charges</span>
+                <span>{formatPrice(0, "$")}</span>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <div className="w-full max-w-xs rounded-lg bg-zinc-800 px-4 py-3 sm:w-80">
+                <div className="flex justify-between text-base font-bold text-white">
+                  <span>GRAND TOTAL</span>
+                  <span className="text-lg text-emerald-400">{formatPrice(invoice.total / 100, "$")}</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-400">Timeline</h3>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-3 text-zinc-400">
-                <CheckCircle size={14} className="text-emerald-400" />
-                <span>Created {formatDateTime(invoice.createdAt)}</span>
-              </li>
-              <li className="flex items-center gap-3 text-zinc-400">
-                <Clock size={14} className="text-blue-400" />
-                <span>Issued {formatDateTime(invoice.issuedAt)}</span>
-              </li>
-              {invoice.paidAt && (
-                <li className="flex items-center gap-3 text-zinc-400">
-                  <CheckCircle size={14} className="text-emerald-400" />
-                  <span>Paid {formatDateTime(invoice.paidAt)}</span>
-                </li>
-              )}
-              {invoice.isArchived && invoice.archivedAt && (
-                <li className="flex items-center gap-3 text-zinc-400">
-                  <Archive size={14} className="text-yellow-400" />
-                  <span>Archived {formatDateTime(invoice.archivedAt)}</span>
-                </li>
-              )}
-              <li className="flex items-center gap-3 text-zinc-400">
-                <AlertCircle size={14} className="text-zinc-500" />
-                <span>Updated {formatDateTime(invoice.updatedAt)}</span>
-              </li>
-            </ul>
+          {/* Payment Information Card */}
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Card>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Payment Information</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Payment Status", value: invoice.status },
+                  { label: "Invoice Status", value: invoice.status === "PAID" ? "Settled" : invoice.status === "PENDING" ? "Awaiting Payment" : invoice.status },
+                  { label: "Generated By", value: invoice.actorName || invoice.actorEmail || "System" },
+                  { label: "Generated Date", value: formatDateTime(invoice.issuedAt) },
+                ].map((p) => (
+                  <div key={p.label}>
+                    <p className="text-[10px] font-medium uppercase text-zinc-500">{p.label}</p>
+                    <p className="mt-0.5 text-sm text-zinc-200">{p.value}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Audit & Security</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Generated By", value: invoice.actorName || invoice.actorEmail || "System" },
+                  { label: "Generated At", value: formatDateTime(invoice.issuedAt) },
+                  { label: "Source System", value: "SP NET GRAM ADMIN PANEL" },
+                  { label: "Invoice ID", value: invoice.invoiceNumber },
+                ].map((a) => (
+                  <div key={a.label}>
+                    <p className="text-[10px] font-medium uppercase text-zinc-500">{a.label}</p>
+                    <p className="mt-0.5 text-sm text-zinc-200">{a.value}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Notes */}
+          {invoice.notes && (
+            <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-800/30 p-4 text-sm text-zinc-400">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">Notes</p>
+              {invoice.notes}
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-800/30 px-4 py-5 text-center text-xs text-zinc-500">
+            <p className="text-sm text-zinc-400">© 2026 SP NET INC. All Rights Reserved.</p>
+            <p className="mt-1">SP NET GRAM ADMIN PANEL | support@sp-net.in | www.sp-net.in</p>
+            <p className="mt-2 text-[10px] text-zinc-600">Invoice #{invoice.invoiceNumber} · Generated {formatDateTime(invoice.issuedAt)}</p>
           </div>
         </div>
       </div>
 
+      {/* Audit History */}
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">Audit History</h3>
+        <div className="space-y-3">
+          {auditHistory.length === 0 ? (
+            <p className="text-sm text-zinc-500">No audit events found.</p>
+          ) : auditHistory.map((event) => (
+            <div key={event.id} className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-800/30 p-3">
+              <Clock size={14} className="mt-0.5 shrink-0 text-zinc-500" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-zinc-200">{event.action}</p>
+                <p className="text-xs text-zinc-400">{event.description}</p>
+                <p className="mt-1 text-[10px] text-zinc-600">{event.actorEmail} · {formatDateTime(event.createdAt)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Status Actions + Timeline */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">Status Actions</h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {["DRAFT", "PENDING", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"].map((s) => (
+              <button
+                key={s}
+                onClick={() => updateStatus(s)}
+                disabled={invoice.status === s || loading}
+                className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                  invoice.status === s
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                } disabled:opacity-50`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">Timeline</h3>
+          <ul className="space-y-3 text-sm">
+            <li className="flex items-center gap-3 text-zinc-400">
+              <CheckCircle size={14} className="text-emerald-400" />
+              <span>Created {formatDateTime(invoice.createdAt)}</span>
+            </li>
+            <li className="flex items-center gap-3 text-zinc-400">
+              <Clock size={14} className="text-blue-400" />
+              <span>Issued {formatDateTime(invoice.issuedAt)}</span>
+            </li>
+            {invoice.paidAt && (
+              <li className="flex items-center gap-3 text-zinc-400">
+                <CheckCircle size={14} className="text-emerald-400" />
+                <span>Paid {formatDateTime(invoice.paidAt)}</span>
+              </li>
+            )}
+            {invoice.isArchived && invoice.archivedAt && (
+              <li className="flex items-center gap-3 text-zinc-400">
+                <Archive size={14} className="text-yellow-400" />
+                <span>Archived {formatDateTime(invoice.archivedAt)}</span>
+              </li>
+            )}
+            <li className="flex items-center gap-3 text-zinc-400">
+              <AlertCircle size={14} className="text-zinc-500" />
+              <span>Updated {formatDateTime(invoice.updatedAt)}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Share Modal */}
       <Modal
         open={shareOpen}
         onClose={() => setShareOpen(false)}
@@ -405,6 +551,7 @@ export default function InvoiceDetailClient({ invoice: initialInvoice, auditHist
         )}
       </Modal>
 
+      {/* Edit Modal */}
       <EditInvoiceModal
         open={editOpen}
         onClose={() => setEditOpen(false)}
@@ -451,29 +598,29 @@ function EditInvoiceModal({ open, onClose, invoice, onUpdated }: { open: boolean
       title="Edit Metadata"
       description="Update invoice customer details and notes."
       size="md"
-        footer={
-          <>
-            <ActionButton onClick={onClose} variant="secondary">Cancel</ActionButton>
-            <ActionButton onClick={() => { const form = document.getElementById("edit-invoice") as HTMLFormElement | null; form?.requestSubmit(); }} loading={loading} variant="primary">Save</ActionButton>
-          </>
-        }
-      >
-        <form id="edit-invoice" onSubmit={handleSubmit} className="space-y-4">
+      footer={
+        <>
+          <ActionButton onClick={onClose} variant="secondary">Cancel</ActionButton>
+          <ActionButton onClick={() => { const form = document.getElementById("edit-invoice") as HTMLFormElement | null; form?.requestSubmit(); }} loading={loading} variant="primary">Save</ActionButton>
+        </>
+      }
+    >
+      <form id="edit-invoice" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-400">Customer Name</label>
-          <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none" />
+          <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-400">Customer Email</label>
-          <input value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none" />
+          <input value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-400">Organization</label>
-          <input value={organization} onChange={(e) => setOrganization(e.target.value)} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none" />
+          <input value={organization} onChange={(e) => setOrganization(e.target.value)} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-400">Notes</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none" />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500" />
         </div>
       </form>
     </Modal>

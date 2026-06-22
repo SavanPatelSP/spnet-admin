@@ -69,17 +69,28 @@ function Badge({ label, color }: { label: string; color: "green" | "yellow" | "r
 
 export function SessionDetailDrawer({ session, onClose }: Props) {
   const router = useRouter();
-  const [now, setNow] = useState<number>(Date.now());
+  const [now, setNow] = useState<number>(() => Date.now());
+  const [liveExpiresAt, setLiveExpiresAt] = useState(session.expiresAt);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+    function onSessionUpdated(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.sessionId === session.id && detail?.expiresAt) {
+        setLiveExpiresAt(new Date(detail.expiresAt));
+      }
+    }
+    window.addEventListener("session-updated", onSessionUpdated);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("session-updated", onSessionUpdated);
+    };
+  }, [session.id]);
 
   const parsed = useMemo(() => session.userAgent ? parseUA(session.userAgent) : null, [session.userAgent]);
-  const isActive = session.expiresAt.getTime() > now;
+  const isActive = liveExpiresAt.getTime() > now;
 
-  const remainingSeconds = useMemo(() => Math.max(0, Math.floor((session.expiresAt.getTime() - now) / 1000)), [session.expiresAt, now]);
+  const remainingSeconds = useMemo(() => Math.max(0, Math.floor((liveExpiresAt.getTime() - now) / 1000)), [liveExpiresAt, now]);
 
   const remainingLabel = useMemo(() => {
     if (remainingSeconds === 0) return "Expired";
@@ -151,7 +162,7 @@ export function SessionDetailDrawer({ session, onClose }: Props) {
                       {isActive ? "Active" : "Expired"}
                     </p>
                     <p className="text-[10px] text-zinc-500">
-                      {isActive ? `${remainingLabel} remaining` : `Expired ${formatDateTime(session.expiresAt)}`}
+                      {isActive ? `${remainingLabel} remaining` : `Expired ${formatDateTime(liveExpiresAt)}`}
                     </p>
                   </div>
                 </div>
@@ -199,7 +210,7 @@ export function SessionDetailDrawer({ session, onClose }: Props) {
               <Section title="Activity" icon={<Activity size={11} />}>
                 <div className="grid grid-cols-2 gap-2">
                   <InfoRow label="Created" value={formatDateTime(session.createdAt)} icon={<Calendar size={12} />} />
-                  <InfoRow label="Expires" value={formatDateTime(session.expiresAt)} icon={<Clock size={12} />} />
+                  <InfoRow label="Expires" value={formatDateTime(liveExpiresAt)} icon={<Clock size={12} />} />
                   <InfoRow label="Remaining" value={
                     <span className={cn(isActive ? "text-green-400" : "text-red-400")}>{isActive ? remainingLabel : "Expired"}</span>
                   } icon={<Clock size={12} />} />

@@ -145,41 +145,51 @@ export default function InviteTeamMemberModal({
 
   useEffect(() => {
     if (!open) return;
-    setRolesLoading(true);
-    setPricingLoading(true);
-    setCustomEnabled(new Set());
-    setShowPermissions(false);
-    setSearchQuery("");
-    setViewMode("all");
-    setExpandedCategories(new Set(Object.keys(PERMISSION_GROUPS)));
-    setName("");
-    setEmail("");
-    setUsername("");
-    setPassword(generateSecurePassword());
-    setRoleId("");
-    setOrganization("");
-    setNotes("");
-    setCreateLicense(false);
-    setTierLabel(LICENSE_TIERS[0].label);
-    setMaxDevices(LICENSE_TIERS[0].maxDevices);
-    setDurationDays(LICENSE_TIERS[0].durationDays);
-    setExpiresAt("");
-    setResult(null);
-    setShowPassword(false);
-    setError("");
-    setCopiedField("");
-    Promise.all([
-      fetch(API_ROUTES.ROLES.LIST).then((r) => r.json()),
-      fetch("/api/roles/pricing").then((r) => r.json()).catch(() => ({ success: false })),
-    ]).then(([roleData, pricingData]) => {
-      setRoles(Array.isArray(roleData) ? roleData : []);
-      if (pricingData.success && Array.isArray(pricingData.data)) {
-        const map: Record<string, number> = {};
-        pricingData.data.forEach((item: { role: string; price: number }) => { map[item.role] = item.price; });
-        setRolePricing(map);
+    let cancelled = false;
+    (async () => {
+      setRolesLoading(true);
+      setPricingLoading(true);
+      setCustomEnabled(new Set());
+      setShowPermissions(false);
+      setSearchQuery("");
+      setViewMode("all");
+      setExpandedCategories(new Set(Object.keys(PERMISSION_GROUPS)));
+      setName("");
+      setEmail("");
+      setUsername("");
+      setPassword(generateSecurePassword());
+      setRoleId("");
+      setOrganization("");
+      setNotes("");
+      setCreateLicense(false);
+      setTierLabel(LICENSE_TIERS[0].label);
+      setMaxDevices(LICENSE_TIERS[0].maxDevices);
+      setDurationDays(LICENSE_TIERS[0].durationDays);
+      setExpiresAt("");
+      setResult(null);
+      setShowPassword(false);
+      setError("");
+      setCopiedField("");
+      try {
+        const [roleData, pricingData] = await Promise.all([
+          fetch(API_ROUTES.ROLES.LIST).then((r) => r.json()),
+          fetch("/api/roles/pricing").then((r) => r.json()).catch(() => ({ success: false })),
+        ]);
+        if (!cancelled) {
+          setRoles(Array.isArray(roleData) ? roleData : []);
+          if (pricingData.success && Array.isArray(pricingData.data)) {
+            const map: Record<string, number> = {};
+            pricingData.data.forEach((item: { role: string; price: number }) => { map[item.role] = item.price; });
+            setRolePricing(map);
+          }
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load roles");
+      } finally {
+        if (!cancelled) { setRolesLoading(false); setPricingLoading(false); }
       }
-    }).catch(() => setError("Failed to load roles"))
-      .finally(() => { setRolesLoading(false); setPricingLoading(false); });
+    })();
+    return () => { cancelled = true; };
   }, [open]);
 
   const selectedRole = roles.find((r) => r.id === roleId);

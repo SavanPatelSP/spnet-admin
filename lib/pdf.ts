@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/shared";
+import { formatDate, formatDateTime } from "@/lib/shared";
 
 export interface PdfInvoiceData {
   invoiceNumber: string;
@@ -23,206 +23,474 @@ export interface PdfInvoiceData {
   license: { key: string; organization: string; plan: string } | null;
 }
 
-function fmtCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function fmtCents(c: number): string {
+  return `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export async function generateInvoicePdf(data: PdfInvoiceData): Promise<Buffer> {
   const { jsPDF } = await import("jspdf");
+  const qrcode = await import("qrcode");
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageW = 210;
-  const margin = 20;
-  const contentW = pageW - 2 * margin;
-  let y = margin;
+  const pw = 210;
+  const ph = 297;
+  const m = 20;
+  const cw = pw - 2 * m;
 
-  const primary = "#1e40af";
-  const gray = "#6b7280";
-  const dark = "#111827";
-  const lightGray = "#f3f4f6";
+  const cDark = "#0f172a";
+  const cAccent = "#2563eb";
+  const cBody = "#1e293b";
+  const cGray = "#64748b";
+  const cMuted = "#94a3b8";
+  const cLight = "#f1f5f8";
+  const cBorder = "#e2e8f0";
 
-  function text(txt: string, x: number, size = 10, color = dark, bold = false) {
-    doc.setTextColor(color);
-    doc.setFontSize(size);
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.text(txt, x, y);
+  function hex(h: string) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function st(h: string) { const [r, g, b] = hex(h); doc.setTextColor(r, g, b); }
+  function sf(h: string) { const [r, g, b] = hex(h); doc.setFillColor(r, g, b); }
+  function sd(h: string) { const [r, g, b] = hex(h); doc.setDrawColor(r, g, b); }
+
+  function tl(s: string, x: number, sz = 10, color = cBody, bold = false) {
+    st(color); doc.setFontSize(sz); doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.text(s, x, y);
   }
 
-  function line(yPos: number, color = "#e5e7eb") {
-    doc.setDrawColor(color);
-    doc.line(margin, yPos, pageW - margin, yPos);
+  function tr(s: string, x: number, sz = 10, color = cBody, bold = false) {
+    st(color); doc.setFontSize(sz); doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.text(s, x, y, { align: "right" });
   }
 
-  // Branding Header
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, pageW, 40, "F");
+  function hr(y: number, color = cBorder) { sd(color); doc.setLineWidth(0.35); doc.line(m, y, m + cw, y); }
+
+  function ensure(y: number, needed: number): number {
+    if (y + needed > ph - 24) {
+      doc.addPage();
+      return m;
+    }
+    return y;
+  }
+
+  let y = m;
+
+  // ═══════════════════════════════════════════════════════════════
+  // WATERMARK — 12% opacity, rotated, behind all content
+  // ═══════════════════════════════════════════════════════════════
+  try {
+    const jspdfMod = await import("jspdf");
+    if (jspdfMod.GState) {
+      doc.saveGraphicsState();
+      doc.setGState(new jspdfMod.GState({ opacity: 0.12 }));
+    }
+    doc.setFontSize(48);
+    doc.setFont("helvetica", "bold");
+    st("#0f172a");
+    doc.text("SP NET INC", pw / 2, ph / 2, { align: "center", angle: -25 } as Record<string, unknown>);
+    if (jspdfMod.GState) {
+      doc.restoreGraphicsState();
+    }
+  } catch {
+    st("#e2e8f0");
+    doc.setFontSize(48);
+    doc.setFont("helvetica", "bold");
+    doc.text("SP NET INC", pw / 2, ph / 2, { align: "center" } as Record<string, unknown>);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // COVER HEADER
+  // ═══════════════════════════════════════════════════════════════
+  sf(cDark);
+  doc.rect(0, 0, pw, 50, "F");
+  sf(cAccent);
+  doc.rect(0, 49, pw, 1.5, "F");
+
+  const rx = pw - m;
+
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setFontSize(26);
   doc.setFont("helvetica", "bold");
-  doc.text("SP NET INC", margin, 18);
-  doc.setFontSize(8);
+  doc.text("SP NET INC", m, 16);
+
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(148, 163, 184);
-  doc.text("INVOICE / RECEIPT", margin, 26);
-  doc.text(`#${data.invoiceNumber}`, margin, 33);
+  doc.setTextColor(cMuted);
+  doc.text("Administrative Billing System", m, 24);
+  doc.text("SP NET GRAM ADMIN PANEL", m, 31);
+
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
-  doc.text(data.status, pageW - margin, 18, { align: "right" });
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text("INVOICE", pw / 2, 16, { align: "center" });
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(cMuted);
+  doc.text("INVOICE DOCUMENT", pw / 2, 23, { align: "center" });
 
-  y = 50;
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text(`#${data.invoiceNumber}`, rx, 14, { align: "right" });
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(cMuted);
+  doc.text(`Issued: ${formatDate(data.issuedAt)}`, rx, 22, { align: "right" });
+  doc.text(`Due: ${data.dueAt ? formatDate(data.dueAt) : "—"}`, rx, 28, { align: "right" });
 
-  // From / To
-  const colW = contentW / 2 - 5;
-  text("FROM", margin, 8, gray, true);
-  text("SP NET INC", margin, 10, dark, true);
-  text("support@spnet.net", margin, 8, gray);
-  text("www.spnet.net", margin, 8, gray);
+  // Status ribbon
+  const rMap: Record<string, string> = {
+    PAID: "#059669", PENDING: "#d97706", FAILED: "#dc2626",
+    REFUNDED: "#2563eb", DRAFT: "#6b7280", OVERDUE: "#dc2626",
+    CANCELLED: "#6b7280", ARCHIVED: "#7c3aed",
+  };
+  const rRgb = hex(rMap[data.status.toUpperCase()] || "#6b7280");
+  const rLabel = data.status.toUpperCase();
+  const rw = doc.getTextWidth(rLabel) + 14;
+  const rxx = pw - m - rw + 3;
+  sf(`#${rRgb.map(c => c.toString(16).padStart(2, "0")).join("")}`);
+  doc.rect(rxx, 34, rw, 7, "F");
+  const drgb = rRgb.map(c => Math.round(c * 0.7));
+  sf(`#${drgb.map(c => c.toString(16).padStart(2, "0")).join("")}`);
+  doc.triangle(rxx + rw, 34, rxx + rw + 4, 34, rxx + rw, 37.5, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.text(rLabel, rxx + rw / 2, 39, { align: "center" });
 
-  text("TO", margin + colW + 10, 8, gray, true);
-  text(data.customerName || data.organization || data.license?.organization || "N/A", margin + colW + 10, 10, dark, true);
-  if (data.customerEmail) text(data.customerEmail, margin + colW + 10, 8, gray);
-  if (data.organization) text(data.organization, margin + colW + 10, 8, gray);
+  // ─────────────────────────────────────────────────────────────
+  // FROM / BILL TO
+  // ─────────────────────────────────────────────────────────────
+  y = 56;
+  y = ensure(y, 48);
 
-  y += 25;
-  line(y);
-  y += 8;
+  const cardW = cw / 2 - 4;
+  const fromX = m;
+  const toX = m + cardW + 8;
 
-  // Details
-  const details = [
-    { label: "Invoice #", value: data.invoiceNumber },
+  const toItems: { label: string; value: string }[] = [
+    { label: "Customer", value: data.customerName || "—" },
+    { label: "Organization", value: data.organization || data.license?.organization || "—" },
+    { label: "License", value: data.license?.key || "—" },
+    { label: "Account Type", value: data.license?.plan || "—" },
+  ];
+  const valMaxW = cardW - 26;
+  let toContentH = 4;
+  toItems.forEach((it) => {
+    const lines = doc.splitTextToSize(it.value, valMaxW);
+    toContentH += Math.max(lines.length * 3.5 + 0.5, 5);
+  });
+  toContentH += 7;
+  const fromH = 30;
+  const cardH = Math.max(fromH, toContentH);
+
+  y = ensure(y, cardH + 8);
+
+  // FROM
+  sf(cLight);
+  doc.roundedRect(fromX, y, cardW, cardH, 2.5, 2.5, "F");
+  tl("FROM", fromX + 4, 6.5, cGray, true);
+  doc.setFontSize(11);
+  st(cDark);
+  doc.setFont("helvetica", "bold");
+  doc.text("SP NET INC", fromX + 4, y + 6);
+  doc.setFontSize(6.5);
+  st(cGray);
+  doc.setFont("helvetica", "normal");
+  doc.text("Administrative Billing System", fromX + 4, y + 10.5);
+  doc.text("SP NET GRAM ADMIN PANEL", fromX + 4, y + 14.5);
+  doc.text("support@sp-net.in", fromX + 4, y + 18.5);
+  doc.text("www.sp-net.in", fromX + 4, y + 22.5);
+  doc.setFontSize(5.5);
+  st(cMuted);
+  doc.text("Organization · Support · Billing", fromX + 4, y + 28.5);
+
+  // TO
+  sf(cLight);
+  doc.roundedRect(toX, y, cardW, cardH, 2.5, 2.5, "F");
+  tl("BILL TO", toX + 4, 6.5, cGray, true);
+
+  let ils = y + 4;
+  toItems.forEach((it) => {
+    doc.setFontSize(5.5);
+    st(cGray);
+    doc.setFont("helvetica", "bold");
+    doc.text(it.label, toX + 4, ils);
+    doc.setFontSize(6.5);
+    st(cBody);
+    doc.setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(it.value, valMaxW);
+    lines.forEach((line: string, i: number) => {
+      doc.text(line, toX + 22, ils + i * 3.5);
+    });
+    ils += Math.max(lines.length * 3.5 + 0.5, 5);
+  });
+
+  y = y + cardH + 6;
+
+  // ─────────────────────────────────────────────────────────────
+  // INVOICE DETAILS
+  // ─────────────────────────────────────────────────────────────
+  y = ensure(y, 22);
+  hr(y);
+  y += 3;
+  sf(cLight);
+  doc.rect(m, y, cw, 15, "F");
+
+  const dd = [
+    { label: "Invoice Number", value: data.invoiceNumber },
     { label: "Type", value: data.type },
     { label: "Category", value: data.category || "—" },
     { label: "Issued", value: formatDate(data.issuedAt) },
     { label: "Due", value: data.dueAt ? formatDate(data.dueAt) : "—" },
     { label: "Paid", value: data.paidAt ? formatDate(data.paidAt) : "—" },
   ];
-
-  let rowY = y;
-  doc.setFontSize(8);
-  details.forEach((d, i) => {
+  const dw = cw / 3;
+  dd.forEach((d, i) => {
     const col = i % 3;
     const row = Math.floor(i / 3);
-    const x = margin + col * (contentW / 3);
-    const ry = y + row * 12;
-    doc.setTextColor(gray);
+    const dx = m + col * dw;
+    const dy = y + row * 7.5;
+    doc.setFontSize(5.5);
+    st(cGray);
     doc.setFont("helvetica", "bold");
-    doc.text(d.label, x, ry);
-    doc.setTextColor(dark);
+    doc.text(d.label, dx + 3, dy + 1.5);
+    doc.setFontSize(7);
+    st(cBody);
     doc.setFont("helvetica", "normal");
-    doc.text(d.value, x, ry + 5);
+    doc.text(d.value, dx + 3, dy + 5.5);
   });
-  y += 32;
+  y += 17;
 
-  // License info
   if (data.license) {
-    line(y);
-    y += 6;
-    doc.setFontSize(8);
-    doc.setTextColor(gray);
+    y = ensure(y, 10);
+    hr(y);
+    y += 3;
+    doc.setFontSize(5.5);
+    st(cGray);
     doc.setFont("helvetica", "bold");
-    doc.text("License", margin, y);
-    doc.setTextColor(dark);
+    doc.text("License", m, y);
+    doc.setFontSize(7);
+    st(cBody);
     doc.setFont("helvetica", "normal");
-    doc.text(`${data.license.key} — ${data.license.organization} (${data.license.plan})`, margin + 25, y);
-    y += 10;
+    doc.text(data.license.key, m + 14, y);
+    doc.setFontSize(5.5);
+    st(cMuted);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Plan: ${data.license.plan}`, m + 14 + doc.getTextWidth(data.license.key) + 6, y);
+    y += 7;
   }
 
-  // Line Items Table
-  line(y);
-  y += 8;
+  // ─────────────────────────────────────────────────────────────
+  // LINE ITEMS TABLE
+  // ─────────────────────────────────────────────────────────────
+  y = ensure(y, 12);
+  hr(y);
+  y += 4;
 
-  const tableTop = y;
-  const colDefs = [
-    { x: margin, w: contentW * 0.45 },
-    { x: margin + contentW * 0.45, w: contentW * 0.15 },
-    { x: margin + contentW * 0.60, w: contentW * 0.2 },
-    { x: margin + contentW * 0.80, w: contentW * 0.2 },
+  const cd = [
+    { x: m, w: cw * 0.44 },
+    { x: m + cw * 0.44, w: cw * 0.14 },
+    { x: m + cw * 0.58, w: cw * 0.18 },
+    { x: m + cw * 0.76, w: cw * 0.24 },
   ];
 
-  // Header row
-  doc.setFillColor(243, 244, 246);
-  doc.rect(margin, y - 4, contentW, 8, "F");
-  doc.setFontSize(8);
-  doc.setTextColor(gray);
+  sf(cDark);
+  doc.roundedRect(m, y - 2, cw, 6.5, 1.5, 1.5, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
-  doc.text("Description", colDefs[0].x, y);
-  doc.text("Qty", colDefs[1].x + colDefs[1].w, y, { align: "right" });
-  doc.text("Unit Price", colDefs[2].x + colDefs[2].w, y, { align: "right" });
-  doc.text("Total", colDefs[3].x + colDefs[3].w, y, { align: "right" });
-  y += 10;
+  doc.text("Description", cd[0].x + 2, y + 1.5);
+  doc.text("Qty", cd[1].x + cd[1].w - 2, y + 1.5, { align: "right" });
+  doc.text("Unit Price", cd[2].x + cd[2].w - 2, y + 1.5, { align: "right" });
+  doc.text("Total", cd[3].x + cd[3].w - 2, y + 1.5, { align: "right" });
+  y += 8.5;
 
-  // Items
-  const startY = y;
   data.lineItems.forEach((item, idx) => {
-    if (y > 270) {
-      doc.addPage();
-      y = margin;
-    }
-
-    if (idx % 2 === 0) {
-      doc.setFillColor(249, 250, 251);
-      doc.rect(margin, y - 4, contentW, 8, "F");
-    }
-
-    doc.setFontSize(8);
-    doc.setTextColor(dark);
+    y = ensure(y, 10);
+    if (idx % 2 === 0) { sf(cLight); doc.rect(m, y - 2, cw, 6.5, "F"); }
+    doc.setFontSize(7);
+    st(cBody);
     doc.setFont("helvetica", "normal");
-    doc.text(item.description.substring(0, 60), colDefs[0].x, y);
-    doc.text(String(item.quantity), colDefs[1].x + colDefs[1].w, y, { align: "right" });
-    doc.text(fmtCents(item.unitPrice), colDefs[2].x + colDefs[2].w, y, { align: "right" });
+    const descLines = doc.splitTextToSize(item.description, cd[0].w - 4);
+    descLines.forEach((line: string, i: number) => {
+      doc.text(line, cd[0].x + 2, y + i * 3.5);
+    });
+    const rowH = Math.max(descLines.length * 3.5 + 0.5, 6.5);
+    tr(String(item.quantity), cd[1].x + cd[1].w - 2, 7, cBody, false);
+    tr(fmtCents(item.unitPrice), cd[2].x + cd[2].w - 2, 7, cBody, false);
     doc.setFont("helvetica", "bold");
-    doc.text(fmtCents(item.total), colDefs[3].x + colDefs[3].w, y, { align: "right" });
-    y += 8;
+    tr(fmtCents(item.total), cd[3].x + cd[3].w - 2, 7, cBody, true);
+    y += rowH;
   });
 
-  if (y > startY) {
-    line(y);
-    y += 6;
-  } else {
-    y += 6;
+  if (data.lineItems.length === 0) {
+    y += 7;
   }
 
-  // Totals
-  const totals = [
-    { label: "Subtotal", value: fmtCents(data.subtotal), bold: false },
-    { label: "Discount", value: data.discount > 0 ? `-${fmtCents(data.discount)}` : "$0.00", bold: false },
-    { label: "Tax", value: data.tax > 0 ? fmtCents(data.tax) : "$0.00", bold: false },
-    { label: "Total", value: fmtCents(data.total), bold: true },
+  // ─────────────────────────────────────────────────────────────
+  // FINANCIAL SUMMARY — full-width, labels left, values right
+  // ─────────────────────────────────────────────────────────────
+  y = ensure(y, 54);
+  y += 3;
+  sf(cLight);
+  doc.roundedRect(m, y, cw, 42, 2.5, 2.5, "F");
+
+  const lx = m + 6;
+  const vx = pw - m - 6;
+
+  doc.setFontSize(6);
+  st(cGray);
+  doc.setFont("helvetica", "bold");
+  doc.text("FINANCIAL SUMMARY", lx, y + 4.5);
+
+  const finRows = [
+    { label: "Subtotal", value: fmtCents(data.subtotal) },
+    { label: "Discount", value: data.discount > 0 ? `-${fmtCents(data.discount)}` : "$0.00" },
+    { label: "Tax", value: data.tax > 0 ? fmtCents(data.tax) : "$0.00" },
+    { label: "Additional Charges", value: "$0.00" },
   ];
 
-  totals.forEach((t) => {
-    doc.setFontSize(t.bold ? 11 : 9);
-    doc.setTextColor(dark);
-    doc.setFont("helvetica", t.bold ? "bold" : "normal");
-    doc.text(t.label, pageW - margin - 50, y);
-    doc.text(t.value, pageW - margin, y, { align: "right" });
-    y += t.bold ? 8 : 6;
+  let fy = y + 11;
+  finRows.forEach((r) => {
+    doc.setFontSize(7);
+    st(cGray);
+    doc.setFont("helvetica", "normal");
+    doc.text(r.label, lx, fy);
+    tr(r.value, vx, 7, cBody, false);
+    fy += 6;
   });
 
-  y += 6;
-  line(y);
-  y += 8;
+  // Separator line
+  sd(cDark);
+  doc.setLineWidth(0.4);
+  doc.line(lx, fy + 1, vx, fy + 1);
+  fy += 5;
 
-  // Notes
+  // Grand Total box — right-aligned, width 100mm
+  const gtW = 100;
+  const gtX = vx - gtW;
+  sf(cDark);
+  doc.roundedRect(gtX, fy, gtW, 9, 2, 2, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("GRAND TOTAL", gtX + 6, fy + 5.5);
+  tr(fmtCents(data.total), vx, 10, "#ffffff", true);
+
+  y += 48;
+
+  // ─────────────────────────────────────────────────────────────
+  // PAYMENT + AUDIT
+  // ─────────────────────────────────────────────────────────────
+  y = ensure(y, 30);
+  y += 2;
+  const subCardW = cw / 2 - 3;
+  const payAuditH = 22;
+
+  sf(cLight);
+  doc.roundedRect(m, y, subCardW, payAuditH, 2.5, 2.5, "F");
+  doc.setFontSize(6);
+  st(cGray);
+  doc.setFont("helvetica", "bold");
+  doc.text("PAYMENT INFORMATION", m + 4, y + 3.5);
+
+  [
+    { label: "Status", value: data.status },
+    { label: "Settlement", value: data.status === "PAID" ? "Settled" : data.status === "PENDING" ? "Awaiting Payment" : data.status },
+    { label: "Generated By", value: data.actorName || data.actorEmail || "System" },
+    { label: "Generated Date", value: formatDateTime(new Date(data.issuedAt)) },
+  ].forEach((p, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const px = m + 4 + col * (subCardW / 2 - 2);
+    const py = y + 3.5 + 4 + row * 6;
+    doc.setFontSize(5); st(cGray); doc.setFont("helvetica", "bold");
+    doc.text(p.label, px, py);
+    doc.setFontSize(6); st(cBody); doc.setFont("helvetica", "normal");
+    doc.text(p.value, px, py + 3);
+  });
+
+  const auditX = m + subCardW + 6;
+  sf(cLight);
+  doc.roundedRect(auditX, y, subCardW, payAuditH, 2.5, 2.5, "F");
+  doc.setFontSize(6);
+  st(cGray);
+  doc.setFont("helvetica", "bold");
+  doc.text("AUDIT & SECURITY", auditX + 4, y + 3.5);
+
+  [
+    { label: "Generated By", value: data.actorName || data.actorEmail || "System" },
+    { label: "Generated At", value: formatDateTime(new Date(data.issuedAt)) },
+    { label: "Source", value: "SP NET GRAM ADMIN" },
+    { label: "Invoice ID", value: data.invoiceNumber },
+  ].forEach((a, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const px = auditX + 4 + col * (subCardW / 2 - 2);
+    const py = y + 3.5 + 4 + row * 6;
+    doc.setFontSize(5); st(cGray); doc.setFont("helvetica", "bold");
+    doc.text(a.label, px, py);
+    doc.setFontSize(6); st(cBody); doc.setFont("helvetica", "normal");
+    doc.text(a.value, px, py + 3);
+  });
+
+  y += payAuditH + 5;
+
+  // ─────────────────────────────────────────────────────────────
+  // NOTES
+  // ─────────────────────────────────────────────────────────────
   if (data.notes) {
-    doc.setFontSize(8);
-    doc.setTextColor(gray);
+    y = ensure(y, 22);
+    hr(y);
+    y += 3.5;
+    doc.setFontSize(6);
+    st(cGray);
     doc.setFont("helvetica", "bold");
-    doc.text("Notes", margin, y);
-    y += 5;
+    doc.text("Notes", m, y);
+    y += 4.5;
+    doc.setFontSize(6.5);
+    st(cBody);
     doc.setFont("helvetica", "normal");
-    doc.text(data.notes.substring(0, 200), margin, y);
-    y += 10;
+    const noteLines = doc.splitTextToSize(data.notes || "", cw - 8);
+    noteLines.forEach((line: string) => {
+      doc.text(line, m + 4, y);
+      y += 4;
+    });
+    y += 3;
   }
 
-  // Footer
-  const footerY = 285;
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, footerY, pageW, 12, "F");
-  doc.setTextColor(148, 163, 184);
+  // ─────────────────────────────────────────────────────────────
+  // FOOTER with QR
+  // ─────────────────────────────────────────────────────────────
+  y = ensure(y, 30);
+  const ft = ph - 24;
+
+  sf(cDark);
+  doc.rect(0, ft, pw, 24, "F");
+  sf(cAccent);
+  doc.rect(0, ft, pw, 1, "F");
+
+  const qrSize = 14;
+  try {
+    const qrUrl = await qrcode.toDataURL(
+      JSON.stringify({ id: data.invoiceNumber, invoice: data.invoiceNumber, system: "SP_NET_GRAM_ADMIN" }),
+      { width: 200, margin: 1, color: { dark: "#ffffff", light: "#0f172a" } },
+    );
+    doc.addImage(qrUrl, "PNG", pw - m - qrSize, ft + 5, qrSize, qrSize);
+  } catch {
+    // silent
+  }
+
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text("SP NET INC — support@spnet.net — www.spnet.net", pageW / 2, footerY + 8, { align: "center" });
+  doc.text("© 2026 SP NET INC. All Rights Reserved.", pw / 2, ft + 7.5, { align: "center" });
+
+  doc.setFontSize(5.5);
+  doc.setTextColor(cMuted);
+  doc.text("SP NET GRAM ADMIN PANEL  |  support@sp-net.in  |  www.sp-net.in", pw / 2, ft + 13, { align: "center" });
+
+  doc.setFontSize(5);
+  doc.setTextColor("#475569");
+  doc.text(`Invoice #${data.invoiceNumber}  ·  Generated ${formatDateTime(new Date(data.issuedAt))}`, pw / 2, ft + 18.5, { align: "center" });
 
   return Buffer.from(doc.output("arraybuffer"));
 }

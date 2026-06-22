@@ -464,7 +464,24 @@ export function DeviceAnalyticsPanel() {
     }
   }, []);
 
-  useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(API_ROUTES.DEVICES.ANALYTICS);
+        if (!res.ok) throw new Error("Failed to load analytics");
+        const json = await res.json();
+        if (!cancelled) setData(json.success ? json.data : json);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load analytics");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   usePolling(fetchAnalytics, 30000, autoRefresh);
 
   const osData = useMemo(() => data

@@ -49,9 +49,12 @@ export default function EditOrganizationModal({
 
   useEffect(() => {
     if (open) {
-      setNewOrgName(organization);
-      setNotes("");
-      setError("");
+      const id = setTimeout(() => {
+        setNewOrgName(organization);
+        setNotes("");
+        setError("");
+      }, 0);
+      return () => clearTimeout(id);
     }
   }, [open, organization]);
 

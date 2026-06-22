@@ -17,6 +17,8 @@ import { MfaManagement } from "@/components/security/MfaManagement";
 import { Shield, AlertTriangle, LogIn, Ban, Lock, Activity, Users, Fingerprint } from "lucide-react";
 
 export default async function SecurityPage() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
   const [policies, auditLogs, loginHistory, sessions, activations, teamMembers, failedLogins, recentSuccess] =
     await Promise.all([
       prisma.securityPolicy.findMany(),
@@ -30,7 +32,7 @@ export default async function SecurityPage() {
       prisma.activation.count(),
       prisma.teamMember.count(),
       prisma.loginHistory.count({ where: { success: false } }),
-      prisma.loginHistory.count({ where: { success: true, createdAt: { gte: new Date(Date.now() - 86400000) } } }),
+      prisma.loginHistory.count({ where: { success: true, createdAt: { gte: yesterday } } }),
     ]);
 
   const enabledPolicies = policies.filter((p) => p.enabled).length;

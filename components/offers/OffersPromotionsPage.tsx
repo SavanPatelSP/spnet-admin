@@ -278,7 +278,23 @@ export function OffersPromotionsPage({ initialPromotions }: { initialPromotions?
 
   useEffect(() => {
     if (initialPromotions === undefined) {
-      fetchPromotions();
+      let cancelled = false;
+      (async () => {
+        setRefreshing(true);
+        try {
+          const res = await fetch("/api/offers");
+          if (!res.ok) throw new Error("Failed to load");
+          const data = await res.json();
+          if (!cancelled) {
+            setPromotions(data.promotions || []);
+          }
+        } catch {
+          if (!cancelled) showToast("Failed to load promotions", "error");
+        } finally {
+          if (!cancelled) setRefreshing(false);
+        }
+      })();
+      return () => { cancelled = true; };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

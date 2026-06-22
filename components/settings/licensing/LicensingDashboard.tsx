@@ -166,17 +166,19 @@ export function LicensingDashboard({ licenses }: LicensesPageProps) {
     });
   }
 
-  const SortHeader = ({ label, sortValue }: { label: string; sortValue: SortKey }) => (
-    <th
-      className="cursor-pointer select-none px-4 py-3 text-left text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
-      onClick={() => toggleSort(sortValue)}
-    >
-      {label}
-      {sortKey === sortValue && (
-        <span className="ml-1 text-blue-400">{sortDir === "asc" ? "↑" : "↓"}</span>
-      )}
-    </th>
-  );
+  function renderSortHeader(label: string, sortValue: SortKey) {
+    return (
+      <th
+        className="cursor-pointer select-none px-4 py-3 text-left text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
+        onClick={() => toggleSort(sortValue)}
+      >
+        {label}
+        {sortKey === sortValue && (
+          <span className="ml-1 text-blue-400">{sortDir === "asc" ? "↑" : "↓"}</span>
+        )}
+      </th>
+    );
+  }
 
   const stats = [
     { title: "Total Licenses", value: licenses.length, icon: KeyRound, color: "blue" as const },
@@ -379,11 +381,11 @@ export function LicensingDashboard({ licenses }: LicensesPageProps) {
                       className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 accent-blue-600"
                     />
                   </th>
-                  <SortHeader label="Organization" sortValue="organization" />
-                  <SortHeader label="Plan" sortValue="plan" />
-                  <SortHeader label="Status" sortValue="status" />
-                  <SortHeader label="Usage" sortValue="usage" />
-                  <SortHeader label="Expiry" sortValue="expiresAt" />
+                  {renderSortHeader("Organization", "organization")}
+                  {renderSortHeader("Plan", "plan")}
+                  {renderSortHeader("Status", "status")}
+                  {renderSortHeader("Usage", "usage")}
+                  {renderSortHeader("Expiry", "expiresAt")}
                   <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400">Health</th>
                 </tr>
               </thead>

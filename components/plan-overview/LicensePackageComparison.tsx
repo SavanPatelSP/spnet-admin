@@ -128,21 +128,9 @@ export function LicensePackageComparison() {
   const first = LICENSE_TIERS.find((t) => t.label === firstLabel)!;
   const second = LICENSE_TIERS.find((t) => t.label === secondLabel)!;
 
-  if (!first || !second) return null;
-
-  const deviceLabel = (t: LicenseTier) => t.maxDevices === -1 ? "Unlimited" : String(t.maxDevices);
-  const deviceBetter = first.maxDevices === -1 ? 1 : second.maxDevices === -1 ? -1 : first.maxDevices > second.maxDevices ? 1 : first.maxDevices < second.maxDevices ? -1 : 0;
-
-  const metricRows = [
-    { label: "Price", first: `${formatPrice(first.price, first.currency)}/mo`, second: `${formatPrice(second.price, second.currency)}/mo`, better: first.price < second.price ? 1 : first.price > second.price ? -1 : 0 },
-    { label: "Max Devices", first: deviceLabel(first), second: deviceLabel(second), better: deviceBetter },
-    { label: "Duration", first: `${first.durationDays} days`, second: `${second.durationDays} days`, better: first.durationDays > second.durationDays ? 1 : first.durationDays < second.durationDays ? -1 : 0 },
-    { label: "Organization Scope", first: first.organizationCompatibility, second: second.organizationCompatibility, better: 0 },
-  ];
-
-  const features1 = LICENSE_FEATURES_BY_CATEGORY[first.label] || {};
-  const features2 = LICENSE_FEATURES_BY_CATEGORY[second.label] || {};
-  const allCategories = [...new Set([...getLicenseCategories(first.label), ...getLicenseCategories(second.label)])];
+  const features1 = LICENSE_FEATURES_BY_CATEGORY[first?.label || ""] || {};
+  const features2 = LICENSE_FEATURES_BY_CATEGORY[second?.label || ""] || {};
+  const allCategories = [...new Set([...getLicenseCategories(first?.label || ""), ...getLicenseCategories(second?.label || "")])];
 
   const categoryData = useMemo(() => {
     return allCategories.map((cat) => {
@@ -158,6 +146,18 @@ export function LicensePackageComparison() {
       };
     });
   }, [firstLabel, secondLabel]);
+
+  if (!first || !second) return null;
+
+  const deviceLabel = (t: LicenseTier) => t.maxDevices === -1 ? "Unlimited" : String(t.maxDevices);
+  const deviceBetter = first.maxDevices === -1 ? 1 : second.maxDevices === -1 ? -1 : first.maxDevices > second.maxDevices ? 1 : first.maxDevices < second.maxDevices ? -1 : 0;
+
+  const metricRows = [
+    { label: "Price", first: `${formatPrice(first.price, first.currency)}/mo`, second: `${formatPrice(second.price, second.currency)}/mo`, better: first.price < second.price ? 1 : first.price > second.price ? -1 : 0 },
+    { label: "Max Devices", first: deviceLabel(first), second: deviceLabel(second), better: deviceBetter },
+    { label: "Duration", first: `${first.durationDays} days`, second: `${second.durationDays} days`, better: first.durationDays > second.durationDays ? 1 : first.durationDays < second.durationDays ? -1 : 0 },
+    { label: "Organization Scope", first: first.organizationCompatibility, second: second.organizationCompatibility, better: 0 },
+  ];
 
   const { added: allAdded } = getLicenseComparison(first.label, second.label);
 

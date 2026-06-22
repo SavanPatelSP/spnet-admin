@@ -109,8 +109,30 @@ export function InvoicesPage() {
   }, [showToast]);
 
   useEffect(() => {
-    fetchInvoices(page);
-  }, [fetchInvoices, page]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ page: String(page), pageSize: String(20) });
+        const res = await fetch(`/api/invoices/list?${params}`);
+        const data = await res.json();
+        if (!cancelled) {
+          if (data.success) {
+            setInvoices(data.data || []);
+            setTotal(data.total || 0);
+          } else {
+            showToast("Failed to load invoices", "error");
+          }
+        }
+      } catch (err) {
+        if (!cancelled) showToast(err instanceof Error ? err.message : "Failed to load invoices", "error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const filtered = useMemo(() => {
     return invoices.filter((inv) => {

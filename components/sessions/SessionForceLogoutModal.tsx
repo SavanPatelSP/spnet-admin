@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useSWRConfig } from "swr";
 import { Modal } from "@/components/ui/Modal";
 import { API_ROUTES } from "@/lib/constants";
 import { formatDateTime } from "@/lib/shared";
@@ -27,6 +28,7 @@ export function SessionForceLogoutModal({
   onSuccess: () => void;
 }) {
   const { showToast } = useToast();
+  const { mutate } = useSWRConfig();
   const [loading, setLoading] = useState(false);
   const [impact, setImpact] = useState<{ sessionCount: number; activeDeviceCount: number; lastActivity: string | null } | null>(null);
   const [reason, setReason] = useState("");
@@ -67,6 +69,8 @@ export function SessionForceLogoutModal({
           "success"
         );
       }
+      mutate("/api/sessions/me");
+      window.dispatchEvent(new CustomEvent("session-updated", { detail: { sessionId: session.id, expiresAt: null } }));
       onSuccess();
       onClose();
     } catch (err) {

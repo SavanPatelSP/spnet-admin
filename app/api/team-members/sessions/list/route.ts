@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
     }
 
     const allSessions = await prisma.session.findMany({
-      where: where as any,
+      where: where as Prisma.SessionWhereInput,
       orderBy: { createdAt: "desc" },
       take: limit,
       include: {

@@ -263,7 +263,7 @@ export function CreateBroadcastForm() {
               </div>
               <h3 className="text-xl font-bold">Send Broadcast</h3>
               <p className="mt-2 text-sm text-zinc-400">
-                This will send <strong className="text-zinc-200">"{subject}"</strong> to{' '}
+                This will send <strong className="text-zinc-200">{'\u201C'}{subject}{'\u201D'}</strong> to{' '}
                 <strong className="text-zinc-200">{currentCount.toLocaleString()}</strong>{' '}
                 {TARGET_OPTIONS.find((o) => o.value === audience)?.label || "recipients"}.
               </p>

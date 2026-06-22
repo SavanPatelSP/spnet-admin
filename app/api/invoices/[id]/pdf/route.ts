@@ -10,7 +10,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireApiPermission("View Invoices");
+    try {
+      await requireApiPermission("Manage Invoices");
+    } catch (permError) {
+      console.error("PDF AUTH FAIL:", permError);
+      throw permError;
+    }
     const { id } = await params;
 
     const invoice = await prisma.invoice.findUnique({
