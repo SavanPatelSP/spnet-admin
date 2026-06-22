@@ -330,6 +330,7 @@ model TeamMember {
   sessions      Session[]
   loginHistory  LoginHistory[]
   mfaBackupCodes MfaBackupCode[]
+  notifications Notification[]
 }
 
 model Session {
@@ -563,4 +564,18 @@ model Invoice {
   @@index([category])
   @@index([action])
   @@index([issuedAt])
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  title         String
+  message       String
+  type          String   @default("INFO")
+  read          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([teamMemberId, read])
+  @@index([teamMemberId, createdAt])
 }
