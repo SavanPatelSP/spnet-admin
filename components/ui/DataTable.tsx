@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, memo, type ReactNode } from "react";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download } from "lucide-react";
 import { cn } from "@/lib/shared";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -120,13 +120,30 @@ export const DataTable = memo(function DataTable({
   }
 
   const SortIcon = ({ columnKey }: { columnKey: string }) => {
-    if (sortKey !== columnKey) return <ArrowUpDown size={14} className="ml-1 inline opacity-40" />;
+    if (sortKey !== columnKey) return <ArrowUpDown size={14} className="ml-1 inline opacity-30 group-hover/sort:opacity-60" />;
     return sortDir === "asc" ? <ArrowUp size={14} className="ml-1 inline text-blue-400" /> : <ArrowDown size={14} className="ml-1 inline text-blue-400" />;
   };
 
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible + 2) {
+      for (let i = 0; i < totalPages; i++) pages.push(i);
+    } else {
+      pages.push(0);
+      let start = Math.max(1, safePage - 1);
+      let end = Math.min(totalPages - 2, safePage + 1);
+      if (start > 1) pages.push("...");
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalPages - 2) pages.push("...");
+      pages.push(totalPages - 1);
+    }
+    return pages;
+  };
+
   return (
-    <div className={cn("overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl", className)}>
-      <div className="space-y-3 border-b border-zinc-800 px-5 py-4">
+    <div className={cn("overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-lg", className)}>
+      <div className="space-y-3 border-b border-zinc-800/50 px-5 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:w-auto">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
@@ -137,13 +154,21 @@ export const DataTable = memo(function DataTable({
                 setPage(0);
               }}
               placeholder={searchPlaceholder}
-              className="w-full sm:w-72 rounded-2xl border border-zinc-700 bg-zinc-800/50 py-2 pl-10 pr-4 text-sm outline-none focus:border-zinc-500"
+              className="w-full sm:w-72 rounded-lg border border-zinc-700/50 bg-zinc-800/30 py-2 pl-10 pr-8 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-zinc-600 focus:bg-zinc-800/50"
               aria-label={searchPlaceholder}
             />
+            {search && (
+              <button
+                onClick={() => { setSearch(""); setPage(0); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:text-zinc-300"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {selectable && selectedIds && selectedIds.size > 0 && (
-              <span className="text-sm text-zinc-400">{selectedIds.size} selected</span>
+              <span className="text-sm font-medium text-blue-400">{selectedIds.size} selected</span>
             )}
             {bulkActions && selectable && selectedIds && selectedIds.size > 0 && (
               <div className="flex items-center gap-2">{bulkActions}</div>
@@ -151,7 +176,7 @@ export const DataTable = memo(function DataTable({
             {exportable && (
               <button
                 onClick={onExport}
-                className="flex items-center gap-1.5 rounded-xl border border-zinc-700 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                className="flex items-center gap-1.5 rounded-lg border border-zinc-700/50 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
                 aria-label="Export data"
               >
                 <Download size={14} />
@@ -162,26 +187,23 @@ export const DataTable = memo(function DataTable({
             <select
               value={perPage}
               onChange={(e) => { setPerPage(Number(e.target.value)); setPage(0); }}
-              className="rounded-xl border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-400 outline-none"
+              className="rounded-lg border border-zinc-700/50 bg-zinc-800/30 px-2 py-1.5 text-sm text-zinc-400 outline-none transition-colors focus:border-zinc-600"
             >
               <option value={10}>10 / page</option>
               <option value={25}>25 / page</option>
               <option value={50}>50 / page</option>
             </select>
-            <p className="text-sm text-zinc-500">
-              {sorted.length} result{sorted.length !== 1 ? "s" : ""}
-            </p>
           </div>
         </div>
-        {filters && <div className="flex items-center">{filters}</div>}
+        {filters && <div className="flex items-center gap-2">{filters}</div>}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full" role="grid">
-          <thead className="border-b border-zinc-800 bg-zinc-950/40">
-            <tr>
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-zinc-800/50">
               {selectable && (
-                <th className="w-10 p-4">
+                <th className="w-10 p-3">
                   <input
                     type="checkbox"
                     checked={paged.length > 0 && selectedIds?.size === paged.length}
@@ -195,8 +217,8 @@ export const DataTable = memo(function DataTable({
                 <th
                   key={col.key}
                   className={cn(
-                    "p-4 text-left text-sm font-medium text-zinc-400",
-                    col.sortable && "cursor-pointer select-none hover:text-zinc-200",
+                    "group/sort p-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500",
+                    col.sortable && "cursor-pointer select-none hover:text-zinc-300",
                     col.className,
                   )}
                   onClick={() => col.sortable && toggleSort(col.key)}
@@ -204,26 +226,28 @@ export const DataTable = memo(function DataTable({
                   tabIndex={col.sortable ? 0 : undefined}
                   onKeyDown={(e) => { if (col.sortable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleSort(col.key); } }}
                 >
-                  {col.label}
-                  {col.sortable && <SortIcon columnKey={col.key} />}
+                  <span className="inline-flex items-center gap-1">
+                    {col.label}
+                    {col.sortable && <SortIcon columnKey={col.key} />}
+                  </span>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-zinc-800/30">
             {paged.map((row) => (
               <tr
                 key={row.id}
                 className={cn(
-                  "border-b border-zinc-800 transition-colors",
-                  onRowClick ? "cursor-pointer hover:bg-zinc-800/30" : "hover:bg-zinc-800/20",
+                  "transition-colors duration-150",
+                  onRowClick ? "cursor-pointer hover:bg-zinc-800/20" : "hover:bg-zinc-800/10",
                 )}
                 onClick={() => onRowClick?.(row.id)}
                 tabIndex={onRowClick ? 0 : undefined}
                 onKeyDown={(e) => { if (onRowClick && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onRowClick(row.id); } }}
               >
                 {selectable && (
-                  <td className="w-10 p-4" onClick={(e) => e.stopPropagation()}>
+                  <td className="w-10 p-3" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds?.has(row.id) ?? false}
@@ -234,25 +258,29 @@ export const DataTable = memo(function DataTable({
                   </td>
                 )}
                 {row.cells.map((cell, i) => (
-                  <td key={columns[i]?.key ?? i} className={cn("p-4", columns[i]?.className)}>
-                    {cell ?? "-"}
+                  <td key={columns[i]?.key ?? i} className={cn("p-3 text-sm", columns[i]?.className)}>
+                    {cell ?? <span className="text-zinc-600">-</span>}
                   </td>
                 ))}
               </tr>
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={columns.length + (selectable ? 1 : 0)} className="p-10">
-                  {search.trim() || filters ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <p className="text-sm text-zinc-500">{emptyMessage}</p>
+                <td colSpan={columns.length + (selectable ? 1 : 0)}>
+                  {search.trim() ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800/50">
+                        <Search size={20} className="text-zinc-500" />
+                      </div>
+                      <p className="text-sm font-medium text-zinc-400">No results found</p>
+                      <p className="mt-1 text-sm text-zinc-600">Try adjusting your search or filters</p>
                     </div>
                   ) : (
                     <EmptyState
                       title={emptyTitle || "No data found"}
                       description={emptyMessage}
                       icon={emptyIcon}
-                      className="border-0 bg-transparent"
+                      className="border-0 bg-transparent py-16"
                     />
                   )}
                 </td>
@@ -263,26 +291,65 @@ export const DataTable = memo(function DataTable({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-zinc-800 px-5 py-3">
-          <button
-            disabled={safePage === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
-            aria-label="Previous page"
-          >
-            <ChevronLeft size={16} /> Previous
-          </button>
-          <span className="text-sm text-zinc-500">
-            Page {safePage + 1} of {totalPages}
-          </span>
-          <button
-            disabled={safePage >= totalPages - 1}
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
-            aria-label="Next page"
-          >
-            Next <ChevronRight size={16} />
-          </button>
+        <div className="flex items-center justify-between border-t border-zinc-800/50 px-5 py-3">
+          <div className="flex items-center gap-1">
+            <button
+              disabled={safePage === 0}
+              onClick={() => setPage(0)}
+              className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 disabled:opacity-30 disabled:hover:bg-transparent"
+              aria-label="First page"
+            >
+              <ChevronsLeft size={16} />
+            </button>
+            <button
+              disabled={safePage === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 disabled:opacity-30 disabled:hover:bg-transparent"
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-1">
+            {getPageNumbers().map((p, i) =>
+              p === "..." ? (
+                <span key={`ellipsis-${i}`} className="px-2 text-sm text-zinc-600">...</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={cn(
+                    "min-w-[32px] rounded-lg px-2 py-1.5 text-sm font-medium transition-colors",
+                    p === safePage
+                      ? "bg-blue-600/20 text-blue-400"
+                      : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300",
+                  )}
+                >
+                  {p + 1}
+                </button>
+              )
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              disabled={safePage >= totalPages - 1}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 disabled:opacity-30 disabled:hover:bg-transparent"
+              aria-label="Next page"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <button
+              disabled={safePage >= totalPages - 1}
+              onClick={() => setPage(totalPages - 1)}
+              className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 disabled:opacity-30 disabled:hover:bg-transparent"
+              aria-label="Last page"
+            >
+              <ChevronsRight size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>

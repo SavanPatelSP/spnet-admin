@@ -6,7 +6,7 @@ import { Bell, CheckCheck } from "lucide-react";
 import { SessionStatus } from "@/components/auth/SessionStatus";
 import { SessionCountdown } from "@/components/auth/SessionCountdown";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
-import { Tooltip } from "@/components/ui/Tooltip";
+import { cn } from "@/lib/shared";
 
 interface Notification {
   id: string;
@@ -33,11 +33,11 @@ const NotificationBell = memo(function NotificationBell({ unreadCount, onClick }
   return (
     <button
       onClick={onClick}
-      className="relative rounded-2xl border border-zinc-800 bg-zinc-900 p-2.5 transition-colors hover:bg-zinc-800"
+      className="relative rounded-lg border border-zinc-700/50 bg-zinc-800/30 p-2 transition-colors hover:bg-zinc-700/50"
     >
-      <Bell size={18} />
+      <Bell size={16} className="text-zinc-400" />
       {unreadCount > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-zinc-950">
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       )}
@@ -72,47 +72,48 @@ export default function AdminHeader() {
   }, [data, mutate, notifications]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/80 px-6 py-3 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-zinc-800/50 bg-zinc-950/80 px-6 py-2.5 backdrop-blur-xl">
       <div className="flex items-center justify-between">
         <div className="hidden md:block">
           <GlobalSearch />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <SessionCountdown />
           <div className="relative">
-            <Tooltip content="Notifications">
-              <NotificationBell unreadCount={unreadCount} onClick={() => setNotifOpen(!notifOpen)} />
-            </Tooltip>
+            <NotificationBell unreadCount={unreadCount} onClick={() => setNotifOpen(!notifOpen)} />
             {notifOpen && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-96 rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl">
-                <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+              <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-xl border border-zinc-800/50 bg-zinc-900 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-zinc-800/50 px-4 py-3">
                   <h3 className="text-sm font-semibold text-zinc-100">Notifications</h3>
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllRead}
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                      className="flex items-center gap-1 text-xs font-medium text-blue-400 transition-colors hover:text-blue-300"
                     >
                       <CheckCheck size={12} />
                       Mark all read
                     </button>
                   )}
                 </div>
-                <div className="max-h-80 overflow-y-auto">
+                <div className="max-h-80 overflow-y-auto scrollbar-thin">
                   {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-zinc-500">No notifications yet.</div>
+                    <div className="p-8 text-center text-sm text-zinc-500">No notifications yet.</div>
                   ) : (
                     notifications.map((n) => (
                       <div
                         key={n.id}
-                        className={`border-b border-zinc-800/50 p-4 transition-colors hover:bg-zinc-800/30 ${!n.read ? "bg-blue-500/5" : ""}`}
+                        className={cn(
+                          "border-b border-zinc-800/30 px-4 py-3 transition-colors hover:bg-zinc-800/20",
+                          !n.read && "bg-blue-500/[2%]",
+                        )}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className={`text-sm ${!n.read ? "font-semibold text-zinc-100" : "text-zinc-300"}`}>
+                            <p className={cn("text-sm", !n.read ? "font-semibold text-zinc-100" : "text-zinc-300")}>
                               {n.title}
                             </p>
-                            <p className="mt-0.5 text-xs text-zinc-500 whitespace-pre-line">{n.message}</p>
+                            <p className="mt-0.5 text-xs text-zinc-600 whitespace-pre-line">{n.message}</p>
                           </div>
                           {!n.read && (
                             <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-400" />

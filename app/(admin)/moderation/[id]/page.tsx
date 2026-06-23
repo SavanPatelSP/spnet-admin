@@ -39,6 +39,11 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     if (member) {
       targetContext = { name: member.email, status: member.status };
     }
+  } else if (report.targetType === "USER") {
+    const user = await prisma.user.findUnique({ where: { id: report.targetId } });
+    if (user) {
+      targetContext = { name: user.email, status: user.role };
+    }
   }
 
   const previousActions = report.actionTaken

@@ -62,7 +62,6 @@ export default async function LicenseDetailsPage({ params }: { params: Promise<{
       <PageHeader
         title="License Details"
         description={`Manage and monitor license ${license.key}`}
-        gradient={false}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <EditLicenseButton license={license} size="md" />

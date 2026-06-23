@@ -16,16 +16,16 @@ interface ActionButtonProps {
 }
 
 const variantStyles = {
-  primary: "bg-blue-600 text-white hover:bg-blue-500 disabled:bg-blue-600/50",
-  secondary: "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 disabled:bg-zinc-800/50",
-  danger: "bg-red-600 text-white hover:bg-red-500 disabled:bg-red-600/50",
+  primary: "bg-blue-600 text-white hover:bg-blue-500 disabled:bg-blue-600/50 shadow-sm shadow-blue-900/20",
+  secondary: "bg-zinc-800/80 text-zinc-200 hover:bg-zinc-700 disabled:bg-zinc-800/50 border border-zinc-700/50",
+  danger: "bg-red-600 text-white hover:bg-red-500 disabled:bg-red-600/50 shadow-sm shadow-red-900/20",
   ghost: "bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30",
 };
 
 const sizeStyles = {
   sm: "px-3 py-1.5 text-xs rounded-lg",
-  md: "px-4 py-2 text-sm rounded-xl",
-  lg: "px-5 py-3 text-base rounded-xl",
+  md: "px-4 py-2 text-sm rounded-lg",
+  lg: "px-5 py-3 text-base rounded-lg",
 };
 
 export function ActionButton({ onClick, children, variant = "primary", size = "md", disabled, className, confirmText, loading: externalLoading }: ActionButtonProps) {

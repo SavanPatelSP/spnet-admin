@@ -30,7 +30,6 @@ export default async function RoleDetailsPage({ params }: { params: Promise<{ id
       <PageHeader
         title={role.name}
         description={role.description || "No description provided"}
-        gradient={false}
         actions={
           <div className="flex items-center gap-3">
             {hasPermission(session, "Edit Roles") && (

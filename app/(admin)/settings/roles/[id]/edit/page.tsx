@@ -26,7 +26,6 @@ export default async function EditRolePage({ params }: { params: Promise<{ id: s
       <PageHeader
         title={`Edit: ${role.name}`}
         description={role.description || "Modify role settings and permissions"}
-        gradient={false}
         actions={
           <Link
             href={`/settings/roles/${role.id}`}

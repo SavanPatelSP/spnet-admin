@@ -13,9 +13,9 @@ export async function logAudit(
   entityType?: string | null,
   entityId?: string | null,
   metadata?: Record<string, unknown> | null,
-) {
+): Promise<{ id: string } | null> {
   try {
-    await prisma.auditLog.create({
+    return await prisma.auditLog.create({
       data: {
         action,
         licenseId,
@@ -29,9 +29,11 @@ export async function logAudit(
         entityId,
         metadata: metadata ? JSON.stringify(metadata) : null,
       },
+      select: { id: true },
     });
   } catch {
     // Swallow audit logging errors
+    return null;
   }
 }
 

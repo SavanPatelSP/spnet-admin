@@ -70,6 +70,7 @@ declare module "next-auth" {
       sessionRecordId: string | null;
       sessionCreatedAt: string | null;
       sessionExpiresAt: string | null;
+      rolePermissionsVersion: number;
     } & DefaultSession["user"];
   }
 }
@@ -87,6 +88,7 @@ declare module "@auth/core/jwt" {
     sessionCreatedAt: string | null;
     sessionExpiresAt: string | null;
     licenseLastVerifiedAt: string | null;
+    rolePermissionsVersion: number;
   }
 }
 
@@ -403,6 +405,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           licenseStatus: license.status,
           licensePlan: license.plan,
           permissions,
+          rolePermissionsVersion: member.role?.permissionsVersion ?? 0,
           sessionRecordId,
           sessionCreatedAt: sessionCreatedAt.toISOString(),
           sessionExpiresAt: sessionExpiresAt.toISOString(),
@@ -426,38 +429,50 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.sessionExpiresAt = (user as { sessionExpiresAt: string | null }).sessionExpiresAt;
         token.licenseLastVerifiedAt = new Date().toISOString();
       } else {
-        // Re-validate license + re-fetch permissions periodically
+        // ── Lightweight permissionsVersion check on every call ──
+        // PK lookup returning a single integer — <5ms with connection pool.
+        // Only re-fetches the full permissions list when version actually changes.
+        try {
+          const role = await prisma.role.findUnique({
+            where: { id: token.roleId as string },
+            select: { permissionsVersion: true },
+          });
+          const currentVersion = role?.permissionsVersion ?? 0;
+          if (currentVersion !== (token.rolePermissionsVersion ?? 0)) {
+            const permissionRows = await prisma.permission.findMany({
+              where: { roleId: token.roleId as string },
+              select: { permission: true },
+            });
+            token.permissions = permissionRows.map(p => p.permission);
+            token.rolePermissionsVersion = currentVersion;
+          }
+        } catch {
+          // Best-effort; stale permissions are acceptable temporarily.
+        }
+
+        // ── Periodic license re-validation (5 min interval) ──
         const LICENSE_REFRESH_MS = 5 * 60 * 1000;
         const lastVerified = token.licenseLastVerifiedAt
           ? new Date(token.licenseLastVerifiedAt).getTime()
           : 0;
         if (Date.now() - lastVerified > LICENSE_REFRESH_MS) {
           try {
-            const [license, permissionRows] = await Promise.all([
-              prisma.license.findUnique({
-                where: { id: token.licenseId as string },
-                select: { status: true, expiresAt: true },
-              }),
-              prisma.permission.findMany({
-                where: { roleId: token.roleId as string },
-                select: { permission: true },
-              }),
-            ]);
+            const license = await prisma.license.findUnique({
+              where: { id: token.licenseId as string },
+              select: { status: true, expiresAt: true },
+            });
             if (!license) return null;
             if (license.expiresAt < new Date() || license.status !== "ACTIVE") return null;
             if (token.licenseStatus !== license.status) {
               token.licenseStatus = license.status;
             }
-            token.permissions = permissionRows.map(p => p.permission);
             token.licenseLastVerifiedAt = new Date().toISOString();
-          } catch (e) {
-            console.error("License validation error in JWT callback:", e);
+          } catch {
+            // Best-effort; license state is re-checked on next interval.
           }
         }
 
-        // Server-driven session expiry check (no DB query — trust JWT maxAge)
-        // The SessionCountdown component polls /api/sessions/me every 30s for fresh data.
-        // The JWT's own maxAge is the authoritative session expiry.
+        // ── Server-driven session expiry check ──
         if (token.sessionExpiresAt && new Date(token.sessionExpiresAt) < new Date()) {
           return null;
         }
@@ -475,6 +490,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.sessionRecordId = token.sessionRecordId || null;
       session.user.sessionCreatedAt = token.sessionCreatedAt || null;
       session.user.sessionExpiresAt = token.sessionExpiresAt || null;
+      session.user.rolePermissionsVersion = token.rolePermissionsVersion ?? 0;
       return session;
     },
   },

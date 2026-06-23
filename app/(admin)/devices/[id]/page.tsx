@@ -38,7 +38,6 @@ export default async function DeviceDetailsPage({ params }: { params: Promise<{ 
       <PageHeader
         title="Device Details"
         description={`Activation information for ${activation.deviceName || "Unknown Device"} (${activation.ipAddress || "No IP"})`}
-        gradient={false}
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <DeviceStatusActions

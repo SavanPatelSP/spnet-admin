@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         },
       });
 
-      await logAudit(
+      const auditEntry = await logAudit(
         AUDIT_ACTIONS.LOGIN_TENURE_OVERRIDDEN,
         null,
         null,
@@ -63,9 +63,10 @@ export async function POST(req: Request) {
       );
 
       const cost = (SESSION_EXTENSION_PRICE_PER_MINUTE || 0) * (effectiveCooldown || 0);
+      let invoiceId: string | null = null;
       if (cost > 0) {
         try {
-          await createInvoice({
+          const invoice = await createInvoice({
             organization: existing.teamMember?.name || undefined,
             customerName: existing.teamMember?.name || undefined,
             customerEmail: existing.teamMember?.email || undefined,
@@ -87,12 +88,26 @@ export async function POST(req: Request) {
             relatedEntityType: "LOGIN_TENURE_OVERRIDE",
             relatedEntityId: sessionId,
           });
+          invoiceId = invoice?.id || null;
         } catch {
           // Invoice generation is best-effort.
         }
       }
 
-      return Response.json({ success: true, session: updated });
+      return Response.json({
+        success: true,
+        session: updated,
+        verification: {
+          type: "cooldown_override",
+          previousCooldown: existing.overrideCooldownMinutes,
+          newCooldown: effectiveCooldown,
+          overriddenBy: apiSession.user.name,
+          overriddenByEmail: apiSession.user.email,
+          timestamp: updated.lastOverrideAt?.toISOString(),
+          auditReference: (auditEntry as { id?: string })?.id || null,
+          invoiceId,
+        },
+      });
     }
 
     if (!option || !["unlimited", "12h", "24h", "7d", "30d", "custom", "restore"].includes(option)) {
@@ -142,19 +157,20 @@ export async function POST(req: Request) {
       },
     });
 
-    await logAudit(
-      AUDIT_ACTIONS.SESSION_POLICY_OVERRIDDEN,
-      null,
-      null,
-      apiSession.user.role,
-      apiSession.user.name,
-      `Session policy overridden for ${existing.teamMember?.email || sessionId}: ${policyLabel} until ${newExpiry.toISOString()}`,
-      apiSession.user.email,
-    );
+    const policyAuditEntry = await logAudit(
+        AUDIT_ACTIONS.SESSION_POLICY_OVERRIDDEN,
+        null,
+        null,
+        apiSession.user.role,
+        apiSession.user.name,
+        `Session policy overridden for ${existing.teamMember?.email || sessionId}: ${policyLabel} until ${newExpiry.toISOString()}`,
+        apiSession.user.email,
+      );
 
+    let policyInvoiceId: string | null = null;
     if (cost > 0) {
       try {
-        await createInvoice({
+        const invoice = await createInvoice({
           organization: existing.teamMember?.name || undefined,
           customerName: existing.teamMember?.name || undefined,
           customerEmail: existing.teamMember?.email || undefined,
@@ -176,12 +192,27 @@ export async function POST(req: Request) {
           relatedEntityType: "SESSION_POLICY_OVERRIDE",
           relatedEntityId: sessionId,
         });
+        policyInvoiceId = invoice?.id || null;
       } catch {
         // Invoice generation is best-effort.
       }
     }
 
-    return Response.json({ success: true, session: updated });
+    return Response.json({
+      success: true,
+      session: updated,
+      verification: {
+        type: "policy_override",
+        previousExpiry: existing.expiresAt.toISOString(),
+        newExpiry: newExpiry.toISOString(),
+        newPolicy: policyLabel,
+        overriddenBy: apiSession.user.name,
+        overriddenByEmail: apiSession.user.email,
+        timestamp: updated.lastOverrideAt?.toISOString(),
+        auditReference: policyAuditEntry?.id || null,
+        invoiceId: policyInvoiceId,
+      },
+    });
   } catch (error) {
     return handleApiError(error);
   }

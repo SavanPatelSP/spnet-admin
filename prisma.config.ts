@@ -60,33 +60,24 @@ if (!BUILD_PHASE && DB_URL) {
   }
 
   if (APP_ENV === "development" && isProdDatabase) {
-    console.error(
-      "╔══════════════════════════════════════════════════════════════════╗\n" +
-      "║  FATAL: Development environment targets a production database.  ║\n" +
-      "║  Check your DATABASE_URL in .env.development.                   ║\n" +
-      "╚══════════════════════════════════════════════════════════════════╝"
+    throw new Error(
+      "Development environment targets a production database. " +
+      "Check your DATABASE_URL in .env.development."
     );
-    process.exit(1);
   }
 
   if (APP_ENV === "production" && !isProdDatabase) {
-    console.error(
-      "╔══════════════════════════════════════════════════════════════════╗\n" +
-      "║  FATAL: Production environment does not target a production DB. ║\n" +
-      "║  Check your DATABASE_URL in .env.production or deployment vars. ║\n" +
-      "╚══════════════════════════════════════════════════════════════════╝"
+    throw new Error(
+      "Production environment does not target a production DB. " +
+      "Check your DATABASE_URL in .env.production or deployment vars."
     );
-    process.exit(1);
   }
 
   if (APP_ENV === "staging" && isProdDatabase) {
-    console.error(
-      "╔══════════════════════════════════════════════════════════════════╗\n" +
-      "║  FATAL: Staging environment targets a production database.      ║\n" +
-      "║  Check your DATABASE_URL in staging deployment variables.       ║\n" +
-      "╚══════════════════════════════════════════════════════════════════╝"
+    throw new Error(
+      "Staging environment targets a production database. " +
+      "Check your DATABASE_URL in staging deployment variables."
     );
-    process.exit(1);
   }
 }
 

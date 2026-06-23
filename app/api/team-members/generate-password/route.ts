@@ -83,16 +83,8 @@ export async function POST(req: Request) {
       return Response.json({ success: false, error: "Team member not found" }, { status: 404 });
     }
 
-    console.log("PASSWORD_GENERATE_START", JSON.stringify({ memberId, email: member.email }));
-
-    const oldHash = member.password;
-    const oldHashMasked = oldHash ? `${oldHash.slice(0, 7)}...${oldHash.slice(-4)}` : "none";
-    console.log("PASSWORD_HASH_CREATED", JSON.stringify({ oldHash: oldHashMasked, status: "before_update" }));
-
     const generatedPassword = generatePassword({ length, uppercase, lowercase, numbers, symbols });
     const hashedPassword = await bcrypt.hash(generatedPassword, 12);
-    const newHashMasked = `${hashedPassword.slice(0, 7)}...${hashedPassword.slice(-4)}`;
-    console.log("PASSWORD_HASH_CREATED", JSON.stringify({ newHash: newHashMasked, status: "hash_computed" }));
 
     await prisma.teamMember.update({
       where: { id: memberId },
@@ -115,18 +107,10 @@ export async function POST(req: Request) {
       },
     }).catch(() => {});
 
-    console.log("PASSWORD_DB_UPDATE", JSON.stringify({ status: "transaction_complete" }));
-
-    // Post-save verification
     const saved = await prisma.teamMember.findUnique({ where: { id: memberId }, select: { password: true, updatedAt: true } });
-    const savedHashMasked = saved ? `${saved.password.slice(0, 7)}...${saved.password.slice(-4)}` : "none";
-    const hashChanged = saved ? saved.password !== oldHash : false;
     const bcryptResult = saved ? await bcrypt.compare(generatedPassword, saved.password) : false;
-    console.log("PASSWORD_DB_VERIFY", JSON.stringify({ savedHash: savedHashMasked, hashChanged }));
-    console.log("PASSWORD_BCRYPT_VERIFY", JSON.stringify({ result: bcryptResult }));
 
     if (!saved || !bcryptResult) {
-      console.log("PASSWORD_GENERATE_FAILURE", JSON.stringify({ reason: "hash_verification_failed", hasSaved: !!saved, bcryptResult }));
       throw new Error("Password hash verification failed after save");
     }
 
@@ -151,14 +135,6 @@ export async function POST(req: Request) {
         passwordLength: length,
       }
     );
-
-    console.log("PASSWORD_AUDIT_CREATED", JSON.stringify({ status: "audit_logged" }));
-    console.log("PASSWORD_GENERATE_SUCCESS", JSON.stringify({
-      dbRowUpdated: true,
-      hashChanged,
-      bcryptVerification: bcryptResult,
-      auditCreated: true,
-    }));
 
     return Response.json({
       success: true,

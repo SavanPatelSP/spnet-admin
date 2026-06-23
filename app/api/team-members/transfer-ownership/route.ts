@@ -57,6 +57,13 @@ export async function POST(req: Request) {
         where: { id: targetMemberId },
         data: { roleId: ownerRole.id },
       }),
+      prisma.session.updateMany({
+        where: {
+          teamMemberId: { in: [currentOwner.id, targetMemberId] },
+          expiresAt: { gt: new Date() },
+        },
+        data: { expiresAt: new Date() },
+      }),
     ]);
 
     await logAudit(

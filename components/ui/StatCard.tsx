@@ -46,23 +46,25 @@ const trendIconMap = {
 export function StatCard({ title, value, icon: Icon, trend, color = "default", subtitle, href, className }: StatCardProps) {
   const inner = (
     <>
-      <div className="flex items-start justify-between">
-        <p className="text-sm text-zinc-500">{title}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-zinc-500">{title}</p>
+          <h3 className={cn("mt-1.5 text-2xl font-bold tracking-tight", color !== "default" ? colorMap[color] : "text-zinc-100")}>
+            {value}
+          </h3>
+        </div>
         {Icon && (
-          <div className={cn("flex h-10 w-10 items-center justify-center rounded-2xl", iconBgMap[color])}>
+          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", iconBgMap[color])}>
             <Icon size={20} className={colorMap[color]} />
           </div>
         )}
       </div>
-      <h2 className={cn("mt-2 text-3xl font-bold", color !== "default" && colorMap[color])}>
-        {value}
-      </h2>
       {(trend || subtitle) && (
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           {trend && (
-            <span className={cn("text-xs font-medium", trendColorMap[trend.direction])}>
+            <span className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium", trendColorMap[trend.direction], `${trendColorMap[trend.direction]}/10 bg`)}>
               {trendIconMap[trend.direction]} {trend.value}
-              {trend.label && <span className="text-zinc-600"> {trend.label}</span>}
+              {trend.label && <span className="text-zinc-500 font-normal">{trend.label}</span>}
             </span>
           )}
           {subtitle && <span className="text-xs text-zinc-600">{subtitle}</span>}
@@ -72,8 +74,8 @@ export function StatCard({ title, value, icon: Icon, trend, color = "default", s
   );
 
   const classes = cn(
-    "rounded-3xl border border-zinc-800 bg-zinc-900 p-6 transition-all hover:border-zinc-700",
-    href && "cursor-pointer hover:bg-zinc-800/50",
+    "rounded-xl border border-zinc-800/50 bg-zinc-900/50 p-5 transition-all duration-200 hover:border-zinc-700/50 hover:bg-zinc-900",
+    href && "cursor-pointer",
     className,
   );
 
@@ -88,7 +90,7 @@ export function StatCardGrid({ children, columns = 4 }: { children: React.ReactN
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-4",
+        "grid grid-cols-1 gap-3",
         columns === 2 && "sm:grid-cols-2",
         columns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
         columns === 4 && "sm:grid-cols-2 lg:grid-cols-4",

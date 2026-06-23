@@ -36,8 +36,8 @@ const colorConfig: Record<string, { text: string; border: string; bg: string; ba
 
 function InsightCard({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-3xl border border-zinc-800 bg-zinc-900 p-6 ${className || ""}`}>
-      <h2 className="mb-4 text-base font-bold text-zinc-100">{title}</h2>
+    <div className={`rounded-xl border border-zinc-800/50 bg-zinc-900/50 p-5 ${className || ""}`}>
+      <h2 className="mb-4 text-sm font-semibold text-zinc-200">{title}</h2>
       {children}
     </div>
   );
@@ -45,20 +45,20 @@ function InsightCard({ title, children, className }: { title: string; children: 
 
 function StatRow({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-zinc-800/40 px-3 py-2">
-      <span className="text-xs text-zinc-400">{label}</span>
-      <span className={`text-sm font-semibold ${color || "text-zinc-100"}`}>{value}</span>
+    <div className="flex items-center justify-between rounded-lg bg-zinc-800/30 px-3 py-2">
+      <span className="text-xs text-zinc-500">{label}</span>
+      <span className={`text-sm font-medium ${color || "text-zinc-100"}`}>{value}</span>
     </div>
   );
 }
 
 function MetricsRow({ items }: { items: { label: string; value: string | number; icon: typeof Shield; color: string }[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-2">
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <div key={item.label} className="rounded-xl bg-zinc-800/40 p-3">
+          <div key={item.label} className="rounded-lg bg-zinc-800/30 p-3">
             <div className="flex items-center gap-2">
               <Icon size={14} className={item.color} />
               <span className="text-[11px] text-zinc-500">{item.label}</span>
@@ -78,49 +78,51 @@ export default async function DashboardPage() {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   // Consolidated dashboard queries - reduced from 17 to ~8 independent queries
-  const [
-    licenses,
-    activationCounts,
-    memberCounts,
-    roleCount,
-    coinStats,
-    gemStats,
-    promoCount,
-    invoiceStats,
-    invoiceCounts,
-    todayEvents,
-    activePremiumSubs,
-    sessionCount,
-    overriddenSessionCount,
-  ] = await Promise.all([
-    prisma.license.findMany({ select: { status: true, expiresAt: true, maxDevices: true, plan: true, organization: true } }),
-    prisma.activation.groupBy({ by: ["status"], _count: true }),
-    prisma.teamMember.groupBy({ by: ["status"], _count: true }),
-    prisma.role.count(),
-    prisma.coinBalance.aggregate({ _sum: { balance: true }, _count: true }),
-    prisma.gemBalance.aggregate({ _sum: { balance: true }, _count: true }),
-    prisma.promotion.count({ where: { active: true } }),
-    prisma.invoice.aggregate({ _sum: { total: true }, _count: true }),
-    prisma.invoice.groupBy({ by: ["status"], _count: true }),
-    prisma.auditLog.groupBy({
-      by: ["action"],
-      where: { action: { in: ["LOGIN_SUCCESS", "LOGIN_FAILURE", "PERMISSION_DENIED"] }, createdAt: { gte: startOfToday } },
-      _count: true,
-    }),
-    prisma.premiumSubscription.count({
-      where: { endDate: { gt: now }, action: { notIn: ["REVOKED", "CANCELLED"] } },
-    }),
-    prisma.session.count({
-      where: { expiresAt: { gt: now } },
-    }),
-    prisma.session.count({
-      where: { expiresAt: { gt: now }, overrideDurationMinutes: { not: null } },
-    }),
-  ]);
+const [
+  licenses,
+  memberCounts,
+  activationCounts,
+  roleCount,
+  coinStats,
+  gemStats,
+  activePromotions,
+  totalPromotions,
+  invoiceStats,
+  invoiceCounts,
+  todayEvents,
+  activePremiumSubs,
+  sessionCount,
+  overriddenSessionCount,
+] = await Promise.all([
+  prisma.license.findMany({ select: { id: true, status: true, plan: true, expiresAt: true, maxDevices: true, organization: true } }),
+  prisma.teamMember.groupBy({ by: ["status"], _count: true }),
+  prisma.activation.groupBy({ by: ["status"], _count: true }),
+  prisma.role.count(),
+  prisma.coinBalance.aggregate({ _sum: { balance: true }, _count: true }),
+  prisma.gemBalance.aggregate({ _sum: { balance: true }, _count: true }),
+  prisma.promotion.count({ where: { active: true } }),
+  prisma.promotion.count(),
+  prisma.invoice.aggregate({ _sum: { total: true }, _count: true }),
+  prisma.invoice.groupBy({ by: ["status"], _count: true }),
+  prisma.auditLog.groupBy({
+    by: ["action"],
+    where: { action: { in: ["LOGIN_SUCCESS", "LOGIN_FAILURE", "PERMISSION_DENIED"] }, createdAt: { gte: startOfToday } },
+    _count: true,
+  }),
+  prisma.premiumSubscription.count({
+    where: { endDate: { gt: now }, action: { notIn: ["REVOKED", "CANCELLED"] } },
+  }),
+  prisma.session.count({
+    where: { expiresAt: { gt: now } },
+  }),
+  prisma.session.count({
+    where: { expiresAt: { gt: now }, overrideDurationMinutes: { not: null } },
+  }),
+]);
 
-  const sessionsExpiringSoonCount = await prisma.session.count({
-    where: { expiresAt: { gt: now, lte: thirtyDaysFromNow } },
-  });
+const sessionsExpiringSoonCount = await prisma.session.count({
+  where: { expiresAt: { gt: now, lte: thirtyDaysFromNow } },
+});
 
   const auditLogs = await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5 });
 
@@ -147,6 +149,7 @@ export default async function DashboardPage() {
     acc[l.plan] = (acc[l.plan] || 0) + 1;
     return acc;
   }, {});
+  const usedPlans = Object.keys(planBreakdown).length;
   const totalInvoices = invoiceStats._count;
   const invoiceRevenue = invoiceStats._sum.total || 0;
   const activationStatusMap = Object.fromEntries(activationCounts.map((g) => [g.status, g._count]));
@@ -173,12 +176,12 @@ export default async function DashboardPage() {
       />
 
       {criticalAlerts.length > 0 && (
-        <div className="rounded-3xl border border-yellow-800/50 bg-yellow-500/5 p-5">
+        <div className="rounded-xl border border-yellow-800/30 bg-yellow-500/[3%] p-5">
           <div className="flex items-center gap-2 text-yellow-400">
-            <AlertTriangle size={18} />
-            <h3 className="font-semibold">Critical Alerts</h3>
+            <AlertTriangle size={16} />
+            <h3 className="text-sm font-semibold">Critical Alerts</h3>
           </div>
-          <div className="mt-3 flex flex-wrap gap-4">
+          <div className="mt-3 flex flex-wrap gap-3">
             {criticalAlerts.map((alert, i) => {
               const Icon = alert.icon;
               return (
@@ -306,7 +309,7 @@ export default async function DashboardPage() {
             <MetricsRow items={[
               { label: "Active Subscriptions", value: activePremiumSubs, icon: Crown, color: "text-yellow-400" },
               { label: "Plan Tiers", value: ALL_PLANS.length, icon: BarChart3, color: "text-purple-400" },
-              { label: "Rate", value: `${ALL_PLANS.length > 0 ? "multi" : "N/A"}`, icon: TrendingUp, color: "text-green-400" },
+              { label: "Tiers in Use", value: `${usedPlans}/${ALL_PLANS.length}`, icon: TrendingUp, color: "text-green-400" },
               { label: "Tiers Available", value: ALL_PLANS.length, icon: Layers, color: "text-blue-400" },
             ]} />
           </InsightCard>
@@ -339,8 +342,8 @@ export default async function DashboardPage() {
         {/* Promotion Performance */}
         <InsightCard title="Promotion Performance">
           <div className="space-y-2">
-            <StatRow label="Active Campaigns" value={promoCount} color="text-green-400" />
-            <StatRow label="Total Promotions" value={promoCount} color="text-blue-400" />
+            <StatRow label="Active Campaigns" value={activePromotions} color="text-green-400" />
+            <StatRow label="Total Promotions" value={totalPromotions} color="text-blue-400" />
           </div>
         </InsightCard>
 
@@ -491,10 +494,10 @@ export default async function DashboardPage() {
             { href: "/premium?action=grant", icon: Crown, label: "Grant Premium", desc: "Grant or extend premium subscriptions", color: "text-yellow-400", bg: "bg-yellow-500/10" },
             { href: "/licenses/create", icon: KeyRound, label: "Create License", desc: "Issue new license keys", color: "text-purple-400", bg: "bg-purple-500/10" },
             { href: "/settings/team-members", icon: UserPlus, label: "Invite Member", desc: "Add team members and assign roles", color: "text-blue-400", bg: "bg-blue-500/10" },
-            { href: "/offers/create", icon: Gift, label: "Create Promo Code", desc: "Launch promotional campaigns", color: "text-amber-400", bg: "bg-amber-500/10" },
+            { href: "/offers", icon: Gift, label: "Create Promo Code", desc: "Launch promotional campaigns", color: "text-amber-400", bg: "bg-amber-500/10" },
             { href: "/invoices", icon: FileText, label: "Open Invoices", desc: "View and manage billing invoices", color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { href: "/sessions", icon: Lock, label: "Manage Sessions", desc: "Monitor and control active sessions", color: "text-red-400", bg: "bg-red-500/10" },
-            { href: "/audit-logs", icon: Activity, label: "View Analytics", desc: "Review audit trails and activity", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+            { href: "/audit-logs", icon: Activity, label: "Audit Logs", desc: "Review audit trails and activity", color: "text-cyan-400", bg: "bg-cyan-500/10" },
             { href: "/system-health", icon: Server, label: "System Health", desc: "Monitor performance and uptime", color: "text-green-400", bg: "bg-green-500/10" },
           ].map((action) => {
             const Icon = action.icon;

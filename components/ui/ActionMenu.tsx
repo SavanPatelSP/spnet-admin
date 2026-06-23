@@ -33,12 +33,12 @@ export function ActionMenu({ items }: ActionMenuProps) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
+        className="flex items-center gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/30 px-2.5 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:bg-zinc-700/50 hover:text-zinc-200"
       >
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-2xl">
+        <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-900 py-1 shadow-xl shadow-black/20">
           {items.map((item) => (
             <button
               key={item.label}

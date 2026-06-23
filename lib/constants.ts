@@ -672,7 +672,7 @@ export const AUTH = {
   SESSION_MAX_AGE_SECONDS: Number(process.env.AUTH_SESSION_MAX_AGE_SECONDS) || 3600,
 } as const;
 
-export const SESSION_EXTENSION_PRICE_PER_MINUTE = Number(process.env.SESSION_EXTENSION_PRICE_PER_MINUTE) || 0;
+export const SESSION_EXTENSION_PRICE_PER_MINUTE = Number(process.env.SESSION_EXTENSION_PRICE_PER_MINUTE) || 0.05;
 
 export const RATE_LIMIT = {
   LOGIN_WINDOW_MS: Number(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 60_000,

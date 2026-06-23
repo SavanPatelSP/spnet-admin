@@ -87,6 +87,7 @@ export function SessionPolicyOverrideModal({
 
   const [saving, setSaving] = useState(false);
   const [now, setNow] = useState<number>(() => Date.now());
+  const [verification, setVerification] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -166,12 +167,7 @@ export function SessionPolicyOverrideModal({
       if (newExpiresAt) {
         window.dispatchEvent(new CustomEvent("session-updated", { detail: { sessionId: session.id, expiresAt: newExpiresAt } }));
       }
-      showToast(
-        tab === "policy" ? "Session policy overridden" : "Login tenure cooldown updated",
-        "success"
-      );
-      onSuccess();
-      onClose();
+      setVerification(data.verification || {});
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Override failed", "error");
     } finally {
@@ -187,16 +183,25 @@ export function SessionPolicyOverrideModal({
       description={`Manage session policy and login tenure for ${session.teamMember?.name || "this user"}.`}
       size="lg"
       footer={
-        <>
-          <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800">Cancel</button>
+        verification ? (
           <button
-            onClick={handleSubmit}
-            disabled={saving || (tab === "policy" && policyOption === "custom" && customMinutes < 1)}
-            className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50"
+            onClick={() => { onSuccess(); onClose(); }}
+            className="ml-auto rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
           >
-            {saving ? "Applying..." : tab === "policy" ? "Override Policy" : "Update Cooldown"}
+            <CheckCircle size={14} className="mr-1.5 inline" /> Close
           </button>
-        </>
+        ) : (
+          <>
+            <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800">Cancel</button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving || (tab === "policy" && policyOption === "custom" && customMinutes < 1)}
+              className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50"
+            >
+              {saving ? "Applying..." : tab === "policy" ? "Override Policy" : "Update Cooldown"}
+            </button>
+          </>
+        )
       }
     >
       <div className="space-y-5">
@@ -421,6 +426,36 @@ export function SessionPolicyOverrideModal({
             <div className="flex"><span className="w-28 text-zinc-500">Cost</span><span className={(tab === "policy" && hasCostImpact) || (tab === "cooldown" && cooldownCost > 0) ? "text-red-400" : "text-zinc-500"}>{(tab === "policy" && hasCostImpact) ? formatPrice(costImpact, "$") : (tab === "cooldown" && cooldownCost > 0) ? formatPrice(cooldownCost, "$") : "No charge"}</span></div>
           </div>
         </div>
+
+        {verification && (
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <CheckCircle size={16} className="text-emerald-400" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Verification Evidence</h4>
+            </div>
+            <div className="space-y-2 font-mono text-xs">
+              <div className="flex"><span className="w-32 text-zinc-500">Action</span><span className="text-emerald-400">{(verification.type as string) === "policy_override" ? "SESSION_POLICY_OVERRIDDEN" : "LOGIN_TENURE_OVERRIDDEN"}</span></div>
+              {(verification.type as string) === "policy_override" ? (
+                <>
+                  <div className="flex"><span className="w-32 text-zinc-500">Previous Expiry</span><span className="text-zinc-400">{verification.previousExpiry ? formatDateTime(new Date(verification.previousExpiry as string)) : "-"}</span></div>
+                  <div className="flex"><span className="w-32 text-zinc-500">New Expiry</span><span className="text-blue-400">{verification.newExpiry ? formatDateTime(new Date(verification.newExpiry as string)) : "-"}</span></div>
+                  <div className="flex"><span className="w-32 text-zinc-500">New Policy</span><span className="text-zinc-300">{verification.newPolicy as string}</span></div>
+                </>
+              ) : (
+                <>
+                  <div className="flex"><span className="w-32 text-zinc-500">Previous Cooldown</span><span className="text-zinc-400">{verification.previousCooldown != null ? `${verification.previousCooldown as number} min` : "Default"}</span></div>
+                  <div className="flex"><span className="w-32 text-zinc-500">New Cooldown</span><span className="text-amber-400">{verification.newCooldown != null ? `${verification.newCooldown as number} min` : "Default"}</span></div>
+                </>
+              )}
+              <div className="flex"><span className="w-32 text-zinc-500">Overridden By</span><span className="text-zinc-300">{verification.overriddenBy as string} ({verification.overriddenByEmail as string})</span></div>
+              <div className="flex"><span className="w-32 text-zinc-500">Timestamp</span><span className="text-zinc-300">{verification.timestamp ? formatDateTime(new Date(verification.timestamp as string)) : "-"}</span></div>
+              <div className="flex"><span className="w-32 text-zinc-500">Audit Ref</span><span className="text-zinc-400">{verification.auditReference ? (verification.auditReference as string).slice(0, 12) + "..." : "N/A"}</span></div>
+              {(verification.invoiceId as string | undefined | null) && (
+                <div className="flex"><span className="w-32 text-zinc-500">Invoice</span><span className="text-amber-400">{(verification.invoiceId as string).slice(0, 12)}...</span></div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-yellow-300"><AlertTriangle size={16} /> Override Notice</div>

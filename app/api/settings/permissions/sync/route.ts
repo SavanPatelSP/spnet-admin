@@ -60,6 +60,11 @@ async function syncRolePermissions(roleId: string, session: { user: { role: stri
   }
 
   if (toAdd.length > 0 || toRemove.length > 0) {
+    await prisma.role.update({
+      where: { id: roleId },
+      data: { permissionsVersion: { increment: 1 } },
+    });
+
     const role = await prisma.role.findUnique({ where: { id: roleId } });
     await logAudit(
       AUDIT_ACTIONS.ROLE_PERMISSIONS_UPDATED,

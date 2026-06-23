@@ -44,9 +44,6 @@ export async function POST(req: Request) {
 
     const inviteLink = buildInviteLink(token);
 
-    // Email delivery is mocked here. In production, integrate with your email provider.
-    console.log(`[INVITE EMAIL] To: ${member.email} | Link: ${inviteLink}`);
-
     await logAudit(
       resend ? AUDIT_ACTIONS.INVITE_RESENT : AUDIT_ACTIONS.INVITE_SENT,
       undefined,

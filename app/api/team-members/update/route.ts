@@ -38,11 +38,23 @@ export async function PUT(req: Request) {
       data.licenseId = licenseId || null;
     }
 
+    const roleChanged = roleId !== undefined && roleId !== existing.roleId;
+
     const updated = await prisma.teamMember.update({
       where: { id },
       data,
       include: { role: true },
     });
+
+    if (roleChanged) {
+      await prisma.session.updateMany({
+        where: {
+          teamMemberId: id,
+          expiresAt: { gt: new Date() },
+        },
+        data: { expiresAt: new Date() },
+      });
+    }
 
     const changes: string[] = [];
     if (name !== undefined && name !== existing.name) changes.push(`name: ${existing.name} → ${name}`);

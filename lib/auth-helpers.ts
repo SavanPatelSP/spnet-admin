@@ -17,6 +17,7 @@ export type AuthSession = {
     sessionRecordId: string | null;
     sessionCreatedAt: string | null;
     sessionExpiresAt: string | null;
+    rolePermissionsVersion: number;
   };
 };
 

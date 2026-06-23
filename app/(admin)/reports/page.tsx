@@ -18,6 +18,8 @@ export default async function ReportsPage() {
   const logs = await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
 
   const reportActions = ["LICENSE_CREATED", "LICENSE_DELETED", "LICENSE_SUSPENDED", "EMERGENCY_LOCKDOWN", "DEVICE_REVOKED"];
+  const resolvedActions = ["LICENSE_CREATED", "LICENSE_DELETED", "DEVICE_REVOKED"];
+  const pendingReviewActions = ["LICENSE_SUSPENDED", "EMERGENCY_LOCKDOWN"];
   const reportItems = logs.filter((l) => reportActions.includes(l.action));
 
   return (
@@ -27,8 +29,8 @@ export default async function ReportsPage() {
       <StatCardGrid columns={4}>
         <StatCard title="Total Reports" value={reportItems.length} icon={FileText} color="blue" subtitle="All time" />
         <StatCard title="Critical" value={reportItems.filter((r) => r.action === "EMERGENCY_LOCKDOWN").length} icon={AlertTriangle} color="red" />
-        <StatCard title="Resolved" value={reportItems.length} icon={CheckCircle} color="green" />
-        <StatCard title="Pending Review" value={0} icon={Clock} color="yellow" />
+        <StatCard title="Resolved" value={reportItems.filter((r) => resolvedActions.includes(r.action)).length} icon={CheckCircle} color="green" />
+        <StatCard title="Pending Review" value={reportItems.filter((r) => pendingReviewActions.includes(r.action)).length} icon={Clock} color="yellow" />
       </StatCardGrid>
 
       <DataTable

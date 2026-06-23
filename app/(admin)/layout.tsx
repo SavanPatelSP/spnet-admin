@@ -16,8 +16,13 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  const rolePermissionsVersion = session.user.rolePermissionsVersion ?? 0;
+
   return (
-    <AdminClientLayout permissions={session.user.permissions}>
+    <AdminClientLayout
+      permissions={session.user.permissions}
+      rolePermissionsVersion={rolePermissionsVersion}
+    >
       <div className="flex min-h-screen">
         <AdminSidebar permissions={session.user.permissions} />
         <div className="flex flex-1 flex-col">

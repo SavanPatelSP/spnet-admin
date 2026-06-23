@@ -54,8 +54,6 @@ const groups = [
 
 const pageMap = new Map(SIDEBAR_PAGES.map((p) => [p.key, p]));
 
-const MEMOIZED_ICONS = new Map<string, ReturnType<typeof import("react").createElement>>();
-
 export default function AdminSidebar({ permissions }: AdminSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -71,23 +69,26 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
   return (
     <aside
       className={cn(
-        "flex min-h-screen flex-col border-r border-zinc-800 bg-zinc-950 transition-all duration-300",
+        "flex min-h-screen flex-col border-r border-zinc-800/50 bg-zinc-950 transition-all duration-300",
         collapsed ? "w-20" : "w-72",
       )}
     >
-      <div className="flex items-center justify-between border-b border-zinc-800 p-6">
-        <div className={cn("overflow-hidden", collapsed ? "w-0" : "w-auto")}>
-          <h1 className="whitespace-nowrap text-2xl font-black tracking-tight">{APP_NAME}</h1>
-          <p className="mt-1 whitespace-nowrap text-sm text-zinc-500">Admin Panel</p>
+      <div className="flex items-center justify-between border-b border-zinc-800/50 px-6 py-5">
+        <div className={cn("overflow-hidden transition-all duration-300", collapsed ? "w-0 opacity-0" : "w-auto opacity-100")}>
+          <h1 className="whitespace-nowrap text-xl font-bold tracking-tight text-zinc-100">{APP_NAME}</h1>
+          <p className="mt-0.5 whitespace-nowrap text-xs text-zinc-600">Admin Panel</p>
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="rounded-xl p-2 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          className={cn(
+            "shrink-0 rounded-lg p-2 transition-colors",
+            "text-zinc-600 hover:bg-zinc-800 hover:text-zinc-300",
+          )}
         >
-          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
-      <nav className="flex-1 overflow-y-auto p-4">
+      <nav className="flex-1 overflow-y-auto p-3 scrollbar-thin">
         {groups.map((group) => {
           const items = group.pageKeys
             .map((key) => pageMap.get(key))
@@ -95,13 +96,13 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
           if (items.length === 0) return null;
 
           return (
-            <div key={group.label} className="mb-6">
+            <div key={group.label} className="mb-5">
               {!collapsed && (
-                <p className="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-zinc-600">
+                <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-zinc-600">
                   {group.label}
                 </p>
               )}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {items.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -111,15 +112,18 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
                       href={item.href}
                       prefetch={false}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
+                        "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                         active
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-900/30"
-                          : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200",
+                          ? "bg-blue-600/15 text-blue-400"
+                          : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200",
                       )}
                       title={collapsed ? item.label : undefined}
                     >
-                      <Icon size={20} className="shrink-0" />
-                      <span className={cn("truncate font-medium transition-opacity", collapsed ? "w-0 opacity-0" : "opacity-100")}>
+                      {active && (
+                        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-blue-500" />
+                      )}
+                      <Icon size={18} className="shrink-0" />
+                      <span className={cn("truncate transition-all duration-300", collapsed ? "w-0 opacity-0" : "opacity-100")}>
                         {item.label}
                       </span>
                     </Link>
@@ -130,9 +134,9 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
           );
         })}
       </nav>
-      <div className="border-t border-zinc-800 p-4">
-        <p className={cn("text-center text-xs text-zinc-600")}>
-          {collapsed ? `${APP_VERSION}` : `${APP_NAME} Admin ${APP_VERSION} (${APP_BUILD})`}
+      <div className="border-t border-zinc-800/50 p-4">
+        <p className="text-center text-[11px] text-zinc-700">
+          {collapsed ? `v${APP_VERSION}` : `${APP_NAME} v${APP_VERSION} (${APP_BUILD})`}
         </p>
       </div>
     </aside>

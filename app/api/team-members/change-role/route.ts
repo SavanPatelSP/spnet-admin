@@ -17,6 +17,14 @@ export async function PUT(req: Request) {
       include: { role: true },
     });
 
+    await prisma.session.updateMany({
+      where: {
+        teamMemberId: body.id,
+        expiresAt: { gt: new Date() },
+      },
+      data: { expiresAt: new Date() },
+    });
+
     await logAudit(
       AUDIT_ACTIONS.TEAM_MEMBER_ROLE_CHANGED,
       undefined,
