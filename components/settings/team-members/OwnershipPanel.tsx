@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { downloadCSV } from "@/lib/export";
+import { usePermission } from "@/hooks/usePermissions";
 import TransferOwnershipModal from "./TransferOwnershipModal";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function OwnershipPanel({ owner, members }: Props) {
+  const { hasPermission } = usePermission();
   const [transferOpen, setTransferOpen] = useState(false);
 
   function handleExportReport() {
@@ -31,13 +33,15 @@ export default function OwnershipPanel({ owner, members }: Props) {
         <p className="mt-1 text-xs text-zinc-400">Transfer requires explicit owner approval.</p>
       </div>
       <div className="mt-6 flex flex-col gap-3">
-        <button
-          onClick={() => setTransferOpen(true)}
-          disabled={!owner || members.length < 2}
-          className="rounded-xl bg-yellow-600 px-4 py-3 font-medium text-white transition-colors hover:bg-yellow-500 disabled:opacity-50"
-        >
-          Transfer Ownership
-        </button>
+        {hasPermission("Transfer Ownership") && (
+          <button
+            onClick={() => setTransferOpen(true)}
+            disabled={!owner || members.length < 2}
+            className="rounded-xl bg-yellow-600 px-4 py-3 font-medium text-white transition-colors hover:bg-yellow-500 disabled:opacity-50"
+          >
+            Transfer Ownership
+          </button>
+        )}
         <button
           onClick={handleExportReport}
           className="rounded-xl bg-zinc-800 px-4 py-3 font-medium text-zinc-200 transition-colors hover:bg-zinc-700"

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Role Details" };
 
 export default async function RoleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requirePermission("View Roles");
   const role = await prisma.role.findUnique({
     where: { id },
     include: { members: true, permissions: true },

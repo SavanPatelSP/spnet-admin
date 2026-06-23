@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePermission } from "@/hooks/usePermissions";
 import { Globe, Loader2 } from "lucide-react";
 
 interface GeoEnrichmentButtonProps {
@@ -9,7 +10,10 @@ interface GeoEnrichmentButtonProps {
 }
 
 export function GeoEnrichmentButton({ onComplete, disabled }: GeoEnrichmentButtonProps) {
+  const { hasPermission } = usePermission();
   const [loading, setLoading] = useState(false);
+
+  if (!hasPermission("Manage Device Policies")) return null;
 
   async function handleClick() {
     setLoading(true);

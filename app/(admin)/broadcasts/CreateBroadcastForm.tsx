@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { usePermission } from "@/hooks/usePermissions";
 import { Info, Users, Crown, Building2, UserCheck, KeyRound, Eye, Megaphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,6 +23,7 @@ const TARGET_OPTIONS: { value: string; label: string; icon: LucideIcon; descript
 const MAX_TARGET = 10000;
 
 export function CreateBroadcastForm() {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -238,20 +240,24 @@ export function CreateBroadcastForm() {
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => handleSubmit(false)}
-          disabled={loading}
-          className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
-        >
-          {loading ? "Sending..." : scheduledAt ? "Schedule Broadcast" : "Send Broadcast"}
-        </button>
-        <button
-          onClick={() => handleSubmit(true)}
-          disabled={loading}
-          className="rounded-xl bg-zinc-800 px-5 py-3 font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:opacity-50"
-        >
-          Save as Draft
-        </button>
+        {hasPermission("Send Broadcasts") && (
+          <button
+            onClick={() => handleSubmit(false)}
+            disabled={loading}
+            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+          >
+            {loading ? "Sending..." : scheduledAt ? "Schedule Broadcast" : "Send Broadcast"}
+          </button>
+        )}
+        {hasPermission("Create Broadcasts") && (
+          <button
+            onClick={() => handleSubmit(true)}
+            disabled={loading}
+            className="rounded-xl bg-zinc-800 px-5 py-3 font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:opacity-50"
+          >
+            Save as Draft
+          </button>
+        )}
       </div>
 
       {showConfirm && (

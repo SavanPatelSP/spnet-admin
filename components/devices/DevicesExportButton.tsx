@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { downloadCSV } from "@/lib/export";
 import { Download } from "lucide-react";
 
 export function DevicesExportButton() {
+  const { hasPermission } = usePermission();
   const [loading, setLoading] = useState(false);
+
+  if (!hasPermission("Export Device Data")) return null;
 
   async function handleExport() {
     setLoading(true);

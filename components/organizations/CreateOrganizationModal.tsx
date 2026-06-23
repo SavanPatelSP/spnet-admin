@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES, PLANS, DEFAULT_MAX_DEVICES, PLAN_PRICES, DEVICE_PRICE_PER_MONTH } from "@/lib/constants";
 import { formatPrice } from "@/lib/shared";
 import { Building2, Calendar, Monitor, FileText, DollarSign } from "lucide-react";
@@ -23,6 +24,7 @@ interface Props {
 export default function CreateOrganizationModal({
   open: externalOpen, onClose: externalOnClose,
 }: Props) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -99,7 +101,7 @@ export default function CreateOrganizationModal({
 
   return (
     <>
-      {externalOpen === undefined && (
+      {externalOpen === undefined && hasPermission("Create Licenses") && (
         <ActionButton onClick={() => setOpen(true)} variant="primary">
           <Building2 size={16} /> Create Organization
         </ActionButton>

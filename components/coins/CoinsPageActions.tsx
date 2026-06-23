@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Search, Building2, Key, Coins, MinusCircle, SlidersHorizontal, CheckCircle, ArrowRight } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { usePermission } from "@/hooks/usePermissions";
 import AddCoinsModal from "@/components/coins/AddCoinsModal";
 import RemoveCoinsModal from "@/components/coins/RemoveCoinsModal";
 import SetCoinsModal from "@/components/coins/SetCoinsModal";
@@ -31,6 +32,7 @@ const BORDER_CLASS: Record<string, string> = {
 };
 
 export default function CoinsPageActions({ licenses }: CoinsPageActionsProps) {
+  const { hasPermission } = usePermission();
   const [activeAction, setActiveAction] = useState<"grant" | "remove" | "set" | null>(null);
   const [selectedLicense, setSelectedLicense] = useState<LicenseInfo | null>(null);
   const [showLicensePicker, setShowLicensePicker] = useState(false);
@@ -67,10 +69,21 @@ export default function CoinsPageActions({ licenses }: CoinsPageActionsProps) {
 
   const hasSearch = orgSearch || keySearch;
 
+  const visibleActions = ACTION_CARDS.filter((card) => {
+    switch (card.key) {
+      case "grant": return hasPermission("Grant Coins");
+      case "remove": return hasPermission("Remove Coins");
+      case "set": return hasPermission("Set Coin Balance");
+      default: return false;
+    }
+  });
+
+  if (visibleActions.length === 0) return null;
+
   return (
     <>
       <div className="grid grid-cols-3 gap-4 mb-8">
-        {ACTION_CARDS.map((card) => (
+        {visibleActions.map((card) => (
           <button
             key={card.key}
             type="button"

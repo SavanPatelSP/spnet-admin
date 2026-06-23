@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -33,6 +34,7 @@ export default function MemberActions({ memberId, memberName, memberEmail, membe
   const isOwner = currentUserRole === "OWNER";
   const router = useRouter();
   const { showToast } = useToast();
+  const { hasPermission } = usePermission();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -97,52 +99,60 @@ export default function MemberActions({ memberId, memberName, memberEmail, membe
   }, [router]);
 
   const isActive = status === "ACTIVE";
+  const canManageMembers = hasPermission("Remove Team Members");
+  const canGeneratePassword = isOwner && hasPermission("Generate Passwords");
+  const hasAnyAction = canManageMembers || canGeneratePassword;
+  if (!hasAnyAction) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative">
-        <ActionButton onClick={() => setMenuOpen(!menuOpen)} variant="secondary" size="sm">
-          <UserCog size={14} /> Actions <ChevronDown size={12} />
-        </ActionButton>
-        {menuOpen && (
-          <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-zinc-700 bg-zinc-800 py-1 shadow-xl">
-            {isOwner && (
-              <>
+      {(canGeneratePassword || canManageMembers) && (
+        <div className="relative">
+          <ActionButton onClick={() => setMenuOpen(!menuOpen)} variant="secondary" size="sm">
+            <UserCog size={14} /> Actions <ChevronDown size={12} />
+          </ActionButton>
+          {menuOpen && (
+            <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-zinc-700 bg-zinc-800 py-1 shadow-xl">
+              {canGeneratePassword && (
+                <>
+                  <button
+                    onClick={() => { setMenuOpen(false); setGenerateOpen(true); }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
+                  >
+                    <KeyRound size={12} /> Generate Password
+                  </button>
+                  <div className="my-1 border-t border-zinc-700" />
+                </>
+              )}
+              {canManageMembers && (isActive ? (
                 <button
-                  onClick={() => { setMenuOpen(false); setGenerateOpen(true); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-700"
+                  onClick={() => { setMenuOpen(false); suspendAccount(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-yellow-400 hover:bg-zinc-700"
                 >
-                  <KeyRound size={12} /> Generate Password
+                  <Ban size={12} /> Suspend Account
                 </button>
-                <div className="my-1 border-t border-zinc-700" />
-              </>
-            )}
-            {isActive ? (
-              <button
-                onClick={() => { setMenuOpen(false); suspendAccount(); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-yellow-400 hover:bg-zinc-700"
-              >
-                <Ban size={12} /> Suspend Account
-              </button>
-            ) : (
-              <button
-                onClick={() => { setMenuOpen(false); activateAccount(); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-emerald-400 hover:bg-zinc-700"
-              >
-                <Unlock size={12} /> Activate Account
-              </button>
-            )}
-            <button
-              onClick={() => { setMenuOpen(false); setDeleteOpen(true); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-400 hover:bg-zinc-700"
-            >
-              <Trash2 size={12} /> Delete
-            </button>
-          </div>
-        )}
-      </div>
+              ) : (
+                <button
+                  onClick={() => { setMenuOpen(false); activateAccount(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-emerald-400 hover:bg-zinc-700"
+                >
+                  <Unlock size={12} /> Activate Account
+                </button>
+              ))}
+              {canManageMembers && (
+                <button
+                  onClick={() => { setMenuOpen(false); setDeleteOpen(true); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-400 hover:bg-zinc-700"
+                >
+                  <Trash2 size={12} /> Delete
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
-      {isActive ? (
+      {canManageMembers && (isActive ? (
         <ActionButton onClick={() => setStatusOpen(true)} variant="secondary" size="sm">
           <Ban size={14} /> Suspend
         </ActionButton>
@@ -150,11 +160,13 @@ export default function MemberActions({ memberId, memberName, memberEmail, membe
         <ActionButton onClick={() => setStatusOpen(true)} variant="primary" size="sm">
           <CheckCircle size={14} /> Reactivate
         </ActionButton>
-      )}
+      ))}
 
-      <ActionButton onClick={() => setDeleteOpen(true)} variant="danger" size="sm">
-        <Trash2 size={14} /> Delete
-      </ActionButton>
+      {canManageMembers && (
+        <ActionButton onClick={() => setDeleteOpen(true)} variant="danger" size="sm">
+          <Trash2 size={14} /> Delete
+        </ActionButton>
+      )}
 
       <ConfirmDialog
         open={statusOpen}

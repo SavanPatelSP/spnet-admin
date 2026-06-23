@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES, PLANS, LICENSE_STATUSES } from "@/lib/constants";
 import type { License } from "@prisma/client";
 import { Pencil, Shield, Cpu, Calendar, FileText, ArrowRight } from "lucide-react";
@@ -15,9 +16,12 @@ interface Props {
 
 export default function EditLicenseButton({ license, size = "md" }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  if (!hasPermission("Edit Licenses") && !open) return null;
 
   const [organization, setOrganization] = useState(license.organization);
   const [plan, setPlan] = useState(license.plan);

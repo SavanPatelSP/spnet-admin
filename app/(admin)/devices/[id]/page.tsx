@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -19,6 +20,7 @@ export const metadata: Metadata = { title: "Device Details" };
 
 export default async function DeviceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requirePermission("View Devices");
   const activation = await prisma.activation.findUnique({
     where: { id },
     include: { license: true, deviceFingerprint: true },

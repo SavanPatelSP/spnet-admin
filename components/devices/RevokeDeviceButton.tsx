@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { useToast } from "@/components/ui/Toast";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -15,8 +16,11 @@ interface Props {
 export default function RevokeDeviceButton({ id }: Props) {
   const router = useRouter();
   const { toast } = useToast();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  if (!hasPermission("Revoke Devices") && !open) return null;
 
   async function handleRevoke() {
     setLoading(true);

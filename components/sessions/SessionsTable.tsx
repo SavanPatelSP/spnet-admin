@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { formatDate, parseUA } from "@/lib/shared";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { SessionExtendModal } from "./SessionExtendModal";
 import { SessionForceLogoutModal } from "./SessionForceLogoutModal";
@@ -25,6 +26,7 @@ interface SessionRow {
 
 export function SessionsTable({ sessions, currentUserRole }: { sessions: SessionRow[]; currentUserRole?: string }) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [userFilter, setUserFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
@@ -189,7 +191,7 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
             <RefreshCw size={14} className={`mr-1 inline ${autoRefresh ? "animate-spin" : ""}`} />
             Auto
           </button>
-          {selectedIds.size > 0 && (
+          {selectedIds.size > 0 && hasPermission("Force Logout") && (
             <button onClick={bulkRevoke} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
               <XCircle size={14} className="mr-1 inline" />
               Revoke {selectedIds.size}
@@ -206,10 +208,14 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
         { key: "expiresAt", label: "Expires", sortable: true },
         { key: "actions", label: "Actions", className: "w-40" },
       ]}
-      rows={filtered.map((s) => {
+       rows={filtered.map((s) => {
         const ea = effExpiresAt(s);
         const isActive = ea > new Date();
         const parsed = s.userAgent ? parseUA(s.userAgent) : null;
+        const canExtend = isActive && hasPermission("Extend Sessions");
+        const canOverride = hasPermission("Override Session Policy");
+        const canForceLogout = hasPermission("Force Logout");
+        const hasRowActions = canExtend || canOverride || canForceLogout;
         return {
           id: s.id,
           values: {
@@ -258,33 +264,25 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
               <Clock size={10} />
               {formatDate(ea)}
             </span>,
-            <div key="actions" className="flex flex-wrap items-center gap-2">
-              {isActive && (
-                <button
-                  onClick={() => handleExtend(s)}
-                  className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/20"
-                >
-                  <ArrowUpCircle size={12} className="mr-1 inline" />
-                  Extend
-                </button>
-              )}
-              {canOverridePolicy && (
-                <button
-                  onClick={() => handleOverride(s)}
-                  className="rounded-lg bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400 transition-colors hover:bg-purple-500/20"
-                >
-                  <Crown size={12} className="mr-1 inline" />
-                  Override
-                </button>
-              )}
-              <button
-                onClick={() => handleForceLogout(s)}
-                className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
-              >
-                <LogOut size={12} className="mr-1 inline" />
-                Force Logout
-              </button>
-            </div>,
+            hasRowActions ? (
+              <div key="actions" className="flex flex-wrap items-center gap-2">
+                {canExtend && (
+                  <button onClick={() => handleExtend(s)} className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/20">
+                    <ArrowUpCircle size={12} className="mr-1 inline" /> Extend
+                  </button>
+                )}
+                {canOverride && (
+                  <button onClick={() => handleOverride(s)} className="rounded-lg bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400 transition-colors hover:bg-purple-500/20">
+                    <Crown size={12} className="mr-1 inline" /> Override
+                  </button>
+                )}
+                {canForceLogout && (
+                  <button onClick={() => handleForceLogout(s)} className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20">
+                    <LogOut size={12} className="mr-1 inline" /> Force Logout
+                  </button>
+                )}
+              </div>
+            ) : null,
           ],
         };
       })}

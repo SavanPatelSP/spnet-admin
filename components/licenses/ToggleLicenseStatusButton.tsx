@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { Ban, CheckCircle } from "lucide-react";
 
@@ -13,6 +14,9 @@ interface Props {
 
 export default function ToggleLicenseStatusButton({ id, status, size = "sm" }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
+
+  if (!hasPermission("Toggle License Status")) return null;
 
   async function toggle() {
     const response = await fetch(API_ROUTES.LICENSES.TOGGLE_STATUS, {

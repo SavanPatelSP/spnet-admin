@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { Tag, Plus, X } from "lucide-react";
 
@@ -20,6 +21,7 @@ interface Props {
 const TAG_COLORS = ["#3b82f6", "#22c55e", "#eab308", "#ef4444", "#a855f7", "#ec4899", "#14b8a6", "#f97316"];
 
 export default function LicenseTagsInput({ licenseId, initialTags = [] }: Props) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [tags, setTags] = useState<TagItem[]>(initialTags);
   const [newName, setNewName] = useState("");
@@ -93,36 +95,40 @@ export default function LicenseTagsInput({ licenseId, initialTags = [] }: Props)
             style={{ backgroundColor: t.color }}
           >
             {t.name}
-            <button onClick={() => removeTag(t.id)} className="ml-0.5 rounded-full p-0.5 hover:bg-white/20">
-              <X size={12} />
-            </button>
+            {hasPermission("Manage License Tags") && (
+              <button onClick={() => removeTag(t.id)} className="ml-0.5 rounded-full p-0.5 hover:bg-white/20">
+                <X size={12} />
+              </button>
+            )}
           </span>
         ))}
         {tags.length === 0 && <span className="text-sm text-zinc-500">No tags added.</span>}
       </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Tag name"
-          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 outline-none focus:border-blue-500"
-          onKeyDown={(e) => { if (e.key === "Enter") addTag(); }}
-        />
-        <div className="flex gap-1">
-          {TAG_COLORS.map((c) => (
-            <button
-              key={c}
-              onClick={() => setNewColor(c)}
-              className={`h-6 w-6 rounded-full border-2 transition-all ${newColor === c ? "border-white scale-110" : "border-transparent"}`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
+      {hasPermission("Manage License Tags") && (
+        <div className="flex items-center gap-2">
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Tag name"
+            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 outline-none focus:border-blue-500"
+            onKeyDown={(e) => { if (e.key === "Enter") addTag(); }}
+          />
+          <div className="flex gap-1">
+            {TAG_COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => setNewColor(c)}
+                className={`h-6 w-6 rounded-full border-2 transition-all ${newColor === c ? "border-white scale-110" : "border-transparent"}`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+          <ActionButton onClick={addTag} variant="ghost" size="sm" loading={adding}>
+            <Plus size={14} />
+          </ActionButton>
         </div>
-        <ActionButton onClick={addTag} variant="ghost" size="sm" loading={adding}>
-          <Plus size={14} />
-        </ActionButton>
-      </div>
+      )}
     </div>
   );
 }

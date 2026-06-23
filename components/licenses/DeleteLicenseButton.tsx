@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -14,7 +15,10 @@ interface Props {
 
 export default function DeleteLicenseButton({ id, size = "sm" }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
+
+  if (!hasPermission("Delete Licenses") && !open) return null;
 
   async function handleDelete() {
     const response = await fetch(API_ROUTES.LICENSES.DELETE, {

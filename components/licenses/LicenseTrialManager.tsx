@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES, PLANS } from "@/lib/constants";
 import { FlaskConical, Timer, Calendar, Eye, Cpu } from "lucide-react";
 
@@ -21,6 +22,7 @@ function fmt(d: Date) {
 }
 
 export default function LicenseTrialManager({ licenseId, trialStartDate, trialEndDate }: Props) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [trialDays, setTrialDays] = useState(14);
   const [starting, setStarting] = useState(false);
@@ -103,15 +105,17 @@ export default function LicenseTrialManager({ licenseId, trialStartDate, trialEn
       {!hasTrial ? (
         <div className="space-y-3">
           <p className="text-sm text-zinc-400">No trial active for this license.</p>
-          <div className="flex items-center gap-3">
-            <input type="number" min="1" max="90" value={trialDays}
-              onChange={(e) => setTrialDays(Number(e.target.value))}
-              className="w-24 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 outline-none focus:border-blue-500" />
-            <span className="text-sm text-zinc-500">days</span>
-            <ActionButton onClick={startTrial} variant="primary" size="sm" loading={starting}>
-              Start Trial
-            </ActionButton>
-          </div>
+          {hasPermission("Manage Trials") && (
+            <div className="flex items-center gap-3">
+              <input type="number" min="1" max="90" value={trialDays}
+                onChange={(e) => setTrialDays(Number(e.target.value))}
+                className="w-24 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 outline-none focus:border-blue-500" />
+              <span className="text-sm text-zinc-500">days</span>
+              <ActionButton onClick={startTrial} variant="primary" size="sm" loading={starting}>
+                Start Trial
+              </ActionButton>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -122,9 +126,11 @@ export default function LicenseTrialManager({ licenseId, trialStartDate, trialEn
           <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
             <div className="h-full rounded-full bg-yellow-500 transition-all" style={{ width: `${trialProgress}%` }} />
           </div>
-          <ActionButton onClick={() => setConvertOpen(true)} variant="secondary" size="sm">
-            Convert to Paid
-          </ActionButton>
+          {hasPermission("Manage Trials") && (
+            <ActionButton onClick={() => setConvertOpen(true)} variant="secondary" size="sm">
+              Convert to Paid
+            </ActionButton>
+          )}
         </div>
       )}
 

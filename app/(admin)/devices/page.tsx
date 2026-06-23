@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Devices" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DevicesTable } from "@/components/devices/DevicesTable";
@@ -13,6 +14,7 @@ import { DevicesExportButton } from "@/components/devices/DevicesExportButton";
 import { Monitor, Fingerprint, Globe, KeyRound, Ban, TrendingUp, Laptop, Flag } from "lucide-react";
 
 export default async function DevicesPage() {
+  await requirePermission("View Devices");
   const activations = await prisma.activation.findMany({
     include: { license: true },
     orderBy: { createdAt: "desc" },

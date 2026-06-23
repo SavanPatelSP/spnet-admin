@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "System Health" };
 
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import {
@@ -85,6 +86,7 @@ const statusConfig = {
 };
 
 export default async function SystemHealthPage() {
+  await requireAuth();
   const [dbHealth, dbStats, apiChecks] = await Promise.all([
     checkDb(),
     getDbStats(),

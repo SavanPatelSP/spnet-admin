@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Licenses" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { KeyRound, Monitor, AlertTriangle, Activity, LayoutTemplate, FlaskConical, ArrowRightLeft } from "lucide-react";
@@ -17,6 +18,7 @@ import LicenseTemplatesManager from "@/components/licenses/LicenseTemplatesManag
 import BulkCreateButton from "./BulkCreateButton";
 
 export default async function LicensesPage() {
+  await requirePermission("View Licenses");
   const [licenses, templates, trialLicenses, transferredLicenses] = await Promise.all([
     prisma.license.findMany({
       include: { _count: { select: { activations: true } } },

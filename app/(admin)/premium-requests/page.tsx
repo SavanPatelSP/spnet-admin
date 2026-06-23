@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Premium Requests" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -14,6 +15,7 @@ import PremiumRequestActions from "@/components/premium/PremiumRequestActions";
 import Link from "next/link";
 
 export default async function PremiumRequestsPage() {
+  await requirePermission("View Premium");
   const [requests, counts] = await Promise.all([
     prisma.premiumRequest.findMany({
       orderBy: { submittedAt: "desc" },

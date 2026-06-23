@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { useToast } from "@/components/ui/Toast";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { formatDateTime, formatPrice } from "@/lib/shared";
 import {
@@ -123,6 +124,7 @@ function formatDate(date: string): string {
 export default function InvoiceDetailClient({ invoice: initialInvoice, auditHistory }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
+  const { hasPermission } = usePermission();
   const [invoice, setInvoice] = useState(initialInvoice);
   const [editOpen, setEditOpen] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
@@ -254,16 +256,22 @@ export default function InvoiceDetailClient({ invoice: initialInvoice, auditHist
             <ActionButton variant="secondary" onClick={downloadPDF}>
               <FileText size={14} /> <span className="hidden sm:inline">PDF</span>
             </ActionButton>
-            <ActionButton variant="secondary" onClick={generateShareLink} loading={loading}>
-              <Share2 size={14} /> <span className="hidden sm:inline">Share</span>
-            </ActionButton>
-            <ActionButton variant="secondary" onClick={() => setEditOpen(true)}>
-              <Edit3 size={14} /> <span className="hidden sm:inline">Edit</span>
-            </ActionButton>
-            <ActionButton variant={invoice.isArchived ? "primary" : "danger"} onClick={toggleArchive} loading={loading}>
-              {invoice.isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-              <span className="hidden sm:inline">{invoice.isArchived ? "Restore" : "Archive"}</span>
-            </ActionButton>
+            {hasPermission("Share Invoices") && (
+              <ActionButton variant="secondary" onClick={generateShareLink} loading={loading}>
+                <Share2 size={14} /> <span className="hidden sm:inline">Share</span>
+              </ActionButton>
+            )}
+            {hasPermission("Edit Invoices") && (
+              <ActionButton variant="secondary" onClick={() => setEditOpen(true)}>
+                <Edit3 size={14} /> <span className="hidden sm:inline">Edit</span>
+              </ActionButton>
+            )}
+            {hasPermission("Edit Invoices") && (
+              <ActionButton variant={invoice.isArchived ? "primary" : "danger"} onClick={toggleArchive} loading={loading}>
+                {invoice.isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+                <span className="hidden sm:inline">{invoice.isArchived ? "Restore" : "Archive"}</span>
+              </ActionButton>
+            )}
           </div>
         }
       />
@@ -479,25 +487,27 @@ export default function InvoiceDetailClient({ invoice: initialInvoice, auditHist
 
       {/* Status Actions + Timeline */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">Status Actions</h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {["DRAFT", "PENDING", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"].map((s) => (
-              <button
-                key={s}
-                onClick={() => updateStatus(s)}
-                disabled={invoice.status === s || loading}
-                className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                  invoice.status === s
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                } disabled:opacity-50`}
-              >
-                {s}
-              </button>
-            ))}
+        {hasPermission("Edit Invoices") && (
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
+            <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">Status Actions</h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {["DRAFT", "PENDING", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => updateStatus(s)}
+                  disabled={invoice.status === s || loading}
+                  className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                    invoice.status === s
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                      : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                  } disabled:opacity-50`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">Timeline</h3>

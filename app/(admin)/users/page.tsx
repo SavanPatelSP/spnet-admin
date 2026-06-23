@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Users" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { UsersTable } from "@/components/users/UsersTable";
@@ -13,6 +14,7 @@ import { Users, UserPlus, Shield, AlertTriangle, ShieldCheck, Activity, Building
 import { formatDate } from "@/lib/shared";
 
 export default async function UsersPage() {
+  await requirePermission("View Users");
   const [teamMembers, roles, sessions, loginHistory] = await Promise.all([
     prisma.teamMember.findMany({
       include: { role: true },

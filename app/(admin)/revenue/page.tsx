@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Revenue" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -13,6 +14,7 @@ import { CreditCard, TrendingUp, Crown, TrendingDown, Activity, Minus, AlertTria
 import { formatDate, formatPrice } from "@/lib/shared";
 
 export default async function RevenuePage() {
+  await requirePermission("View Revenue");
   const [licenses, premiumSubs, allPremiumSubs] = await Promise.all([
     prisma.license.findMany(),
     prisma.premiumSubscription.findMany({

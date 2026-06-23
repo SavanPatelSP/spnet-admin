@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { formatNumber } from "@/lib/shared";
 import { Building2, FileText, ArrowRight } from "lucide-react";
@@ -35,6 +36,7 @@ interface Props {
 export default function EditOrganizationModal({
   organization, licenses: initialLicenses, stats, open: externalOpen, onClose: externalOnClose,
 }: Props) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -91,7 +93,7 @@ export default function EditOrganizationModal({
 
   return (
     <>
-      {externalOpen === undefined && (
+      {externalOpen === undefined && hasPermission("Edit Licenses") && (
         <ActionButton onClick={() => setOpen(true)} variant="secondary" size="sm">
           Edit Organization
         </ActionButton>

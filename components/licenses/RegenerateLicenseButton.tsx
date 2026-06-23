@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
@@ -14,7 +15,10 @@ interface Props {
 
 export default function RegenerateLicenseButton({ id, size = "sm" }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
+
+  if (!hasPermission("Regenerate License Keys") && !open) return null;
 
   async function handleRegenerate() {
     const response = await fetch(API_ROUTES.LICENSES.REGENERATE_KEY, {

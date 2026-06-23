@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { getAuthSession } from "@/lib/auth-helpers";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import TeamMembersDataTable from "@/components/settings/TeamMembersDataTable";
@@ -14,9 +14,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Team Members" };
 
 export default async function TeamMembersPage() {
-  const authSession = await getAuthSession();
-  const currentUserRole = authSession?.user?.role || "";
-
+  const session = await requirePermission("View Team Members");
+  const currentUserRole = session.user.role;
   const [totalMembers, activeMembers, totalRoles, members, auditEvents] = await Promise.all([
     prisma.teamMember.count(),
     prisma.teamMember.count({ where: { status: "ACTIVE" } }),

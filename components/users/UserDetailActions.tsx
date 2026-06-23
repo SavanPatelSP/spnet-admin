@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { Ban, CheckCircle, KeyRound, Trash2 } from "lucide-react";
 import type { TeamMember, Role } from "@prisma/client";
@@ -19,6 +20,7 @@ interface Props {
 
 export function UserDetailActions({ member }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
@@ -73,9 +75,14 @@ export function UserDetailActions({ member }: Props) {
     }
   }
 
+  const canEdit = hasPermission("Edit Users");
+  const canResetPassword = hasPermission("Reset Passwords");
+  const canDelete = hasPermission("Delete Users");
+  if (!canEdit && !canResetPassword && !canDelete) return null;
+
   return (
     <div className="flex items-center gap-2">
-      {member.status === "ACTIVE" ? (
+      {canEdit && (member.status === "ACTIVE" ? (
         <ActionButton onClick={() => updateStatus("SUSPENDED")} variant="secondary" size="sm">
           <Ban size={14} /> Suspend
         </ActionButton>
@@ -83,15 +90,19 @@ export function UserDetailActions({ member }: Props) {
         <ActionButton onClick={() => updateStatus("ACTIVE")} variant="primary" size="sm">
           <CheckCircle size={14} /> Reactivate
         </ActionButton>
+      ))}
+
+      {canResetPassword && (
+        <ActionButton onClick={() => setResetOpen(true)} variant="secondary" size="sm">
+          <KeyRound size={14} /> Reset Password
+        </ActionButton>
       )}
 
-      <ActionButton onClick={() => setResetOpen(true)} variant="secondary" size="sm">
-        <KeyRound size={14} /> Reset Password
-      </ActionButton>
-
-      <ActionButton onClick={() => setDeleteOpen(true)} variant="danger" size="sm">
-        <Trash2 size={14} /> Delete
-      </ActionButton>
+      {canDelete && (
+        <ActionButton onClick={() => setDeleteOpen(true)} variant="danger" size="sm">
+          <Trash2 size={14} /> Delete
+        </ActionButton>
+      )}
 
       <ConfirmDialog
         open={deleteOpen}

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Analytics" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { BarChart3, Monitor, Activity, Users, ArrowUpRight, ShieldCheck } from "lucide-react";
@@ -18,6 +19,7 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
+  await requirePermission("View Analytics");
   const { range: rangeParam } = await searchParams;
   const rangeMap: Record<string, number> = {
     "24h": 1, "7d": 7, "30d": 30, "90d": 90,

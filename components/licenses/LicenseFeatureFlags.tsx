@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { ToggleLeft, Plus, Save, Trash2 } from "lucide-react";
 
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function LicenseFeatureFlags({ licenseId, initialFlags = {} }: Props) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [flags, setFlags] = useState<FlagEntry[]>(() =>
     Object.entries(initialFlags).map(([key, value]) => ({ key, value: String(value) }))
@@ -73,14 +75,16 @@ export default function LicenseFeatureFlags({ licenseId, initialFlags = {} }: Pr
           <ToggleLeft size={18} className="text-blue-400" />
           <h3 className="font-semibold">Feature Flags</h3>
         </div>
-        <div className="flex gap-2">
-          <ActionButton onClick={addFlag} variant="ghost" size="sm">
-            <Plus size={14} /> Add Flag
-          </ActionButton>
-          <ActionButton onClick={save} variant="primary" size="sm" loading={saving}>
-            <Save size={14} /> Save
-          </ActionButton>
-        </div>
+        {hasPermission("Manage License Features") && (
+          <div className="flex gap-2">
+            <ActionButton onClick={addFlag} variant="ghost" size="sm">
+              <Plus size={14} /> Add Flag
+            </ActionButton>
+            <ActionButton onClick={save} variant="primary" size="sm" loading={saving}>
+              <Save size={14} /> Save
+            </ActionButton>
+          </div>
+        )}
       </div>
 
       {error && (

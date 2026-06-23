@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import {
   API_ROUTES, PERMISSION_GROUPS, ALL_PERMISSIONS, ROLE_PRICES as FALLBACK_PRICES, LICENSE_TIERS,
 } from "@/lib/constants";
@@ -98,6 +99,7 @@ export default function InviteTeamMemberModal({
   open: externalOpen, onClose: externalOnClose, currentUserRole = "",
 }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = (v: boolean) => {
@@ -388,7 +390,7 @@ export default function InviteTeamMemberModal({
 
   return (
     <>
-      {externalOpen === undefined && (
+      {externalOpen === undefined && hasPermission("Create Team Members") && (
         <ActionButton onClick={() => setOpen(true)} variant="primary">
           <UserPlus size={16} /> Invite Member
         </ActionButton>

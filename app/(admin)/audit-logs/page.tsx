@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Audit Logs" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -141,6 +142,7 @@ function getCategoryColor(category: string): string {
 }
 
 export default async function AuditLogsPage() {
+  await requirePermission("View Audit Logs");
   const logs = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 500,

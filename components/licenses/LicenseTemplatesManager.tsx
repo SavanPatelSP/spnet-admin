@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES, PLANS } from "@/lib/constants";
 import LicenseTemplateCard from "./LicenseTemplateCard";
 import { LayoutTemplate, Plus, Edit3, Trash2, Tag, Cpu, CalendarDays, FileJson, Eye } from "lucide-react";
@@ -23,6 +24,7 @@ interface Template {
 const emptyForm = { name: "", description: "", plan: "FREE", maxDevices: 1, durationDays: 30, featureFlags: "{}" };
 
 export default function LicenseTemplatesManager() {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +116,8 @@ export default function LicenseTemplatesManager() {
       setDeleting(false);
     }
   }
+
+  if (!hasPermission("Manage License Templates")) return null;
 
   return (
     <div>

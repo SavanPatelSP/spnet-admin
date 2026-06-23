@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Broadcasts" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -13,6 +14,7 @@ import { CreateBroadcastForm } from "./CreateBroadcastForm";
 import { BroadcastHistory } from "@/components/broadcast/BroadcastHistory";
 
 export default async function BroadcastsPage() {
+  await requirePermission("View Broadcasts");
   const broadcasts = await prisma.broadcast.findMany({ orderBy: { createdAt: "desc" } });
 
   const drafts = broadcasts.filter((b) => b.status === "DRAFT").length;

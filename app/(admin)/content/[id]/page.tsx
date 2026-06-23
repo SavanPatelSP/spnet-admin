@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
+import { requirePermission } from "@/lib/auth-helpers";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ContentEditor } from "@/components/content/ContentEditor";
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ContentEditPage({ params }: Props) {
   const { id } = await params;
+  await requirePermission("View Content");
 
   if (id === "new") {
     return (

@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePermission } from "@/hooks/usePermissions";
 import { AlertTriangle } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export default function DangerZone() {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [lockdownOpen, setLockdownOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -92,27 +94,31 @@ export default function DangerZone() {
         <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <button
-          onClick={() => setLockdownOpen(true)}
-          className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-3 font-medium text-white transition-colors hover:bg-red-500"
-        >
-          Emergency Lockdown
-        </button>
-        <button
-          onClick={() => setRevokeOpen(true)}
-          className="rounded-xl bg-yellow-600 px-4 py-3 font-medium text-white transition-colors hover:bg-yellow-500"
-        >
-          Revoke All Sessions
-        </button>
-        <button
-          onClick={handleExportAuditLogs}
-          disabled={loading}
-          className="rounded-xl bg-zinc-700 px-4 py-3 font-medium text-white transition-colors hover:bg-zinc-600 disabled:opacity-50"
-        >
-          {loading ? "Exporting..." : "Export Audit Logs"}
-        </button>
-      </div>
+      {(() => {
+        const canLockdown = hasPermission("Emergency Lockdown");
+        const canRevoke = hasPermission("Force Logout");
+        const canExport = hasPermission("Export Audit Logs");
+        if (!canLockdown && !canRevoke && !canExport) return null;
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {canLockdown && (
+              <button onClick={() => setLockdownOpen(true)} className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-3 font-medium text-white transition-colors hover:bg-red-500">
+                Emergency Lockdown
+              </button>
+            )}
+            {canRevoke && (
+              <button onClick={() => setRevokeOpen(true)} className="rounded-xl bg-yellow-600 px-4 py-3 font-medium text-white transition-colors hover:bg-yellow-500">
+                Revoke All Sessions
+              </button>
+            )}
+            {canExport && (
+              <button onClick={handleExportAuditLogs} disabled={loading} className="rounded-xl bg-zinc-700 px-4 py-3 font-medium text-white transition-colors hover:bg-zinc-600 disabled:opacity-50">
+                {loading ? "Exporting..." : "Export Audit Logs"}
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       <p className="mt-4 text-sm text-zinc-500">Restricted to OWNER and SUPER_ADMIN roles.</p>
 

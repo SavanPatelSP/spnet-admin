@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { ArrowRightLeft, Building2, Key, FileText, ArrowRight } from "lucide-react";
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function LicenseTransferButton({ licenseId, currentOrganization }: Props) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [newOrganization, setNewOrganization] = useState("");
@@ -45,6 +47,8 @@ export default function LicenseTransferButton({ licenseId, currentOrganization }
       setLoading(false);
     }
   }
+
+  if (!hasPermission("Transfer Licenses")) return null;
 
   return (
     <>

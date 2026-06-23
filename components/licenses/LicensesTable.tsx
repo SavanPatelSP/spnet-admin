@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DataTable } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { usePermission } from "@/hooks/usePermissions";
 import { downloadCSV } from "@/lib/export";
 import { EXPIRING_SOON_DAYS, DEFAULT_LOCALE, PLANS, LICENSE_STATUSES } from "@/lib/constants";
 import { daysUntil } from "@/lib/shared";
@@ -15,6 +16,7 @@ import DeleteLicenseButton from "@/components/licenses/DeleteLicenseButton";
 import type { LicenseWithActivations } from "@/types/common";
 
 export function LicensesTable({ licenses: initial }: { licenses: LicenseWithActivations[] }) {
+  const { hasPermission } = usePermission();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [planFilter, setPlanFilter] = useState("");
@@ -91,12 +93,16 @@ export function LicensesTable({ licenses: initial }: { licenses: LicenseWithActi
       bulkActions={
         selectedIds.size > 0 && (
           <div className="flex items-center gap-2">
-            <button onClick={bulkSuspend} className="rounded-xl bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-500">
-              Suspend {selectedIds.size}
-            </button>
-            <button onClick={bulkDelete} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
-              Delete {selectedIds.size}
-            </button>
+            {hasPermission("Toggle License Status") && (
+              <button onClick={bulkSuspend} className="rounded-xl bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-500">
+                Suspend {selectedIds.size}
+              </button>
+            )}
+            {hasPermission("Delete Licenses") && (
+              <button onClick={bulkDelete} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
+                Delete {selectedIds.size}
+              </button>
+            )}
           </div>
         )
       }

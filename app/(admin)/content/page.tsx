@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Content Management" };
 
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { FileText, Clock, CheckCircle, Archive } from "lucide-react";
@@ -11,6 +12,7 @@ import { ContentManager } from "@/components/content/ContentManager";
 import { contentStore } from "@/lib/content-store";
 
 export default async function ContentPage() {
+  await requirePermission("View Content");
   const drafts = await contentStore.list({ status: "DRAFT", pageSize: 1 });
   const inReview = await contentStore.list({ status: "IN_REVIEW", pageSize: 1 });
   const published = await contentStore.list({ status: "PUBLISHED", pageSize: 1 });

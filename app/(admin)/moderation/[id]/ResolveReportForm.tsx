@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePermission } from "@/hooks/usePermissions";
 
 interface ResolveReportFormProps {
   reportId: string;
@@ -10,6 +11,7 @@ interface ResolveReportFormProps {
 }
 
 export function ResolveReportForm({ reportId, targetType, targetId }: ResolveReportFormProps) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [status, setStatus] = useState("RESOLVED");
   const [actionTaken, setActionTaken] = useState("NONE");
@@ -48,6 +50,8 @@ export function ResolveReportForm({ reportId, targetType, targetId }: ResolveRep
       setLoading(false);
     }
   }
+
+  if (!hasPermission("Moderate Content")) return null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

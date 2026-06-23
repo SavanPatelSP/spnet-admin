@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES, PLANS, LICENSE_STATUSES, DEFAULT_PLAN, DEFAULT_MAX_DEVICES, PLAN_PRICES } from "@/lib/constants";
 import { formatPrice } from "@/lib/shared";
 import { Building2, Cpu, Calendar, FileText, CheckCircle, Shield, Eye, Timer, DollarSign } from "lucide-react";
@@ -34,9 +35,12 @@ function fmt(d: Date) {
 
 export default function CreateLicenseModal() {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  if (!hasPermission("Create Licenses") && !open) return null;
 
   const [organization, setOrganization] = useState("");
   const [plan, setPlan] = useState(DEFAULT_PLAN);

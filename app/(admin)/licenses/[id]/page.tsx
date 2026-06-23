@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -27,6 +28,7 @@ export const metadata: Metadata = { title: "License Details" };
 
 export default async function LicenseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requirePermission("View Licenses");
   const [license, auditLogs] = await Promise.all([
     prisma.license.findUnique({
       where: { id },

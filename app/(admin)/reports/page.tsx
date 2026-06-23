@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Reports" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -13,6 +14,7 @@ import { FileText, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { formatDate } from "@/lib/shared";
 
 export default async function ReportsPage() {
+  await requirePermission("View Reports");
   const logs = await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
 
   const reportActions = ["LICENSE_CREATED", "LICENSE_DELETED", "LICENSE_SUSPENDED", "EMERGENCY_LOCKDOWN", "DEVICE_REVOKED"];

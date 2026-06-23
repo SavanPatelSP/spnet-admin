@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Security" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { SecurityOverviewCards } from "@/components/security/SecurityOverviewCards";
@@ -17,6 +18,7 @@ import { MfaManagement } from "@/components/security/MfaManagement";
 import { Shield, AlertTriangle, LogIn, Ban, Lock, Activity, Users, Fingerprint } from "lucide-react";
 
 export default async function SecurityPage() {
+  await requirePermission("View Security Policies");
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const [policies, auditLogs, loginHistory, sessions, activations, memberGroup, failedLogins, recentSuccess, mfaGroup] =

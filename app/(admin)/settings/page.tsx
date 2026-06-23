@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import Link from "next/link";
 import { Shield, Users, KeyRound, FileText, Server, Settings as SettingsIcon, Activity, CheckCircle } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,6 +21,7 @@ const sections = [
 ];
 
 export default async function SettingsPage() {
+  await requirePermission("Access Settings");
   const [teamMembers, roles, securityPolicies, licenses] = await Promise.all([
     prisma.teamMember.findMany(),
     prisma.role.findMany(),

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ActionMenu } from "@/components/ui/ActionMenu";
+import { usePermission } from "@/hooks/usePermissions";
 import { PREMIUM_PLANS } from "@/lib/constants";
 import { XCircle, Edit3, FileText, Shield, Calendar, Eye } from "lucide-react";
 
@@ -30,6 +31,7 @@ function fmt(d: Date) {
 
 export default function PremiumRequestActions(data: PremiumRequestActionsProps) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [modifyOpen, setModifyOpen] = useState(false);
@@ -50,16 +52,18 @@ export default function PremiumRequestActions(data: PremiumRequestActionsProps) 
     return null;
   }
 
+  const items = [
+    ...(hasPermission("Manage Premium Requests") ? [{ label: "Approve" as const, onClick: () => setApproveOpen(true), variant: "primary" as const }] : []),
+    ...(hasPermission("Manage Premium Requests") ? [{ label: "Reject" as const, onClick: () => setRejectOpen(true), variant: "danger" as const }] : []),
+    ...(hasPermission("Manage Premium Requests") ? [{ label: "Modify" as const, onClick: () => setModifyOpen(true) }] : []),
+    ...(hasPermission("Grant Premium") ? [{ label: "Convert to Premium" as const, onClick: () => setConvertOpen(true) }] : []),
+  ];
+
+  if (items.length === 0) return null;
+
   return (
     <>
-      <ActionMenu
-        items={[
-          { label: "Approve", onClick: () => setApproveOpen(true), variant: "primary" },
-          { label: "Reject", onClick: () => setRejectOpen(true), variant: "danger" },
-          { label: "Modify", onClick: () => setModifyOpen(true) },
-          { label: "Convert to Premium", onClick: () => setConvertOpen(true) },
-        ]}
-      />
+      <ActionMenu items={items} />
       <ApproveModal
         open={approveOpen}
         onClose={() => setApproveOpen(false)}

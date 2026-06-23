@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { BulkInviteModal } from "@/components/users/BulkInviteModal";
+import { usePermission } from "@/hooks/usePermissions";
 import { UserPlus } from "lucide-react";
 
 interface Props {
@@ -10,7 +11,10 @@ interface Props {
 }
 
 export default function BulkInviteButton({ roles }: Props) {
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
+
+  if (!hasPermission("Bulk Invite Users")) return null;
 
   return (
     <>

@@ -9,6 +9,7 @@ import { ActionMenu } from "@/components/ui/ActionMenu";
 import { downloadCSV } from "@/lib/export";
 import { PREMIUM_PLANS, PLANS, LICENSE_STATUSES, EXPIRING_SOON_DAYS } from "@/lib/constants";
 import { daysUntil } from "@/lib/shared";
+import { usePermission } from "@/hooks/usePermissions";
 import { Crown } from "lucide-react";
 import GrantPremiumModal from "@/components/premium/GrantPremiumModal";
 import ExtendPremiumModal from "@/components/premium/ExtendPremiumModal";
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export function PremiumTable({ licenses, availableForGrant }: Props) {
+  const { hasPermission } = usePermission();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [planFilter, setPlanFilter] = useState("");
@@ -106,37 +108,48 @@ export function PremiumTable({ licenses, availableForGrant }: Props) {
         />
       }
       bulkActions={
-        selectedIds.size > 0 && (
-          <div className="flex items-center gap-2">
-            {nonPremiumSelectedCount > 0 && (
-              <>
-                <GrantPremiumModal
-                  licenseId={selectedIds.size === 1 ? [...selectedIds].find((id) => !premiumIds.has(id)) : undefined}
-                  licenseOrg={undefined}
-                  availableLicenses={availableForGrant}
-                />
-                {nonPremiumSelectedCount > 1 && (
-                  <button onClick={() => setBulkGrantOpen(true)} className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
-                    Bulk Grant ({nonPremiumSelectedCount})
-                  </button>
-                )}
-              </>
-            )}
-            {premiumSelectedCount > 0 && (
-              <>
-                <button onClick={() => setBulkExtendOpen(true)} className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
-                  Extend ({premiumSelectedCount})
-                </button>
-                <button onClick={() => setBulkConvertLifetimeOpen(true)} className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-500">
-                  Convert to Lifetime ({premiumSelectedCount})
-                </button>
-                <button onClick={bulkRevoke} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
-                  Revoke ({premiumSelectedCount})
-                </button>
-              </>
-            )}
-          </div>
-        )
+        selectedIds.size > 0 && (() => {
+          const hasNonPremiumActions = nonPremiumSelectedCount > 0 && hasPermission("Grant Premium");
+          const hasPremiumActions = premiumSelectedCount > 0 && (hasPermission("Extend Premium") || hasPermission("Convert to Lifetime") || hasPermission("Revoke Premium"));
+          if (!hasNonPremiumActions && !hasPremiumActions) return null;
+          return (
+            <div className="flex items-center gap-2">
+              {hasNonPremiumActions && (
+                <>
+                  <GrantPremiumModal
+                    licenseId={selectedIds.size === 1 ? [...selectedIds].find((id) => !premiumIds.has(id)) : undefined}
+                    licenseOrg={undefined}
+                    availableLicenses={availableForGrant}
+                  />
+                  {nonPremiumSelectedCount > 1 && hasPermission("Bulk Grant Premium") && (
+                    <button onClick={() => setBulkGrantOpen(true)} className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
+                      Bulk Grant ({nonPremiumSelectedCount})
+                    </button>
+                  )}
+                </>
+              )}
+              {premiumSelectedCount > 0 && (
+                <>
+                  {hasPermission("Extend Premium") && (
+                    <button onClick={() => setBulkExtendOpen(true)} className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
+                      Extend ({premiumSelectedCount})
+                    </button>
+                  )}
+                  {hasPermission("Convert to Lifetime") && (
+                    <button onClick={() => setBulkConvertLifetimeOpen(true)} className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-500">
+                      Convert to Lifetime ({premiumSelectedCount})
+                    </button>
+                  )}
+                  {hasPermission("Revoke Premium") && (
+                    <button onClick={bulkRevoke} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
+                      Revoke ({premiumSelectedCount})
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()
       }
       columns={[
         { key: "organization", label: "Organization", sortable: true, searchable: true },
@@ -193,10 +206,12 @@ export function PremiumTable({ licenses, availableForGrant }: Props) {
             <span key="daysLeft" className={daysColor}>
               {days < 0 ? "Expired" : `${days}d`}
             </span>,
-            <div key="actions" className="flex items-center gap-1">
-              {!isPremium ? (
+            !isPremium && hasPermission("Grant Premium") ? (
+              <div key="actions" className="flex items-center gap-1">
                 <GrantPremiumModal licenseId={l.id} licenseOrg={l.organization} availableLicenses={availableForGrant} />
-              ) : (
+              </div>
+            ) : isPremium && hasPermission("Revoke Premium") ? (
+              <div key="actions" className="flex items-center gap-1">
                 <PremiumRowActions
                   licenseId={l.id}
                   licenseKey={l.key}
@@ -205,8 +220,8 @@ export function PremiumTable({ licenses, availableForGrant }: Props) {
                   currentSubscriptionType={l.subscriptionType}
                   currentExpiry={l.expiresAt}
                 />
-              )}
-            </div>,
+              </div>
+            ) : null,
           ],
         };
       })}
@@ -251,6 +266,7 @@ function PremiumRowActions({
   currentSubscriptionType?: string;
   currentExpiry: Date;
 }) {
+  const { hasPermission } = usePermission();
   const [extendOpen, setExtendOpen] = useState(false);
   const [convertLifetimeOpen, setConvertLifetimeOpen] = useState(false);
   const [convertCustomOpen, setConvertCustomOpen] = useState(false);
@@ -260,14 +276,16 @@ function PremiumRowActions({
   const isLifetime = currentSubscriptionType === "LIFETIME";
 
   const items: { label: string; onClick: () => void; variant?: "default" | "danger" | "primary" }[] = [
-    { label: "Extend", onClick: () => setExtendOpen(true) },
-    { label: "Convert to Custom", onClick: () => setConvertCustomOpen(true) },
-    ...(!isLifetime
-      ? [{ label: "Convert to Lifetime", onClick: () => setConvertLifetimeOpen(true) }]
+    ...(hasPermission("Extend Premium") ? [{ label: "Extend" as const, onClick: () => setExtendOpen(true) }] : []),
+    ...(hasPermission("Convert to Custom") ? [{ label: "Convert to Custom" as const, onClick: () => setConvertCustomOpen(true) }] : []),
+    ...(!isLifetime && hasPermission("Convert to Lifetime")
+      ? [{ label: "Convert to Lifetime" as const, onClick: () => setConvertLifetimeOpen(true) }]
       : []),
-    { label: "Change Plan", onClick: () => setChangePlanOpen(true) },
-    { label: "Revoke", onClick: () => setRevokeOpen(true), variant: "danger" as const },
+    ...(hasPermission("Change Premium Plan") ? [{ label: "Change Plan" as const, onClick: () => setChangePlanOpen(true) }] : []),
+    ...(hasPermission("Revoke Premium") ? [{ label: "Revoke" as const, onClick: () => setRevokeOpen(true), variant: "danger" as const }] : []),
   ];
+
+  if (items.length === 0) return null;
 
   return (
     <>

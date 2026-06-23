@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Gems Management" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -20,6 +21,7 @@ import { TopGemHolders } from "@/components/gems/TopGemHolders";
 import { GemDistributionChart } from "@/components/gems/GemDistributionChart";
 
 export default async function GemsPage() {
+  await requirePermission("View Gem Balances");
   const [balances, transactions, rewards, allLicenses] = await Promise.all([
     prisma.gemBalance.findMany({
       include: { license: { select: { organization: true, key: true, plan: true, status: true } } },

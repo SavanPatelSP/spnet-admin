@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { Ban, CheckCircle, Power, PowerOff, PauseCircle } from "lucide-react";
 
@@ -19,6 +20,7 @@ interface Props {
 export function DeviceStatusActions({ activationId, status, onToggle }: Props) {
   const router = useRouter();
   const { toast } = useToast();
+  const { hasPermission } = usePermission();
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<DeviceStatus | null>(null);
 
@@ -79,6 +81,7 @@ export function DeviceStatusActions({ activationId, status, onToggle }: Props) {
   }
 
   if (status === "BLACKLISTED") {
+    if (!hasPermission("Whitelist Devices")) return null;
     return (
       <ActionButton onClick={handleWhitelist} variant="secondary" size="sm" loading={actionLoading}>
         <CheckCircle size={14} /> Whitelist
@@ -86,28 +89,38 @@ export function DeviceStatusActions({ activationId, status, onToggle }: Props) {
     );
   }
 
+  const canActivate = status !== "ACTIVE" && hasPermission("Activate Devices");
+  const canDeactivate = status !== "INACTIVE" && hasPermission("Deactivate Devices");
+  const canSuspend = status !== "SUSPENDED" && hasPermission("Suspend Devices");
+  const canBlacklist = hasPermission("Blacklist Devices");
+  const hasAnyAction = canActivate || canDeactivate || canSuspend || canBlacklist;
+
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        {status !== "ACTIVE" && (
-          <ActionButton onClick={() => updateStatus("ACTIVE")} variant="secondary" size="sm" loading={actionLoading}>
-            <Power size={14} /> Activate
-          </ActionButton>
-        )}
-        {status !== "INACTIVE" && (
-          <ActionButton onClick={() => setConfirmAction("INACTIVE")} variant="secondary" size="sm" loading={actionLoading}>
-            <PowerOff size={14} /> Deactivate
-          </ActionButton>
-        )}
-        {status !== "SUSPENDED" && (
-          <ActionButton onClick={() => setConfirmAction("SUSPENDED")} variant="secondary" size="sm" loading={actionLoading}>
-            <PauseCircle size={14} /> Suspend
-          </ActionButton>
-        )}
-        <ActionButton onClick={() => setConfirmAction("BLACKLISTED")} variant="danger" size="sm" loading={actionLoading}>
-          <Ban size={14} /> Blacklist
-        </ActionButton>
-      </div>
+      {hasAnyAction && (
+        <div className="flex flex-wrap items-center gap-2">
+          {canActivate && (
+            <ActionButton onClick={() => updateStatus("ACTIVE")} variant="secondary" size="sm" loading={actionLoading}>
+              <Power size={14} /> Activate
+            </ActionButton>
+          )}
+          {canDeactivate && (
+            <ActionButton onClick={() => setConfirmAction("INACTIVE")} variant="secondary" size="sm" loading={actionLoading}>
+              <PowerOff size={14} /> Deactivate
+            </ActionButton>
+          )}
+          {canSuspend && (
+            <ActionButton onClick={() => setConfirmAction("SUSPENDED")} variant="secondary" size="sm" loading={actionLoading}>
+              <PauseCircle size={14} /> Suspend
+            </ActionButton>
+          )}
+          {canBlacklist && (
+            <ActionButton onClick={() => setConfirmAction("BLACKLISTED")} variant="danger" size="sm" loading={actionLoading}>
+              <Ban size={14} /> Blacklist
+            </ActionButton>
+          )}
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmAction !== null}

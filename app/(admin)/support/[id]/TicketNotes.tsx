@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePermission } from "@/hooks/usePermissions";
 import { formatDate } from "@/lib/shared";
 
 interface Note {
@@ -18,6 +19,7 @@ interface TicketNotesProps {
 }
 
 export function TicketNotes({ ticketId, notes }: TicketNotesProps) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [note, setNote] = useState("");
   const [isInternal, setIsInternal] = useState(true);
@@ -51,33 +53,35 @@ export function TicketNotes({ ticketId, notes }: TicketNotesProps) {
 
       {error && <div className="mb-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</div>}
 
-      <div className="space-y-3 mb-6">
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={3}
-          placeholder="Add an internal note..."
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-3 text-sm text-zinc-100 outline-none focus:border-blue-500"
-        />
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-zinc-500">
-            <input
-              type="checkbox"
-              checked={isInternal}
-              onChange={(e) => setIsInternal(e.target.checked)}
-              className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 accent-blue-600"
-            />
-            Internal only (not visible to user)
-          </label>
-          <button
-            onClick={addNote}
-            disabled={loading || !note.trim()}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
-          >
-            {loading ? "Adding..." : "Add Note"}
-          </button>
+      {hasPermission("Manage Tickets") && (
+        <div className="space-y-3 mb-6">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={3}
+            placeholder="Add an internal note..."
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-3 text-sm text-zinc-100 outline-none focus:border-blue-500"
+          />
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm text-zinc-500">
+              <input
+                type="checkbox"
+                checked={isInternal}
+                onChange={(e) => setIsInternal(e.target.checked)}
+                className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 accent-blue-600"
+              />
+              Internal only (not visible to user)
+            </label>
+            <button
+              onClick={addNote}
+              disabled={loading || !note.trim()}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+            >
+              {loading ? "Adding..." : "Add Note"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {notes.length === 0 ? (
         <p className="text-sm text-zinc-500">No notes yet.</p>

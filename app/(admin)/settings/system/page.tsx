@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "System Administration" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { APP_VERSION, APP_BUILD } from "@/lib/constants";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
@@ -59,6 +60,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default async function SystemPage() {
+  await requirePermission("Edit System Settings");
   const [licenses, activations, teamMembers, sessions, failedLogins, auditLogCount, loginHistoryCount] =
     await Promise.all([
       prisma.license.findMany(),

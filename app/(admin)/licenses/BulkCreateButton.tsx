@@ -1,8 +1,11 @@
 "use client";
 
+"use client";
+
 import { useState } from "react";
 import BulkCreateLicenseModal from "@/components/licenses/BulkCreateLicenseModal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { CopyPlus } from "lucide-react";
 
 interface Props {
@@ -10,7 +13,10 @@ interface Props {
 }
 
 export default function BulkCreateButton({ templates }: Props) {
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
+
+  if (!hasPermission("Bulk Create Licenses")) return null;
 
   return (
     <>

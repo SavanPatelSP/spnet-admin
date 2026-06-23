@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Roles & Permissions" };
 
 export default async function RolesPage() {
+  await requirePermission("View Roles");
   const roles = await prisma.role.findMany({
     include: { members: true, permissions: true },
     orderBy: { createdAt: "desc" },

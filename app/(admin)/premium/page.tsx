@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Premium Management" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { Crown, CalendarDays, Clock, ClipboardList, ArrowUpRight, Download, Tags, Sparkles } from "lucide-react";
@@ -17,6 +18,7 @@ import { PremiumHistoryTable } from "@/components/premium/PremiumHistoryTable";
 import Link from "next/link";
 
 export default async function PremiumPage() {
+  await requirePermission("View Premium");
   const [licenses, allSubscriptions, requestCounts, premiumRequests] = await Promise.all([
     prisma.license.findMany({
       orderBy: { createdAt: "desc" },

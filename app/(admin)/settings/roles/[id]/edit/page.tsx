@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import EditRoleForm from "./role-form";
 import Link from "next/link";
@@ -10,6 +11,7 @@ export const metadata: Metadata = { title: "Edit Role" };
 
 export default async function EditRolePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requirePermission("View Roles");
   const role = await prisma.role.findUnique({
     where: { id },
     include: { permissions: true, members: true },

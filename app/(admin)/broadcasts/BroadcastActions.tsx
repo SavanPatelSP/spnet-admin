@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePermission } from "@/hooks/usePermissions";
 import { Send, Trash2, FileEdit } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -12,6 +13,7 @@ interface Broadcast {
 }
 
 export function BroadcastActions({ broadcast }: { broadcast: Broadcast }) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -54,8 +56,8 @@ export function BroadcastActions({ broadcast }: { broadcast: Broadcast }) {
     }
   }
 
-  const canSend = broadcast.status === "DRAFT";
-  const canDelete = broadcast.status !== "SENT";
+  const canSend = broadcast.status === "DRAFT" && hasPermission("Send Broadcasts");
+  const canDelete = broadcast.status !== "SENT" && hasPermission("Delete Broadcasts");
 
   return (
     <div className="flex items-center gap-2">
@@ -70,7 +72,7 @@ export function BroadcastActions({ broadcast }: { broadcast: Broadcast }) {
           <Send size={14} />
         </button>
       )}
-      {broadcast.status === "DRAFT" && (
+      {broadcast.status === "DRAFT" && hasPermission("Create Broadcasts") && (
         <button
           className="rounded-lg border border-zinc-700 p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-blue-400 disabled:opacity-30"
           title="Edit"

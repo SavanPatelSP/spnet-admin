@@ -5,11 +5,13 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Owner Panel" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { Shield, Users, KeyRound, AlertTriangle } from "lucide-react";
 
 export default async function OwnerPage() {
+  await requirePermission("Edit System Settings");
   const [owner, roles, teamMembers, licenses] = await Promise.all([
     prisma.teamMember.findFirst({
       include: { role: true },

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Coins Management" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { Coins, TrendingUp, TrendingDown, Infinity } from "lucide-react";
@@ -18,6 +19,7 @@ import { EconomyHealthPanel } from "@/components/coins/EconomyHealthPanel";
 import { SourceSinkTracking } from "@/components/coins/SourceSinkTracking";
 
 export default async function CoinsPage() {
+  await requirePermission("View Coin Balances");
   const [balances, transactions, allLicenses] = await Promise.all([
     prisma.coinBalance.findMany({
       include: { license: { select: { organization: true, key: true, plan: true, status: true } } },

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Gem, MinusCircle, SlidersHorizontal, Search, Building2, Key, CheckCircle, ArrowRight } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { usePermission } from "@/hooks/usePermissions";
 import GrantGemsModal from "@/components/gems/GrantGemsModal";
 import RevokeGemsModal from "@/components/gems/RevokeGemsModal";
 import SetGemsModal from "@/components/gems/SetGemsModal";
@@ -63,6 +64,7 @@ const actionCards = [
 ];
 
 export default function GemsPageActions({ licenses, rewards }: GemsPageActionsProps) {
+  const { hasPermission } = usePermission();
   const [activeAction, setActiveAction] = useState<"grant" | "revoke" | "set" | null>(null);
   const [selectedLicense, setSelectedLicense] = useState<LicenseInfo | null>(null);
   const [showLicensePicker, setShowLicensePicker] = useState(false);
@@ -95,10 +97,21 @@ export default function GemsPageActions({ licenses, rewards }: GemsPageActionsPr
     setActiveAction(null);
   }
 
+  const visibleActions = actionCards.filter((card) => {
+    switch (card.action) {
+      case "grant": return hasPermission("Grant Gems");
+      case "revoke": return hasPermission("Revoke Gems");
+      case "set": return hasPermission("Set Gem Balance");
+      default: return false;
+    }
+  });
+
+  if (visibleActions.length === 0) return null;
+
   return (
     <div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {actionCards.map((card) => (
+        {visibleActions.map((card) => (
           <button
             key={card.action}
             onClick={() => handleCardClick(card.action)}

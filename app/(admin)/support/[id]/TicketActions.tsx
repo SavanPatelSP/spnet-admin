@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePermission } from "@/hooks/usePermissions";
 
 interface TicketActionsProps {
   ticketId: string;
@@ -11,6 +12,7 @@ interface TicketActionsProps {
 }
 
 export function TicketActions({ ticketId, currentStatus, currentAssignee, teamMembers }: TicketActionsProps) {
+  const { hasPermission } = usePermission();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -52,6 +54,8 @@ export function TicketActions({ ticketId, currentStatus, currentAssignee, teamMe
       setLoading(null);
     }
   }
+
+  if (!hasPermission("Manage Tickets")) return null;
 
   return (
     <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import {
   Search, Building2, Key, User, CheckCircle, X, Crown, Sparkles,
@@ -59,6 +60,7 @@ export default function GrantPremiumModal({
   requests,
 }: GrantPremiumModalProps) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -223,6 +225,8 @@ export default function GrantPremiumModal({
     } catch { setError("Failed to grant premium"); }
     finally { setLoading(false); }
   }
+
+  if (!hasPermission("Grant Premium") && !open) return null;
 
   return (
     <>

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Security Center" };
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -12,6 +13,7 @@ import { Shield, AlertTriangle, CheckCircle, Lock } from "lucide-react";
 import PolicyActions from "@/components/settings/security/PolicyActions";
 
 export default async function SecuritySettingsPage() {
+  await requirePermission("View Security Policies");
   const policies = await prisma.securityPolicy.findMany({ orderBy: { createdAt: "asc" } });
 
   const enabledCount = policies.filter((p) => p.enabled).length;
