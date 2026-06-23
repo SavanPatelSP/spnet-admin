@@ -21,7 +21,7 @@ export default async function TeamMembersPage() {
     prisma.teamMember.count({ where: { status: "ACTIVE" } }),
     prisma.role.count(),
     prisma.teamMember.findMany({
-      include: { role: true },
+      include: { role: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.auditLog.findMany({
@@ -40,7 +40,7 @@ export default async function TeamMembersPage() {
   ]);
 
   const suspendedMembers = await prisma.teamMember.count({ where: { status: "SUSPENDED" } });
-  const roles = await prisma.role.findMany({ orderBy: { name: "asc" } });
+  const roles = await prisma.role.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
 
   const owner = members.find((m) => m.role?.name === "OWNER");
   const memberRows = members.map((m) => ({

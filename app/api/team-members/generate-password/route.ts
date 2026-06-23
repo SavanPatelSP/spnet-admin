@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 
     const member = await prisma.teamMember.findUnique({
       where: { id: memberId },
-      include: { role: true },
+      include: { role: { select: { name: true } } },
     });
     if (!member) {
       return Response.json({ success: false, error: "Team member not found" }, { status: 404 });

@@ -14,12 +14,17 @@ export async function GET() {
     const storedVersion = (session.user as { rolePermissionsVersion?: number }).rolePermissionsVersion ?? 0;
     const roleId = session.user.roleId;
 
-    const role = await prisma.role.findUnique({
-      where: { id: roleId },
-      select: { permissionsVersion: true },
-    });
-
-    const currentVersion = role?.permissionsVersion ?? 0;
+    let currentVersion = 0;
+    try {
+      const role = await prisma.role.findUnique({
+        where: { id: roleId },
+        select: { permissionsVersion: true },
+      });
+      currentVersion = role?.permissionsVersion ?? 0;
+    } catch {
+      // permissionsVersion column may not exist in production yet
+      return Response.json({ changed: false });
+    }
 
     if (currentVersion === storedVersion) {
       return Response.json({ changed: false });

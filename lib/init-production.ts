@@ -155,7 +155,7 @@ export async function initProductionOwner(
 
   const existingOwner = await prisma.teamMember.findUnique({
     where: { email: PRODUCTION_OWNER_EMAIL },
-    include: { role: true },
+    include: { role: { select: { name: true } } },
   });
 
   if (existingOwner) {

@@ -148,13 +148,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // 1. Find user by email
-        let member: Prisma.TeamMemberGetPayload<{ include: { role: true; license: true } }> | null;
+        // 1. Find user by email (avoid include: { role: true } — permissionsVersion may not exist in prod)
+        let member: Prisma.TeamMemberGetPayload<{ include: { license: true } }> | null;
+        let roleName: string | null = null;
+        let rolePermissionsVersion = 0;
         try {
           markStart("TEAM_MEMBER_LOOKUP");
           member = await prisma.teamMember.findUnique({
             where: { email },
-            include: { role: true, license: true },
+            include: { license: true },
           });
           markEnd("TEAM_MEMBER_LOOKUP", member ? 1 : 0);
         } catch {
@@ -168,9 +170,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             description: `Login failed: no account found for ${email}`,
           });
           prisma.loginHistory.create({
-            data: { teamMemberId: "unknown", email: email, ipAddress, userAgent, success: false, failureReason: "No account found" },
+            data: { teamMemberId: "unknown", email, ipAddress, userAgent, success: false, failureReason: "No account found" },
           }).catch(() => {});
           return null;
+        }
+
+        // Fetch role name + version separately (permissionsVersion may not exist in prod)
+        try {
+          const role = await prisma.role.findUnique({
+            where: { id: member.roleId },
+            select: { name: true, permissionsVersion: true },
+          });
+          if (role) {
+            roleName = role.name;
+            rolePermissionsVersion = role.permissionsVersion ?? 0;
+          }
+        } catch {
+          // permissionsVersion column does not exist yet — safe defaults apply
         }
 
         if (member.lockedUntil && member.lockedUntil > new Date()) {
@@ -399,13 +415,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: member.id,
           email: member.email,
           name: member.name,
-          role: member.role?.name ?? "Unknown",
+          role: roleName ?? "Unknown",
           roleId: member.roleId,
           licenseId: license.id,
           licenseStatus: license.status,
           licensePlan: license.plan,
           permissions,
-          rolePermissionsVersion: member.role?.permissionsVersion ?? 0,
+          rolePermissionsVersion,
           sessionRecordId,
           sessionCreatedAt: sessionCreatedAt.toISOString(),
           sessionExpiresAt: sessionExpiresAt.toISOString(),

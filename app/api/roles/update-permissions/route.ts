@@ -28,7 +28,7 @@ export async function PUT(req: Request) {
       data: { permissionsVersion: { increment: 1 } },
     });
 
-    const role = await prisma.role.findUnique({ where: { id: body.roleId } });
+    const role = await prisma.role.findUnique({ where: { id: body.roleId }, select: { id: true, name: true } });
     await logAudit(
       AUDIT_ACTIONS.ROLE_PERMISSIONS_UPDATED,
       undefined,

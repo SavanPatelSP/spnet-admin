@@ -2,8 +2,8 @@ import type { License, Activation, AuditLog, TeamMember, Role, Permission } from
 
 export type LicenseWithActivations = License & { _count: { activations: number } };
 export type ActivationWithLicense = Activation & { license: License };
-export type RoleWithPermissions = Role & { permissions: Permission[]; members: TeamMember[] };
-export type TeamMemberWithRole = TeamMember & { role: Role };
+export type RoleWithPermissions = Omit<Role, "permissionsVersion"> & { permissions: Pick<Permission, "id" | "roleId" | "permission" | "createdAt">[]; members: Pick<TeamMember, "id" | "name" | "email" | "status">[] };
+export type TeamMemberWithRole = TeamMember & { role: Omit<Role, "permissionsVersion"> };
 export type AuditLogWithMeta = AuditLog;
 
 export interface DashboardStats {

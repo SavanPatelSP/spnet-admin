@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     const member = await prisma.teamMember.create({
       data: { name, email, roleId, password: hashedPassword },
-      include: { role: true },
+      include: { role: { select: { name: true } } },
     });
 
     await logAudit(

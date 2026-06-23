@@ -13,7 +13,7 @@ export async function DELETE(req: Request) {
     }
     const role = await prisma.role.findUnique({
       where: { id },
-      include: { members: true },
+      select: { id: true, name: true, protected: true, members: { select: { id: true } } },
     });
 
     if (!role) {

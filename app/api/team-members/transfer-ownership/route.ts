@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "Target member ID is required" }, { status: 400 });
     }
 
-    const ownerRole = await prisma.role.findUnique({ where: { name: "OWNER" } });
+    const ownerRole = await prisma.role.findUnique({ where: { name: "OWNER" }, select: { id: true } });
     if (!ownerRole) {
       return Response.json({ error: "Owner role not found" }, { status: 500 });
     }
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     const targetMember = await prisma.teamMember.findUnique({
       where: { id: targetMemberId },
-      include: { role: true },
+      select: { id: true, name: true, email: true, roleId: true },
     });
 
     if (!targetMember) {
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
 
     const adminRole = await prisma.role.findFirst({
       where: { name: "ADMIN" },
+      select: { id: true },
     });
 
     if (!adminRole) {

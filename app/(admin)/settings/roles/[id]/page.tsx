@@ -18,7 +18,7 @@ export default async function RoleDetailsPage({ params }: { params: Promise<{ id
   const session = await requirePermission("View Roles");
   const role = await prisma.role.findUnique({
     where: { id },
-    include: { members: true, permissions: true },
+    select: { id: true, name: true, description: true, riskLevel: true, protected: true, createdAt: true, updatedAt: true, members: { select: { id: true, name: true, email: true, status: true } }, permissions: { select: { id: true, roleId: true, permission: true, createdAt: true } } },
   });
 
   if (!role) {

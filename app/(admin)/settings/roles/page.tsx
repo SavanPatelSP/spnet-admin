@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Roles & Permissions" };
 export default async function RolesPage() {
   const session = await requirePermission("View Roles");
   const roles = await prisma.role.findMany({
-    include: { members: true, permissions: true },
+    select: { id: true, name: true, description: true, riskLevel: true, protected: true, createdAt: true, updatedAt: true, members: { select: { id: true } }, permissions: { select: { id: true, roleId: true, permission: true, createdAt: true } } },
     orderBy: { createdAt: "desc" },
   });
 

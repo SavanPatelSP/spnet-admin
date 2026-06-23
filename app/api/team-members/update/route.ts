@@ -13,7 +13,7 @@ export async function PUT(req: Request) {
       return Response.json({ error: "Member id is required" }, { status: 400 });
     }
 
-    const existing = await prisma.teamMember.findUnique({ where: { id }, include: { role: true } });
+    const existing = await prisma.teamMember.findUnique({ where: { id }, include: { role: { select: { name: true } } } });
     if (!existing) {
       return Response.json({ error: "Team member not found" }, { status: 404 });
     }
@@ -43,7 +43,7 @@ export async function PUT(req: Request) {
     const updated = await prisma.teamMember.update({
       where: { id },
       data,
-      include: { role: true },
+      include: { role: { select: { name: true } } },
     });
 
     if (roleChanged) {
@@ -60,7 +60,7 @@ export async function PUT(req: Request) {
     if (name !== undefined && name !== existing.name) changes.push(`name: ${existing.name} → ${name}`);
     if (email !== undefined && email !== existing.email) changes.push(`email: ${existing.email} → ${email}`);
     if (roleId !== undefined) {
-      const newRole = await prisma.role.findUnique({ where: { id: roleId } });
+      const newRole = await prisma.role.findUnique({ where: { id: roleId }, select: { name: true } });
       changes.push(`role: ${existing.role.name} → ${newRole?.name || roleId}`);
     }
     if (status !== undefined && status !== existing.status) changes.push(`status: ${existing.status} → ${status}`);

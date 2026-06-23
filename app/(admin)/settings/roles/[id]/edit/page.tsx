@@ -14,7 +14,7 @@ export default async function EditRolePage({ params }: { params: Promise<{ id: s
   await requirePermission("Edit Roles");
   const role = await prisma.role.findUnique({
     where: { id },
-    include: { permissions: true, members: true },
+    select: { id: true, name: true, description: true, riskLevel: true, protected: true, createdAt: true, updatedAt: true, permissions: { select: { id: true, roleId: true, permission: true, createdAt: true } }, members: { select: { id: true, name: true, email: true } } },
   });
 
   if (!role) {

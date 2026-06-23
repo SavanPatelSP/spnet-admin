@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     const member = await prisma.teamMember.findUnique({
       where: { inviteToken: token },
-      include: { role: true },
+      select: { id: true, inviteTokenExpiresAt: true, name: true, email: true, password: true },
     });
 
     if (!member) {

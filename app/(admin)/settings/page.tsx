@@ -24,7 +24,7 @@ export default async function SettingsPage() {
   await requirePermission("Access Settings");
   const [teamMembers, roles, securityPolicies, licenses] = await Promise.all([
     prisma.teamMember.findMany(),
-    prisma.role.findMany(),
+    prisma.role.findMany({ select: { id: true, name: true } }),
     prisma.securityPolicy.findMany(),
     prisma.license.findMany(),
   ]);

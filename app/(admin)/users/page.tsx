@@ -17,10 +17,10 @@ export default async function UsersPage() {
   await requirePermission("View Users");
   const [teamMembers, roles, sessions, loginHistory] = await Promise.all([
     prisma.teamMember.findMany({
-      include: { role: true },
+      include: { role: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.role.findMany({ orderBy: { name: "asc" } }),
+    prisma.role.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.session.count({ where: { expiresAt: { gt: new Date() } } }),
     prisma.loginHistory.count(),
   ]);

@@ -14,10 +14,10 @@ export default async function OwnerPage() {
   await requirePermission("Edit System Settings");
   const [owner, roles, teamMembers, licenses] = await Promise.all([
     prisma.teamMember.findFirst({
-      include: { role: true },
+      include: { role: { select: { name: true } } },
       where: { role: { name: "OWNER" } },
     }),
-    prisma.role.findMany({ include: { members: true } }),
+    prisma.role.findMany({ select: { id: true, name: true, protected: true, members: { select: { id: true } } } }),
     prisma.teamMember.findMany(),
     prisma.license.findMany(),
   ]);

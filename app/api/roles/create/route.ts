@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "Role name is required" }, { status: 400 });
     }
 
-    const existing = await prisma.role.findUnique({ where: { name } });
+    const existing = await prisma.role.findUnique({ where: { name }, select: { id: true } });
     if (existing) {
       return Response.json({ error: "A role with this name already exists" }, { status: 409 });
     }

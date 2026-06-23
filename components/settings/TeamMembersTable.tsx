@@ -10,8 +10,8 @@ export default async function TeamMembersTable() {
   const currentUserRole = session?.user?.role;
 
   const [members, roles] = await Promise.all([
-    prisma.teamMember.findMany({ include: { role: true }, orderBy: { createdAt: "desc" } }),
-    prisma.role.findMany({ orderBy: { name: "asc" } }),
+    prisma.teamMember.findMany({ include: { role: { select: { name: true } } }, orderBy: { createdAt: "desc" } }),
+    prisma.role.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   return (

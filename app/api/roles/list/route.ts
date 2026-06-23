@@ -7,6 +7,7 @@ export async function GET() {
     await requireApiPermission("View Roles");
 
     const roles = await prisma.role.findMany({
+      select: { id: true, name: true, description: true, riskLevel: true, protected: true, createdAt: true, updatedAt: true, permissions: { select: { id: true, roleId: true, permission: true, createdAt: true } }, members: { select: { id: true } } },
       orderBy: { name: "asc" },
     });
 

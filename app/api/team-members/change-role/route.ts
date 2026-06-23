@@ -14,7 +14,7 @@ export async function PUT(req: Request) {
     const member = await prisma.teamMember.update({
       where: { id: body.id },
       data: { roleId: body.roleId },
-      include: { role: true },
+      include: { role: { select: { name: true } } },
     });
 
     await prisma.session.updateMany({

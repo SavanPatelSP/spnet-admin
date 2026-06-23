@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       return Response.json({ success: false, error: "A member with this email already exists" }, { status: 409 });
     }
 
-    const role = await prisma.role.findUnique({ where: { id: roleId } });
+    const role = await prisma.role.findUnique({ where: { id: roleId }, select: { id: true, name: true } });
     if (!role) {
       return Response.json({ success: false, error: "Role not found" }, { status: 404 });
     }
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         inviteToken,
         inviteTokenExpiresAt,
       },
-      include: { role: true, license: true },
+      include: { role: { select: { name: true } }, license: true },
     });
 
     // 3. Create invoice for license

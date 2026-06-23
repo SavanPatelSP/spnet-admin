@@ -6,12 +6,18 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, ALL_PERMISSIONS, PERMISSION_GROUPS, RISK_LEVELS } from "@/lib/constants";
 import { PERMISSION_META } from "@/lib/permission-meta";
 import { SIDEBAR_PAGES } from "@/lib/sidebar";
-import type { RoleWithPermissions } from "@/types/common";
+import type { Permission } from "@prisma/client";
 import { usePermission } from "@/hooks/usePermissions";
 import { Search, Shield, ChevronDown, ChevronRight, Info } from "lucide-react";
 
 interface Props {
-  role: RoleWithPermissions;
+  role: {
+    id: string;
+    name: string;
+    description: string | null;
+    riskLevel: string;
+    permissions: Pick<Permission, "id" | "roleId" | "permission" | "createdAt">[];
+  };
 }
 
 export default function EditRoleForm({ role }: Props) {
