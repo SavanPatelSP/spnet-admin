@@ -94,27 +94,26 @@ export async function POST(req: Request) {
     const newHashMasked = `${hashedPassword.slice(0, 7)}...${hashedPassword.slice(-4)}`;
     console.log("PASSWORD_HASH_CREATED", JSON.stringify({ newHash: newHashMasked, status: "hash_computed" }));
 
-    await prisma.$transaction([
-      prisma.teamMember.update({
-        where: { id: memberId },
-        data: {
-          password: hashedPassword,
-          passwordChangedAt: new Date(),
-          isFirstLogin: true,
-          failedLoginAttempts: 0,
-          lockedUntil: null,
-        },
-      }),
-      prisma.notification.create({
-        data: {
-          teamMemberId: memberId,
-          title: "Credentials Updated",
-          message: "Your account password has been updated by the system owner.\nPlease use the new credentials provided to you.",
-          type: "INFO",
-          read: false,
-        },
-      }),
-    ]);
+    await prisma.teamMember.update({
+      where: { id: memberId },
+      data: {
+        password: hashedPassword,
+        passwordChangedAt: new Date(),
+        isFirstLogin: true,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+
+    prisma.notification.create({
+      data: {
+        teamMemberId: memberId,
+        title: "Credentials Updated",
+        message: "Your account password has been updated by the system owner.\nPlease use the new credentials provided to you.",
+        type: "INFO",
+        read: false,
+      },
+    }).catch(() => {});
 
     console.log("PASSWORD_DB_UPDATE", JSON.stringify({ status: "transaction_complete" }));
 

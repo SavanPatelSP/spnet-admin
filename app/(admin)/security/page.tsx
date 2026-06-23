@@ -19,7 +19,7 @@ import { Shield, AlertTriangle, LogIn, Ban, Lock, Activity, Users, Fingerprint }
 export default async function SecurityPage() {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const [policies, auditLogs, loginHistory, sessions, activations, teamMembers, failedLogins, recentSuccess] =
+  const [policies, auditLogs, loginHistory, sessions, activations, memberGroup, failedLogins, recentSuccess, mfaGroup] =
     await Promise.all([
       prisma.securityPolicy.findMany(),
       prisma.auditLog.findMany({ take: 10, orderBy: { createdAt: "desc" } }),
@@ -30,14 +30,16 @@ export default async function SecurityPage() {
       }),
       prisma.session.count(),
       prisma.activation.count(),
-      prisma.teamMember.count(),
+      prisma.teamMember.groupBy({ by: ["status"], _count: true }),
       prisma.loginHistory.count({ where: { success: false } }),
       prisma.loginHistory.count({ where: { success: true, createdAt: { gte: yesterday } } }),
+      prisma.teamMember.groupBy({ by: ["mfaEnabled"], _count: true }),
     ]);
 
   const enabledPolicies = policies.filter((p) => p.enabled).length;
   const highSeverity = policies.filter((p) => p.severity === "High").length;
-  const mfaEnabled = await prisma.teamMember.count({ where: { mfaEnabled: true } });
+  const teamMembers = memberGroup.reduce((s, g) => s + g._count, 0);
+  const mfaEnabled = mfaGroup.find(m => m.mfaEnabled)?._count ?? 0;
 
   return (
     <div className="space-y-8">

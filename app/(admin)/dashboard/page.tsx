@@ -77,17 +77,16 @@ export default async function DashboardPage() {
 
   const [
     licenses, activationCounts, auditLogs, memberCounts, roleCount,
-    policyCounts, premiumSubs, coinStats, gemStats, promoStats,
+    premiumSubs, coinStats, gemStats, promoStats,
     invoiceStats, activeSessionCount, overriddenSessionCount, sessionsExpiringSoonCount,
-    paidInvoices, outstandingInvoices, draftInvoices, todayLogins, todayErrors,
-    activePromotionsCount, activePoliciesCount, totalPremiumSubs, totalSessionCount,
+    invoiceCounts, todayAuditCounts, activePromotionsCount,
+    policyGroup, totalPremiumSubs,
   ] = await Promise.all([
     prisma.license.findMany({ select: { status: true, expiresAt: true, maxDevices: true, plan: true, organization: true } }),
     prisma.activation.groupBy({ by: ["status"], _count: true }),
     prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     prisma.teamMember.groupBy({ by: ["status"], _count: true }),
     prisma.role.count(),
-    prisma.securityPolicy.count(),
     prisma.premiumSubscription.findMany({ where: { endDate: { gt: now }, action: { notIn: ["REVOKED", "CANCELLED"] } }, select: { id: true, licenseId: true } }),
     prisma.coinBalance.aggregate({ _sum: { balance: true }, _count: true }),
     prisma.gemBalance.aggregate({ _sum: { balance: true }, _count: true }),
@@ -96,16 +95,24 @@ export default async function DashboardPage() {
     prisma.session.count({ where: { expiresAt: { gt: now } } }),
     prisma.session.count({ where: { overrideDurationMinutes: { not: null } } }),
     prisma.session.count({ where: { expiresAt: { gt: now, lte: thirtyDaysFromNow } } }),
-    prisma.invoice.count({ where: { status: "PAID" } }),
-    prisma.invoice.count({ where: { status: { in: ["PENDING", "OVERDUE"] } } }),
-    prisma.invoice.count({ where: { status: "DRAFT" } }),
-    prisma.auditLog.count({ where: { action: "LOGIN_SUCCESS", createdAt: { gte: startOfToday } } }),
-    prisma.auditLog.count({ where: { action: { in: ["LOGIN_FAILURE", "PERMISSION_DENIED"] }, createdAt: { gte: startOfToday } } }),
+    prisma.invoice.groupBy({ by: ["status"], _count: true }),
+    prisma.auditLog.groupBy({
+      by: ["action"],
+      where: { action: { in: ["LOGIN_SUCCESS", "LOGIN_FAILURE", "PERMISSION_DENIED"] }, createdAt: { gte: startOfToday } },
+      _count: true,
+    }),
     prisma.promotion.count({ where: { active: true } }),
-    prisma.securityPolicy.count({ where: { enabled: true } }),
+    prisma.securityPolicy.groupBy({ by: ["enabled"], _count: true }),
     prisma.premiumSubscription.count(),
-    prisma.session.count(),
   ]);
+
+  const paidInvoices = invoiceCounts.find(i => i.status === "PAID")?._count ?? 0;
+  const outstandingInvoices = invoiceCounts.filter(i => ["PENDING", "OVERDUE"].includes(i.status)).reduce((s, i) => s + i._count, 0);
+  const draftInvoices = invoiceCounts.find(i => i.status === "DRAFT")?._count ?? 0;
+  const todayLogins = todayAuditCounts.find(a => a.action === "LOGIN_SUCCESS")?._count ?? 0;
+  const todayErrors = todayAuditCounts.filter(a => ["LOGIN_FAILURE", "PERMISSION_DENIED"].includes(a.action)).reduce((s, a) => s + a._count, 0);
+  const totalPolicies = policyGroup.reduce((s, p) => s + p._count, 0);
+  const activePoliciesCount = policyGroup.find(p => p.enabled)?._count ?? 0;
 
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
@@ -137,7 +144,6 @@ export default async function DashboardPage() {
   const totalCoinsWallets = coinStats._count;
   const totalGems = gemStats._sum.balance || 0;
   const totalGemsWallets = gemStats._count;
-  const totalPolicies = policyCounts;
   const rolesCount = roleCount;
   const uniqueOrgs = new Set(licenses.map((l) => l.organization)).size;
 
@@ -462,7 +468,7 @@ export default async function DashboardPage() {
               <StatRow label="Total Members" value={totalMembers} color="text-blue-400" />
               <StatRow label="Total Licenses" value={licenses.length} color="text-purple-400" />
               <StatRow label="Total Invoices" value={totalInvoices} color="text-emerald-400" />
-              <StatRow label="Total Sessions" value={totalSessionCount} color="text-amber-400" />
+              <StatRow label="Total Sessions" value={activeSessionCount} color="text-amber-400" />
             </div>
           </InsightCard>
         </div>

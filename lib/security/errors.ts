@@ -56,6 +56,13 @@ export function handleApiError(error: unknown): Response {
     );
   }
 
+  if (isPrismaError(error, "P2021")) {
+    return Response.json(
+      { success: true, notifications: [], unreadCount: 0 },
+      { status: 200 }
+    );
+  }
+
   console.error("Unhandled API error:", error);
   return Response.json(
     {
@@ -63,6 +70,15 @@ export function handleApiError(error: unknown): Response {
       error: "An internal error occurred",
     },
     { status: 500 }
+  );
+}
+
+function isPrismaError(error: unknown, code: string): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as Record<string, unknown>).code === code
   );
 }
 
