@@ -6,6 +6,7 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
+import { usePermission } from "@/hooks/usePermissions";
 
 interface Props {
   roleId: string;
@@ -13,6 +14,7 @@ interface Props {
 
 export default function DeleteRoleButton({ roleId }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +43,8 @@ export default function DeleteRoleButton({ roleId }: Props) {
       setLoading(false);
     }
   }
+
+  if (!hasPermission("Delete Roles")) return null;
 
   return (
     <>

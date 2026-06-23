@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { downloadCSV } from "@/lib/export";
 import { API_ROUTES } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/shared";
+import { usePermission } from "@/hooks/usePermissions";
 import RoleSelector from "@/components/settings/team-members/RoleSelector";
 import dynamic from "next/dynamic";
 import MemberActions from "@/components/settings/team-members/MemberActions";
@@ -38,6 +39,7 @@ interface TeamMembersDataTableProps {
 
 export default function TeamMembersDataTable({ members, roles, currentUserRole }: TeamMembersDataTableProps) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -177,7 +179,7 @@ export default function TeamMembersDataTable({ members, roles, currentUserRole }
           />
         }
         bulkActions={
-          selectedIds.size > 0 && (
+          selectedIds.size > 0 && hasPermission("Remove Team Members") && (
             <div className="flex items-center gap-2">
               <button onClick={() => setBulkSuspendOpen(true)} className="rounded-xl bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-500">
                 Suspend {selectedIds.size}

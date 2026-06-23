@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { API_ROUTES } from "@/lib/constants";
+import { usePermission } from "@/hooks/usePermissions";
 import { ToggleLeft, ToggleRight } from "lucide-react";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 
 export default function PolicyActions({ id, enabled, name }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +43,8 @@ export default function PolicyActions({ id, enabled, name }: Props) {
       setLoading(false);
     }
   }
+
+  if (!hasPermission("Toggle Security Policies")) return null;
 
   return (
     <>

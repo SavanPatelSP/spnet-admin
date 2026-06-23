@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { API_ROUTES, ROLE_PRICES as FALLBACK_PRICES } from "@/lib/constants";
+import { usePermission } from "@/hooks/usePermissions";
 import { getRolePrice, getRoleHierarchyLevel, getDefaultPermissions, getPermissionCounts, getCategoryCounts, calculateCosts } from "@/lib/permissions";
 import { User, Shield, FileText, CheckCircle, ArrowRight, DollarSign, ArrowUpRight, ArrowDownRight, Info } from "lucide-react";
 
@@ -23,6 +24,7 @@ interface EditMemberModalProps {
 
 export default function EditMemberModal({ member, roles }: EditMemberModalProps) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -92,6 +94,8 @@ export default function EditMemberModal({ member, roles }: EditMemberModalProps)
       setLoading(false);
     }
   }
+
+  if (!hasPermission("Edit Team Members")) return null;
 
   return (
     <>

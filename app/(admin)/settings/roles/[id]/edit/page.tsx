@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Edit Role" };
 
 export default async function EditRolePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requirePermission("View Roles");
+  await requirePermission("Edit Roles");
   const role = await prisma.role.findUnique({
     where: { id },
     include: { permissions: true, members: true },

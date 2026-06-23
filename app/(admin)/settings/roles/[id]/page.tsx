@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requirePermission, hasPermission } from "@/lib/auth-helpers";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Role Details" };
 
 export default async function RoleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requirePermission("View Roles");
+  const session = await requirePermission("View Roles");
   const role = await prisma.role.findUnique({
     where: { id },
     include: { members: true, permissions: true },
@@ -33,13 +33,15 @@ export default async function RoleDetailsPage({ params }: { params: Promise<{ id
         gradient={false}
         actions={
           <div className="flex items-center gap-3">
-            <Link
-              href={`/settings/roles/${role.id}/edit`}
-              className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition-colors hover:bg-blue-500"
-            >
-              Edit Role
-            </Link>
-            {!role.protected && <DeleteRoleButton roleId={role.id} />}
+            {hasPermission(session, "Edit Roles") && (
+              <Link
+                href={`/settings/roles/${role.id}/edit`}
+                className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition-colors hover:bg-blue-500"
+              >
+                Edit Role
+              </Link>
+            )}
+            {!role.protected && hasPermission(session, "Delete Roles") && <DeleteRoleButton roleId={role.id} />}
           </div>
         }
       />

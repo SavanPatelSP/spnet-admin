@@ -100,8 +100,9 @@ export default function MemberActions({ memberId, memberName, memberEmail, membe
 
   const isActive = status === "ACTIVE";
   const canManageMembers = hasPermission("Remove Team Members");
+  const canEditUsers = hasPermission("Edit Users");
   const canGeneratePassword = isOwner && hasPermission("Generate Passwords");
-  const hasAnyAction = canManageMembers || canGeneratePassword;
+  const hasAnyAction = canManageMembers || canEditUsers || canGeneratePassword;
   if (!hasAnyAction) return null;
 
   return (
@@ -124,7 +125,7 @@ export default function MemberActions({ memberId, memberName, memberEmail, membe
                   <div className="my-1 border-t border-zinc-700" />
                 </>
               )}
-              {canManageMembers && (isActive ? (
+              {canEditUsers && (isActive ? (
                 <button
                   onClick={() => { setMenuOpen(false); suspendAccount(); }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-yellow-400 hover:bg-zinc-700"

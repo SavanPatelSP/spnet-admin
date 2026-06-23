@@ -180,6 +180,10 @@ export const PERMISSION_META: Record<string, PermissionMeta> = {
     friendlyName: "Remove Team Members",
     description: "Allows the user to remove team members from the platform.",
   },
+  "Edit Team Members": {
+    friendlyName: "Edit Team Members",
+    description: "Allows the user to edit team member details and settings.",
+  },
   "Change Member Roles": {
     friendlyName: "Change Member Roles",
     description: "Allows the user to change the role assigned to team members.",

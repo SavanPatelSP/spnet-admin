@@ -10,6 +10,7 @@ import { downloadCSV } from "@/lib/export";
 import { API_ROUTES } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/shared";
 import { useToast } from "@/components/ui/Toast";
+import { usePermission } from "@/hooks/usePermissions";
 import {
   Ban, ShieldCheck, TrendingUp, TrendingDown, RotateCcw, History, Trash2, MoreHorizontal,
   RefreshCw, Globe, Loader2, X, Power, PowerOff, PauseCircle, Smartphone,
@@ -74,6 +75,13 @@ const STATUS_STYLES: Record<DeviceStatus, string> = {
 export function DevicesTable({ devices: initialDevices, autoRefresh = true }: DevicesTableProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { hasPermission } = usePermission();
+  const canManagePolicy = hasPermission("Manage Device Policies");
+  const canBlacklist = hasPermission("Blacklist Devices");
+  const canWhitelist = hasPermission("Whitelist Devices");
+  const canRevoke = hasPermission("Revoke Devices");
+  const canUpdateTrust = hasPermission("Update Device Trust");
+  const canViewAnalytics = hasPermission("View Device Analytics");
   const [devices, setDevices] = useState<DeviceRow[]>(initialDevices);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [orgFilter, setOrgFilter] = useState("");
@@ -472,7 +480,7 @@ export function DevicesTable({ devices: initialDevices, autoRefresh = true }: De
             />
           }
           bulkActions={
-            selectedIds.size > 0 && (
+            selectedIds.size > 0 && canRevoke && (
               <div className="flex items-center gap-2">
                 <button onClick={bulkRevoke} className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">
                   Revoke {selectedIds.size}
@@ -561,17 +569,19 @@ export function DevicesTable({ devices: initialDevices, autoRefresh = true }: De
                 {openDropdown === d.id && (
                   <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
                     {d.status === "BLACKLISTED" ? (
-                      <button
-                        onClick={() => handleWhitelist(d.id)}
-                        disabled={actionLoadingId === d.id}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
-                      >
-                        <ShieldCheck size={14} className="text-green-400" />
-                        Whitelist Device
-                      </button>
+                      canWhitelist && (
+                        <button
+                          onClick={() => handleWhitelist(d.id)}
+                          disabled={actionLoadingId === d.id}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+                        >
+                          <ShieldCheck size={14} className="text-green-400" />
+                          Whitelist Device
+                        </button>
+                      )
                     ) : (
                       <>
-                        {d.status !== "ACTIVE" && (
+                        {d.status !== "ACTIVE" && canManagePolicy && (
                           <button
                             onClick={() => handleStatusChange(d.id, "ACTIVE")}
                             disabled={actionLoadingId === d.id}
@@ -581,7 +591,7 @@ export function DevicesTable({ devices: initialDevices, autoRefresh = true }: De
                             Activate
                           </button>
                         )}
-                        {d.status !== "INACTIVE" && (
+                        {d.status !== "INACTIVE" && canManagePolicy && (
                           <button
                             onClick={() => handleStatusChange(d.id, "INACTIVE")}
                             disabled={actionLoadingId === d.id}
@@ -591,7 +601,7 @@ export function DevicesTable({ devices: initialDevices, autoRefresh = true }: De
                             Deactivate
                           </button>
                         )}
-                        {d.status !== "SUSPENDED" && (
+                        {d.status !== "SUSPENDED" && canManagePolicy && (
                           <button
                             onClick={() => handleStatusChange(d.id, "SUSPENDED")}
                             disabled={actionLoadingId === d.id}
@@ -601,63 +611,78 @@ export function DevicesTable({ devices: initialDevices, autoRefresh = true }: De
                             Suspend
                           </button>
                         )}
+                        {canBlacklist && (
+                          <button
+                            onClick={() => handleStatusChange(d.id, "BLACKLISTED")}
+                            disabled={actionLoadingId === d.id}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-zinc-800"
+                          >
+                            <Ban size={14} />
+                            Blacklist
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {canUpdateTrust && (
+                      <>
+                        <div className="my-1 border-t border-zinc-700" />
                         <button
-                          onClick={() => handleStatusChange(d.id, "BLACKLISTED")}
-                          disabled={actionLoadingId === d.id}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-zinc-800"
+                          onClick={() => { setTrustTarget(d.id); setTrustScoreInput(String(d.trustScore)); setActionError(""); }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
                         >
-                          <Ban size={14} />
-                          Blacklist
+                          <TrendingUp size={14} className="text-blue-400" />
+                          Update Trust
+                        </button>
+                        <button
+                          onClick={() => handleTrustIncrease(d.id)}
+                          disabled={actionLoadingId === d.id}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+                        >
+                          <TrendingUp size={14} className="text-green-400" />
+                          Increase Trust (+10)
+                        </button>
+                        <button
+                          onClick={() => handleTrustDecrease(d.id)}
+                          disabled={actionLoadingId === d.id}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+                        >
+                          <TrendingDown size={14} className="text-red-400" />
+                          Decrease Trust (-10)
+                        </button>
+                        <button
+                          onClick={() => handleTrustReset(d.id)}
+                          disabled={actionLoadingId === d.id}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+                        >
+                          <RotateCcw size={14} className="text-yellow-400" />
+                          Reset Trust (50)
                         </button>
                       </>
                     )}
-                    <div className="my-1 border-t border-zinc-700" />
-                    <button
-                      onClick={() => { setTrustTarget(d.id); setTrustScoreInput(String(d.trustScore)); setActionError(""); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
-                    >
-                      <TrendingUp size={14} className="text-blue-400" />
-                      Update Trust
-                    </button>
-                    <button
-                      onClick={() => handleTrustIncrease(d.id)}
-                      disabled={actionLoadingId === d.id}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
-                    >
-                      <TrendingUp size={14} className="text-green-400" />
-                      Increase Trust (+10)
-                    </button>
-                    <button
-                      onClick={() => handleTrustDecrease(d.id)}
-                      disabled={actionLoadingId === d.id}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
-                    >
-                      <TrendingDown size={14} className="text-red-400" />
-                      Decrease Trust (-10)
-                    </button>
-                    <button
-                      onClick={() => handleTrustReset(d.id)}
-                      disabled={actionLoadingId === d.id}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
-                    >
-                      <RotateCcw size={14} className="text-yellow-400" />
-                      Reset Trust (50)
-                    </button>
-                    <div className="my-1 border-t border-zinc-700" />
-                    <button
-                      onClick={() => handleTrustHistory(d.id)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
-                    >
-                      <History size={14} className="text-blue-400" />
-                      Trust History
-                    </button>
-                    <button
-                      onClick={() => { setRevokeTarget(d.id); setActionError(""); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-zinc-800"
-                    >
-                      <Trash2 size={14} />
-                      Revoke Device
-                    </button>
+                    {canViewAnalytics && (
+                      <>
+                        <div className="my-1 border-t border-zinc-700" />
+                        <button
+                          onClick={() => handleTrustHistory(d.id)}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+                        >
+                          <History size={14} className="text-blue-400" />
+                          Trust History
+                        </button>
+                      </>
+                    )}
+                    {canRevoke && (
+                      <>
+                        <div className="my-1 border-t border-zinc-700" />
+                        <button
+                          onClick={() => { setRevokeTarget(d.id); setActionError(""); }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-zinc-800"
+                        >
+                          <Trash2 size={14} />
+                          Revoke Device
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>,
@@ -728,17 +753,21 @@ export function DevicesTable({ devices: initialDevices, autoRefresh = true }: De
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {d.status !== "ACTIVE" && (
+              {d.status !== "ACTIVE" && canManagePolicy && (
                 <ActionButton onClick={() => handleStatusChange(d.id, "ACTIVE")} label="Activate" icon={Power} variant="green" loading={actionLoadingId === d.id} />
               )}
-              {d.status !== "INACTIVE" && (
+              {d.status !== "INACTIVE" && canManagePolicy && (
                 <ActionButton onClick={() => handleStatusChange(d.id, "INACTIVE")} label="Deactivate" icon={PowerOff} variant="zinc" loading={actionLoadingId === d.id} />
               )}
-              {d.status !== "SUSPENDED" && (
+              {d.status !== "SUSPENDED" && canManagePolicy && (
                 <ActionButton onClick={() => handleStatusChange(d.id, "SUSPENDED")} label="Suspend" icon={PauseCircle} variant="yellow" loading={actionLoadingId === d.id} />
               )}
-              <ActionButton onClick={() => handleTrustIncrease(d.id)} label="Trust +" icon={TrendingUp} variant="green" loading={actionLoadingId === d.id} />
-              <ActionButton onClick={() => handleTrustDecrease(d.id)} label="Trust -" icon={TrendingDown} variant="red" loading={actionLoadingId === d.id} />
+              {canUpdateTrust && (
+                <ActionButton onClick={() => handleTrustIncrease(d.id)} label="Trust +" icon={TrendingUp} variant="green" loading={actionLoadingId === d.id} />
+              )}
+              {canUpdateTrust && (
+                <ActionButton onClick={() => handleTrustDecrease(d.id)} label="Trust -" icon={TrendingDown} variant="red" loading={actionLoadingId === d.id} />
+              )}
             </div>
           </div>
         ))}

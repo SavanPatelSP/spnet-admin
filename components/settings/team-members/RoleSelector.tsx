@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { API_ROUTES } from "@/lib/constants";
+import { usePermission } from "@/hooks/usePermissions";
 
 interface Props {
   memberId: string;
@@ -13,6 +14,7 @@ interface Props {
 
 export default function RoleSelector({ memberId, currentRoleId, roles }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [roleId, setRoleId] = useState(currentRoleId);
   const [pendingRoleId, setPendingRoleId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -51,6 +53,11 @@ export default function RoleSelector({ memberId, currentRoleId, roles }: Props) 
     if (value === currentRoleId) return;
     setPendingRoleId(value);
     setConfirmOpen(true);
+  }
+
+  if (!hasPermission("Change Member Roles")) {
+    const currentRole = roles.find((r) => r.id === currentRoleId);
+    return <span className="text-sm text-zinc-400">{currentRole?.name || "Unknown"}</span>;
   }
 
   return (

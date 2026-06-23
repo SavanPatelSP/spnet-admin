@@ -485,6 +485,7 @@ export const PERMISSION_GROUPS = {
     "View Team Members",
     "Invite Team Members",
     "Create Team Members",
+    "Edit Team Members",
     "Remove Team Members",
     "Change Member Roles",
     "Transfer Ownership",

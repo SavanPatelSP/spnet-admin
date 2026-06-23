@@ -7,6 +7,7 @@ import { API_ROUTES, ALL_PERMISSIONS, PERMISSION_GROUPS, RISK_LEVELS } from "@/l
 import { PERMISSION_META } from "@/lib/permission-meta";
 import { SIDEBAR_PAGES } from "@/lib/sidebar";
 import type { RoleWithPermissions } from "@/types/common";
+import { usePermission } from "@/hooks/usePermissions";
 import { Search, Shield, ChevronDown, ChevronRight, Info } from "lucide-react";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 
 export default function EditRoleForm({ role }: Props) {
   const router = useRouter();
+  const { hasPermission } = usePermission();
   const [name, setName] = useState(role.name);
   const [description, setDescription] = useState(role.description ?? "");
   const [riskLevel, setRiskLevel] = useState(role.riskLevel);
@@ -303,9 +305,11 @@ export default function EditRoleForm({ role }: Props) {
         <ActionButton variant="secondary" onClick={() => router.push(`/settings/roles/${role.id}`)}>
           Cancel
         </ActionButton>
-        <ActionButton variant="primary" onClick={saveRole} disabled={saving}>
-          {saving ? "Saving..." : "Save Changes"}
-        </ActionButton>
+        {hasPermission("Edit Roles") && (
+          <ActionButton variant="primary" onClick={saveRole} disabled={saving}>
+            {saving ? "Saving..." : "Save Changes"}
+          </ActionButton>
+        )}
       </div>
     </div>
   );

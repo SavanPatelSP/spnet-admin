@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth-helpers";
+import { requirePermission, hasPermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Roles & Permissions" };
 
 export default async function RolesPage() {
-  await requirePermission("View Roles");
+  const session = await requirePermission("View Roles");
   const roles = await prisma.role.findMany({
     include: { members: true, permissions: true },
     orderBy: { createdAt: "desc" },
@@ -29,12 +29,14 @@ export default async function RolesPage() {
         title="Roles & Permissions"
         description="Enterprise RBAC management, permission governance and access control."
         actions={
-          <Link
-            href="/settings/roles/create"
-            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-500"
-          >
-            Create Role
-          </Link>
+          hasPermission(session, "Create Roles") && (
+            <Link
+              href="/settings/roles/create"
+              className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-500"
+            >
+              Create Role
+            </Link>
+          )
         }
       />
 
@@ -63,10 +65,12 @@ export default async function RolesPage() {
                 <Link href={`/settings/roles/${role.id}`} className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700">
                   View
                 </Link>
-                <Link href={`/settings/roles/${role.id}/edit`} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500">
-                  Edit
-                </Link>
-                {!role.protected && <DeleteRoleButton roleId={role.id} />}
+                {hasPermission(session, "Edit Roles") && (
+                  <Link href={`/settings/roles/${role.id}/edit`} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500">
+                    Edit
+                  </Link>
+                )}
+                {!role.protected && hasPermission(session, "Delete Roles") && <DeleteRoleButton roleId={role.id} />}
               </div>
             </div>
 
