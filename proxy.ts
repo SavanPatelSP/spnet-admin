@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { buildCSP, getSecurityHeaders } from "@/lib/security/headers";
+import { markStart, markEnd } from "@/lib/perf";
 
 const publicRoutes = new Set(["/login", "/unauthorized", "/setup-password"]);
 const publicPrefixes = [
@@ -21,6 +22,7 @@ function pathnameFrom(url: string): string {
 }
 
 export const proxy = auth((req) => {
+  markStart("MIDDLEWARE_TOTAL");
   const isDev = process.env.NODE_ENV === "development";
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const cspHeader = buildCSP(nonce);
@@ -43,6 +45,7 @@ export const proxy = auth((req) => {
     publicRoutes.has(pathname) ||
     publicPrefixes.some((p) => pathname.startsWith(p))
   ) {
+    markEnd("MIDDLEWARE_TOTAL");
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     return addSecurityHeaders(response);
   }
@@ -50,12 +53,14 @@ export const proxy = auth((req) => {
   const isAuthenticated = !!req.auth?.user?.id;
   if (!isAuthenticated) {
     if (pathname.startsWith("/api/")) {
+      markEnd("MIDDLEWARE_TOTAL");
       const response = NextResponse.json(
         { success: false, error: "Authentication required" },
         { status: 401 }
       );
       return addSecurityHeaders(response);
     }
+    markEnd("MIDDLEWARE_TOTAL");
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     const response = NextResponse.redirect(loginUrl);
@@ -67,12 +72,14 @@ export const proxy = auth((req) => {
 
   if (!licenseStatus || licenseStatus !== "ACTIVE") {
     if (pathname.startsWith("/api/")) {
+      markEnd("MIDDLEWARE_TOTAL");
       const response = NextResponse.json(
         { success: false, error: "License is not active" },
         { status: 403 }
       );
       return addSecurityHeaders(response);
     }
+    markEnd("MIDDLEWARE_TOTAL");
     const signoutUrl = new URL("/api/auth/signout", req.url);
     signoutUrl.searchParams.set("callbackUrl", "/login");
     const response = NextResponse.redirect(signoutUrl);
@@ -85,12 +92,14 @@ export const proxy = auth((req) => {
 
     if (!userRole) {
       if (pathname.startsWith("/api/")) {
+        markEnd("MIDDLEWARE_TOTAL");
         const response = NextResponse.json(
           { success: false, error: "Invalid role" },
           { status: 403 }
         );
         return addSecurityHeaders(response);
       }
+      markEnd("MIDDLEWARE_TOTAL");
       const response = NextResponse.redirect(new URL("/unauthorized", req.url));
       return addSecurityHeaders(response);
     }

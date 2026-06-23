@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { AUTH } from "@/lib/constants";
 import { resolveGeoFromApi } from "@/lib/geo";
+import { markStart, markEnd } from "@/lib/perf";
 
 const IP_ATTEMPT_WINDOW = 60_000;
 const IP_MAX_ATTEMPTS = 10;
@@ -120,7 +121,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         licenseKey: { label: "License Key", type: "text" },
       },
       async authorize(credentials, req) {
-        const t0 = Date.now();
+        markStart("AUTH_TOTAL");
 
         const headersList = await headers();
         const ipAddress = headersList.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -148,11 +149,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // 1. Find user by email
         let member: Prisma.TeamMemberGetPayload<{ include: { role: true; license: true } }> | null;
         try {
+          markStart("TEAM_MEMBER_LOOKUP");
           member = await prisma.teamMember.findUnique({
             where: { email },
             include: { role: true, license: true },
           });
+          markEnd("TEAM_MEMBER_LOOKUP", member ? 1 : 0);
         } catch {
+          markEnd("TEAM_MEMBER_LOOKUP", 0);
           return null;
         }
 
@@ -176,7 +180,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
+        markStart("BCRYPT_COMPARE");
         const isValidPassword = await bcrypt.compare(password, member.password);
+        markEnd("BCRYPT_COMPARE");
         if (!isValidPassword) {
           const newAttempts = member.failedLoginAttempts + 1;
           const lockoutDuration = computeLockoutDuration(Math.floor(newAttempts / AUTH.MAX_LOGIN_ATTEMPTS));
@@ -278,7 +284,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // ── Critical path (must complete before return) ──
 
         // Session + permissions are independent — run in parallel
-        const tParallel = Date.now();
+        markStart("SESSION_CREATE");
+        markStart("PERMISSION_QUERY");
         const sessionToken = crypto.randomUUID();
         const sessionCreatedAt = new Date();
         const sessionExpiresAt = new Date(sessionCreatedAt.getTime() + AUTH.SESSION_MAX_AGE_SECONDS * 1000);
@@ -302,7 +309,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           ]);
           sessionRecordId = sessionRecord.id;
           permissions = permissionRows.map(p => p.permission);
+          markEnd("PERMISSION_QUERY", permissions.length);
+          markEnd("SESSION_CREATE");
         } catch {
+          markEnd("PERMISSION_QUERY");
+          markEnd("SESSION_CREATE");
           // Session/permission query failed — null return will prevent login
         }
 
@@ -381,6 +392,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
         })();
 
+        markEnd("AUTH_TOTAL");
         return {
           id: member.id,
           email: member.email,
@@ -413,23 +425,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.sessionCreatedAt = (user as { sessionCreatedAt: string | null }).sessionCreatedAt;
         token.sessionExpiresAt = (user as { sessionExpiresAt: string | null }).sessionExpiresAt;
         token.licenseLastVerifiedAt = new Date().toISOString();
-      } else if (token.licenseId) {
-        // License re-validation with 5-minute cache window
+      } else {
+        // Re-validate license + re-fetch permissions periodically
         const LICENSE_REFRESH_MS = 5 * 60 * 1000;
         const lastVerified = token.licenseLastVerifiedAt
           ? new Date(token.licenseLastVerifiedAt).getTime()
           : 0;
         if (Date.now() - lastVerified > LICENSE_REFRESH_MS) {
           try {
-            const license = await prisma.license.findUnique({
-              where: { id: token.licenseId as string },
-              select: { status: true, expiresAt: true },
-            });
+            const [license, permissionRows] = await Promise.all([
+              prisma.license.findUnique({
+                where: { id: token.licenseId as string },
+                select: { status: true, expiresAt: true },
+              }),
+              prisma.permission.findMany({
+                where: { roleId: token.roleId as string },
+                select: { permission: true },
+              }),
+            ]);
             if (!license) return null;
             if (license.expiresAt < new Date() || license.status !== "ACTIVE") return null;
             if (token.licenseStatus !== license.status) {
               token.licenseStatus = license.status;
             }
+            token.permissions = permissionRows.map(p => p.permission);
             token.licenseLastVerifiedAt = new Date().toISOString();
           } catch (e) {
             console.error("License validation error in JWT callback:", e);

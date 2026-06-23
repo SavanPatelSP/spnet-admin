@@ -251,6 +251,11 @@ model Activation {
 
   deviceFingerprintId String?
   deviceFingerprint   DeviceFingerprint? @relation(fields: [deviceFingerprintId], references: [id])
+
+  @@index([deviceId])
+  @@index([licenseId])
+  @@index([status])
+  @@index([licenseId, status])
 }
 
 model DeviceFingerprint {
@@ -418,6 +423,9 @@ model Permission {
   permission  String
 
   createdAt   DateTime @default(now())
+
+  @@index([roleId])
+  @@index([roleId, permission])
 }
 
 model SupportTicket {

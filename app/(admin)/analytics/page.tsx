@@ -43,7 +43,7 @@ export default async function AnalyticsPage({
       orderBy: { createdAt: "desc" },
       where: days < 90 ? { createdAt: { gte: periodStart } } : undefined,
     }),
-    prisma.teamMember.findMany(),
+    prisma.teamMember.count(),
     days > 1
       ? prisma.activation.count({
           where: {
@@ -58,6 +58,7 @@ export default async function AnalyticsPage({
   const utilization = calculateUtilization(totalDevices, totalCapacity);
   const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
   const avgDevicesPerLicense = licenses.length > 0 ? (totalDevices / licenses.length).toFixed(1) : "0";
+  const teamMemberCount = teamMembers;
 
   const planDistribution = Object.entries(
     licenses.reduce<Record<string, number>>((acc, l) => {
@@ -151,7 +152,7 @@ export default async function AnalyticsPage({
               value={auditLogs.length}
               icon={Users}
               color="purple"
-              subtitle={`${teamMembers.length} team members`}
+              subtitle={`${teamMemberCount} team members`}
               href="/audit-logs"
             />
           </StatCardGrid>
@@ -219,7 +220,7 @@ export default async function AnalyticsPage({
                   </div>
                   <div>
                     <p className="text-sm text-zinc-500">Team Members</p>
-                    <p className="text-2xl font-bold text-zinc-100">{teamMembers.length}</p>
+                    <p className="text-2xl font-bold text-zinc-100">{teamMemberCount}</p>
                   </div>
                 </div>
                 <ArrowUpRight size={18} className="text-zinc-600 transition-colors group-hover:text-zinc-400" />

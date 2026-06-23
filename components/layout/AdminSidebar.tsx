@@ -108,6 +108,7 @@ export default function AdminSidebar({ permissions }: AdminSidebarProps) {
                     <Link
                       key={item.href}
                       href={item.href}
+                      prefetch={false}
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
                         active

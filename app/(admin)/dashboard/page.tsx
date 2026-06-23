@@ -17,6 +17,7 @@ import Link from "next/link";
 import { EXPIRING_SOON_DAYS, PLAN_PRICES } from "@/lib/constants";
 import { ALL_PLANS, PLAN_META } from "@/lib/premium";
 import { daysUntil, formatDate, formatNumber, formatPrice, cn } from "@/lib/shared";
+import { markStart, markEnd } from "@/lib/perf";
 
 export const dynamic = "force-dynamic";
 
@@ -75,12 +76,14 @@ export default async function DashboardPage() {
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+  markStart("DASHBOARD_TOTAL");
+  markStart("DASHBOARD_QUERIES");
+
   const [
     licenses, activationCounts, auditLogs, memberCounts, roleCount,
     premiumSubs, coinStats, gemStats, promoStats,
-    invoiceStats, activeSessionCount, overriddenSessionCount, sessionsExpiringSoonCount,
-    invoiceCounts, todayAuditCounts, activePromotionsCount,
-    policyGroup, totalPremiumSubs,
+    invoiceStats, sessionStats, invoiceCounts, todayAuditCounts,
+    activePromotionsCount, policyGroup, totalPremiumSubs,
   ] = await Promise.all([
     prisma.license.findMany({ select: { status: true, expiresAt: true, maxDevices: true, plan: true, organization: true } }),
     prisma.activation.groupBy({ by: ["status"], _count: true }),
@@ -92,9 +95,10 @@ export default async function DashboardPage() {
     prisma.gemBalance.aggregate({ _sum: { balance: true }, _count: true }),
     prisma.promotion.aggregate({ _sum: { usedCount: true }, _count: true }),
     prisma.invoice.aggregate({ _sum: { total: true }, _count: true }),
-    prisma.session.count({ where: { expiresAt: { gt: now } } }),
-    prisma.session.count({ where: { overrideDurationMinutes: { not: null } } }),
-    prisma.session.count({ where: { expiresAt: { gt: now, lte: thirtyDaysFromNow } } }),
+    prisma.session.findMany({
+      where: { expiresAt: { gt: now } },
+      select: { expiresAt: true, overrideDurationMinutes: true },
+    }),
     prisma.invoice.groupBy({ by: ["status"], _count: true }),
     prisma.auditLog.groupBy({
       by: ["action"],
@@ -105,6 +109,17 @@ export default async function DashboardPage() {
     prisma.securityPolicy.groupBy({ by: ["enabled"], _count: true }),
     prisma.premiumSubscription.count(),
   ]);
+
+  const activeSessionCount = sessionStats.length;
+  const overriddenSessionCount = sessionStats.filter(s => s.overrideDurationMinutes !== null).length;
+  const sessionsExpiringSoonCount = sessionStats.filter(s => s.expiresAt <= thirtyDaysFromNow).length;
+  markEnd("DASHBOARD_QUERIES", [
+    licenses.length, activationCounts.length, auditLogs.length, memberCounts.length,
+    roleCount, premiumSubs.length, 1, 1, 1, 1,
+    activeSessionCount + overriddenSessionCount + sessionsExpiringSoonCount,
+    invoiceCounts.length, todayAuditCounts.length,
+    activePromotionsCount, policyGroup.length, totalPremiumSubs,
+  ].reduce((a, b) => a + b, 0));
 
   const paidInvoices = invoiceCounts.find(i => i.status === "PAID")?._count ?? 0;
   const outstandingInvoices = invoiceCounts.filter(i => ["PENDING", "OVERDUE"].includes(i.status)).reduce((s, i) => s + i._count, 0);
@@ -153,6 +168,8 @@ export default async function DashboardPage() {
   if (expiredLicenses > 0) criticalAlerts.push({ icon: AlertTriangle, label: "Expired Licenses", value: expiredLicenses, color: "text-red-400" });
   if (expiringSoon > 0) criticalAlerts.push({ icon: Clock, label: "Expiring Soon", value: expiringSoon, color: "text-yellow-400" });
   if (suspendedMembers > 0) criticalAlerts.push({ icon: AlertTriangle, label: "Suspended Members", value: suspendedMembers, color: "text-yellow-400" });
+
+  markEnd("DASHBOARD_TOTAL");
 
   return (
     <div className="space-y-8">

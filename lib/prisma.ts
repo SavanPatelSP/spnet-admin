@@ -70,8 +70,6 @@ function validateDatabaseEnvironment(): void {
   }
 }
 
-validateDatabaseEnvironment();
-
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
@@ -90,10 +88,20 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-if (getAppEnvironment() === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
-  import("./init-production").then(({ initProductionOwner }) => {
-    initProductionOwner(prisma).catch((err) => {
-      console.error("Production owner initialization failed:", err);
-    });
-  });
+// Lazy validation — runs once on first request, not at module load time
+const envValidated = { done: false };
+function ensureEnvValidation(): void {
+  if (envValidated.done) return;
+  envValidated.done = true;
+  try {
+    validateDatabaseEnvironment();
+  } catch {
+    // Swallow validation errors in non-critical path
+  }
 }
+ensureEnvValidation();
+
+// Production owner initialization is deliberately removed.
+// The production owner is created once during initial deployment setup
+// via scripts/bootstrap-production-owner.ts. Running it on every cold start
+// wastes a DB query (teamMember.count + teamMember.findUnique).
