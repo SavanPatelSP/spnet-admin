@@ -59,6 +59,10 @@ model License {
   @@index([expiresAt])
   @@index([status])
   @@index([organization])
+  @@index([plan])
+  @@index([status, expiresAt])
+  @@index([organization, plan])
+  @@index([plan, status])
 }
 
 model LicenseTag {
@@ -81,6 +85,11 @@ model LicenseEvent {
   metadata    String?  // JSON string
   performedBy String?
   createdAt   DateTime @default(now())
+
+  @@index([licenseId])
+  @@index([licenseId, createdAt])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model LicenseTemplate {
@@ -120,6 +129,11 @@ model CoinTransaction {
   performedBy  String?
   metadata     String?
   createdAt    DateTime @default(now())
+
+  @@index([licenseId])
+  @@index([licenseId, createdAt])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model GemBalance {
@@ -145,6 +159,12 @@ model GemTransaction {
   description  String?
   performedBy  String?
   createdAt    DateTime @default(now())
+
+  @@index([licenseId])
+  @@index([licenseId, createdAt])
+  @@index([type])
+  @@index([rewardId])
+  @@index([createdAt])
 }
 
 model GemReward {
@@ -189,6 +209,12 @@ model PremiumSubscription {
   previousEndDate  DateTime?
 
   createdAt DateTime @default(now())
+
+  @@index([licenseId])
+  @@index([endDate])
+  @@index([plan])
+  @@index([licenseId, endDate])
+  @@index([action, endDate])
 }
 
 model PremiumRequest {
@@ -215,6 +241,10 @@ model PremiumRequest {
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([licenseId])
+  @@index([status])
+  @@index([status, createdAt])
 }
 
 model Activation {
@@ -250,6 +280,14 @@ model Activation {
 
   deviceFingerprintId String?
   deviceFingerprint   DeviceFingerprint? @relation(fields: [deviceFingerprintId], references: [id])
+
+  @@index([licenseId])
+  @@index([deviceId])
+  @@index([status])
+  @@index([trustScore])
+  @@index([deviceFingerprintId])
+  @@index([licenseId, status])
+  @@index([deviceId, status])
 }
 
 model DeviceFingerprint {
@@ -294,6 +332,10 @@ model AuditLog {
   @@index([actorEmail])
   @@index([createdAt])
   @@index([licenseId])
+  @@index([action, createdAt])
+  @@index([actorEmail, createdAt])
+  @@index([licenseId, createdAt])
+  @@index([severity, createdAt])
 }
 
 model TeamMember {
@@ -345,13 +387,15 @@ model TeamMember {
   @@index([roleId])
   @@index([status])
   @@index([email])
+  @@index([status, roleId])
+  @@index([licenseId])
 }
 
 model Session {
   id            String   @id @default(cuid())
   teamMemberId  String
   teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
-  token         String
+  token         String    @unique
   ipAddress     String?
   userAgent     String?
   expiresAt     DateTime
@@ -363,6 +407,8 @@ model Session {
 
   @@index([teamMemberId])
   @@index([expiresAt])
+  @@index([teamMemberId, expiresAt])
+  @@index([token, expiresAt])
 }
 
 model LoginHistory {
@@ -415,6 +461,10 @@ model Permission {
   permission  String
 
   createdAt   DateTime @default(now())
+
+  @@index([roleId])
+  @@index([permission])
+  @@index([roleId, permission])
 }
 
 model SupportTicket {
@@ -436,6 +486,12 @@ model SupportTicket {
   updatedAt DateTime @updatedAt
 
   notes SupportNote[]
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([licenseId])
+  @@index([status, priority])
+  @@index([createdAt])
 }
 
 model SupportNote {
@@ -544,6 +600,11 @@ model Promotion {
   metadata        String?   // JSON string for subtype-specific fields (perUserLimit, trialLength, fromPlan, campaignPromotions, etc.)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([productType])
+  @@index([active])
+  @@index([active, endDate])
+  @@index([appliesTo])
 }
 
 model Invoice {
@@ -595,4 +656,7 @@ model Invoice {
   @@index([category])
   @@index([action])
   @@index([issuedAt])
+  @@index([status, issuedAt])
+  @@index([organization, status])
+  @@index([category, status])
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, useMemo, ReactNode } from "react";
 
 interface PermissionContextType {
   permissions: string[];
@@ -17,12 +17,12 @@ const PermissionContext = createContext<PermissionContextType>({
 });
 
 export function PermissionProvider({ permissions, children }: { permissions: string[]; children: ReactNode }) {
-  const value: PermissionContextType = {
+  const value = useMemo<PermissionContextType>(() => ({
     permissions,
     hasPermission: (permission: string) => permissions.includes(permission),
     hasAnyPermission: (perms: string[]) => perms.some((p) => permissions.includes(p)),
     hasAllPermissions: (perms: string[]) => perms.every((p) => permissions.includes(p)),
-  };
+  }), [permissions]);
 
   return (
     <PermissionContext.Provider value={value}>

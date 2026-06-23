@@ -7,7 +7,7 @@ import { APP_NAME } from "@/lib/constants";
 import { SIDEBAR_PAGES } from "@/lib/sidebar";
 import { APP_VERSION, APP_BUILD } from "@/lib/constants";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface AdminSidebarProps {
   permissions: string[];
@@ -54,18 +54,19 @@ const groups = [
 
 const pageMap = new Map(SIDEBAR_PAGES.map((p) => [p.key, p]));
 
-function filterVisiblePages(permissions: string[]) {
-  return SIDEBAR_PAGES.filter((p) => {
-    if (!p.permission) return true;
-    return permissions.includes(p.permission);
-  });
-}
-
+const MEMOIZED_ICONS = new Map<string, ReturnType<typeof import("react").createElement>>();
 
 export default function AdminSidebar({ permissions }: AdminSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const visiblePages = new Set(filterVisiblePages(permissions).map((p) => p.key));
+
+  const visiblePages = useMemo(() => {
+    return new Set(
+      SIDEBAR_PAGES
+        .filter((p) => !p.permission || permissions.includes(p.permission))
+        .map((p) => p.key)
+    );
+  }, [permissions]);
 
   return (
     <aside

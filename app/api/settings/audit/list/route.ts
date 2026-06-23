@@ -47,6 +47,7 @@ export async function GET(request: Request) {
       prisma.auditLog.count({ where: where as Prisma.AuditLogWhereInput }),
       prisma.auditLog.findMany({
         where: where as Prisma.AuditLogWhereInput,
+        select: { id: true, action: true, severity: true, entityType: true, entityId: true, actorName: true, actorEmail: true, description: true, metadata: true, createdAt: true },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,

@@ -38,6 +38,7 @@ export async function GET(req: Request) {
                 { organization: { contains: q } },
               ],
             },
+            select: { id: true, key: true, organization: true, plan: true, status: true },
             take: 5,
             orderBy: { createdAt: "desc" },
           })
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
                 { email: { contains: q } },
               ],
             },
-            include: { role: true },
+            select: { id: true, name: true, email: true, role: { select: { name: true } }, status: true },
             take: 5,
           })
         : [],
@@ -64,6 +65,7 @@ export async function GET(req: Request) {
                 ],
               },
             },
+            select: { id: true, licenseId: true, plan: true, action: true },
             take: 5,
             orderBy: { createdAt: "desc" },
           })
@@ -71,14 +73,14 @@ export async function GET(req: Request) {
       userPermissions.some((p) => p.includes("Coins") || p.includes("Coin"))
         ? prisma.coinBalance.findMany({
             where: { license: { OR: [{ key: { contains: q } }, { organization: { contains: q } }] } },
-            include: { license: { select: { key: true, organization: true } } },
+            select: { id: true, licenseId: true, balance: true },
             take: 5,
           })
         : [],
       userPermissions.some((p) => p.includes("Gems") || p.includes("Gem"))
         ? prisma.gemBalance.findMany({
             where: { license: { OR: [{ key: { contains: q } }, { organization: { contains: q } }] } },
-            include: { license: { select: { key: true, organization: true } } },
+            select: { id: true, licenseId: true, balance: true },
             take: 5,
           })
         : [],
@@ -91,18 +93,19 @@ export async function GET(req: Request) {
                 { actorEmail: { contains: q } },
               ],
             },
+            select: { id: true, action: true, description: true, createdAt: true },
             take: 5,
             orderBy: { createdAt: "desc" },
           })
         : [],
     ]);
 
-    results.licenses = licenses.map((l) => ({ id: l.id, key: l.key, organization: l.organization, plan: l.plan, status: l.status }));
+    results.licenses = licenses;
     results.teamMembers = teamMembers.map((m) => ({ id: m.id, name: m.name, email: m.email, role: m.role.name, status: m.status }));
-    results.premium = premium.map((p) => ({ id: p.id, licenseId: p.licenseId, plan: p.plan, action: p.action }));
-    results.coins = coins.map((c) => ({ id: c.id, licenseId: c.licenseId, balance: c.balance }));
-    results.gems = gems.map((g) => ({ id: g.id, licenseId: g.licenseId, balance: g.balance }));
-    results.auditLogs = auditLogs.map((a) => ({ id: a.id, action: a.action, description: a.description, createdAt: a.createdAt }));
+    results.premium = premium;
+    results.coins = coins;
+    results.gems = gems;
+    results.auditLogs = auditLogs;
 
     return Response.json({ success: true, data: results });
   } catch (e) {
