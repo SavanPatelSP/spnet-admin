@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { buildCSP, getSecurityHeaders } from "@/lib/security/headers";
-import { isValidRole } from "@/lib/security/rbac";
 
 const publicRoutes = new Set(["/login", "/unauthorized", "/setup-password"]);
 const publicPrefixes = [
@@ -84,7 +83,7 @@ export const proxy = auth((req) => {
     || pathname.startsWith("/api/") || pathname.startsWith("/security")
     || pathname.startsWith("/analytics") || pathname.startsWith("/reports")) {
 
-    if (!userRole || !isValidRole(userRole)) {
+    if (!userRole) {
       if (pathname.startsWith("/api/")) {
         const response = NextResponse.json(
           { success: false, error: "Invalid role" },
