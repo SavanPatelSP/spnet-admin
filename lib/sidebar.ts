@@ -30,6 +30,8 @@ import {
   Receipt,
   Star,
   Inbox,
+  ClipboardCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 export interface SidebarPage {
@@ -46,6 +48,7 @@ export const SIDEBAR_PAGES: SidebarPage[] = [
   { key: "premium", label: "Premium", href: "/premium", permission: "View Premium", icon: Crown },
   { key: "plan-overview", label: "Plan Overview", href: "/premium/plan-overview", permission: "View Premium", icon: Sparkles },
   { key: "premium-requests", label: "Premium Requests", href: "/premium-requests", permission: "View Premium", icon: Inbox },
+  { key: "approvals", label: "Approvals", href: "/approvals", permission: "View Premium", icon: ClipboardCheck },
   { key: "coins", label: "Coins", href: "/coins", permission: "View Coin Balances", icon: Coins },
   { key: "gems", label: "Gems", href: "/gems", permission: "View Gem Balances", icon: Gem },
   { key: "offers", label: "Offers & Promotions", href: "/offers", permission: "Manage Billing", icon: Percent },
@@ -61,6 +64,7 @@ export const SIDEBAR_PAGES: SidebarPage[] = [
   { key: "revenue", label: "Revenue", href: "/revenue", permission: "View Revenue", icon: CreditCard },
   { key: "reports", label: "Reports", href: "/reports", permission: "View Reports", icon: FileText },
   { key: "audit-logs", label: "Audit Logs", href: "/audit-logs", permission: "View Audit Logs", icon: ClipboardList },
+  { key: "security-center", label: "Security Center", href: "/security-center", permission: "View Security Policies", icon: ShieldAlert },
   { key: "security", label: "Security", href: "/security", permission: "View Security Policies", icon: Shield },
   { key: "moderation", label: "Moderation", href: "/moderation", permission: "Moderate Content", icon: FileWarning },
   { key: "broadcasts", label: "Broadcasts", href: "/broadcasts", permission: "View Broadcasts", icon: Megaphone },

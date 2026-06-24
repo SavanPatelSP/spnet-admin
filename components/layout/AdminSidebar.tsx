@@ -16,7 +16,7 @@ interface AdminSidebarProps {
 const groups = [
   {
     label: "Operations",
-    pageKeys: ["dashboard", "licenses", "premium", "plan-overview", "coins", "gems", "offers"],
+    pageKeys: ["dashboard", "licenses", "premium", "plan-overview", "premium-requests", "approvals", "coins", "gems", "offers", "waitlist"],
   },
   {
     label: "Administration",
@@ -28,7 +28,7 @@ const groups = [
   },
   {
     label: "Security",
-    pageKeys: ["audit-logs", "security", "moderation"],
+    pageKeys: ["security-center", "audit-logs", "security", "moderation"],
   },
   {
     label: "Communication",
