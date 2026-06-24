@@ -21,7 +21,7 @@ const schemaFile = isProduction ? "prisma/schema.pg.prisma" : "prisma/schema.pri
 // build-time env var. Provide a placeholder PostgreSQL URL so prisma generate
 // can determine the correct provider from schema.pg.prisma. The real URL is
 // injected by the Vercel platform at runtime.
-const DATASOURCE_URL = BUILD_PHASE && isProduction
+const DATASOURCE_URL = BUILD_PHASE && isProduction && !DB_URL
   ? "postgresql://placeholder:ignored@localhost:5432/postgres"
   : (DB_URL || (isProduction ? "" : "file:./prisma/dev.db"));
 
