@@ -8,6 +8,7 @@ import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES, PLANS, LICENSE_STATUSES, DEFAULT_PLAN, DEFAULT_MAX_DEVICES, PLAN_PRICES } from "@/lib/constants";
 import { formatPrice } from "@/lib/shared";
 import { Building2, Cpu, Calendar, FileText, CheckCircle, Shield, Eye, Timer, DollarSign } from "lucide-react";
+import ApprovalSubmittedModal from "@/components/approvals/ApprovalSubmittedModal";
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
   FREE: "Basic access with limited features",
@@ -39,6 +40,7 @@ export default function CreateLicenseModal() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [approvalData, setApprovalData] = useState<{ requestId: string; message: string; status: string } | null>(null);
 
   if (!hasPermission("Create Licenses") && !open) return null;
 
@@ -112,6 +114,10 @@ export default function CreateLicenseModal() {
         }),
       });
       const data = await response.json();
+      if (response.status === 202 && data.requestId) {
+        setApprovalData({ requestId: data.requestId, message: data.message || "Approval request submitted", status: data.status || "PENDING" });
+        return;
+      }
       if (!response.ok) {
         setError(data.error || "Failed to create license");
         return;
@@ -480,6 +486,14 @@ export default function CreateLicenseModal() {
           </div>
         </div>
       </Modal>
+
+      <ApprovalSubmittedModal
+        open={!!approvalData}
+        onClose={() => { setApprovalData(null); setOpen(false); router.refresh(); }}
+        data={approvalData}
+        workflowType="LICENSE_CREATE"
+        target={organization}
+      />
     </>
   );
 }

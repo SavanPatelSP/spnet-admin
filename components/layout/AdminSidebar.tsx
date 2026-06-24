@@ -11,6 +11,7 @@ import { useState, useMemo } from "react";
 
 interface AdminSidebarProps {
   permissions: string[];
+  userRole?: string;
 }
 
 const groups = [
@@ -54,17 +55,19 @@ const groups = [
 
 const pageMap = new Map(SIDEBAR_PAGES.map((p) => [p.key, p]));
 
-export default function AdminSidebar({ permissions }: AdminSidebarProps) {
+const OVERRIDE_ROLES = ["OWNER", "SUPER_ADMIN"];
+
+export default function AdminSidebar({ permissions, userRole }: AdminSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
   const visiblePages = useMemo(() => {
     return new Set(
       SIDEBAR_PAGES
-        .filter((p) => !p.permission || permissions.includes(p.permission))
+        .filter((p) => !p.permission || permissions.includes(p.permission) || (userRole && OVERRIDE_ROLES.includes(userRole)))
         .map((p) => p.key)
     );
-  }, [permissions]);
+  }, [permissions, userRole]);
 
   return (
     <aside

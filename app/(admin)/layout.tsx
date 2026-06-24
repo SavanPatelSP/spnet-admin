@@ -24,7 +24,7 @@ export default async function AdminLayout({
       rolePermissionsVersion={rolePermissionsVersion}
     >
       <div className="flex min-h-screen">
-        <AdminSidebar permissions={session.user.permissions} />
+        <AdminSidebar permissions={session.user.permissions} userRole={session.user.role} />
         <div className="flex flex-1 flex-col">
           <AdminHeader />
           <main className="flex-1 p-6">

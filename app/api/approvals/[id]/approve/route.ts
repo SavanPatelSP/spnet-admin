@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiPermission } from "@/lib/auth-helpers";
+import { requireApiAuth, hasPermission } from "@/lib/auth-helpers";
 import { approveRequest } from "@/lib/approval";
 import { executeApprovedAction } from "@/lib/approval-executor";
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError } from "@/lib/security/errors";
+import { isOwnerOrSuperAdmin } from "@/lib/approval-guard";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requireApiPermission("Approve Requests");
-    if (session.user.role !== "OWNER" && session.user.role !== "SUPER_ADMIN") {
+    const session = await requireApiAuth();
+    if (!isOwnerOrSuperAdmin(session) && !hasPermission(session, "Approve Requests")) {
       throw new ForbiddenError("Only Owner and Super Admin can approve requests");
     }
 
