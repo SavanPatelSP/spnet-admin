@@ -23,48 +23,46 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   await requirePermission("View Users");
 
-  const member = await prisma.teamMember.findUnique({
-    where: { id },
-    include: {
-      role: { include: { permissions: true } },
-      license: true,
-    },
-  });
+  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
 
-  if (!member) notFound();
-
-  const memberEmail = member.email;
-  const [auditLogs, sessions, loginHistory, failedToday] = await Promise.all([
-    prisma.auditLog.findMany({
-      where: {
-        OR: [
-          { actorEmail: memberEmail },
-          { description: { contains: memberEmail } },
-        ],
+  const [member, sessions, loginHistory, failedToday] = await Promise.all([
+    prisma.teamMember.findUnique({
+      where: { id },
+      select: {
+        id: true, name: true, email: true, status: true, mfaEnabled: true,
+        lockedUntil: true, failedLoginAttempts: true, lastLogin: true,
+        createdAt: true, updatedAt: true,
+        role: { select: { name: true, riskLevel: true, _count: { select: { permissions: true } } } },
+        license: { select: { id: true, key: true, organization: true, plan: true } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
     }),
     prisma.session.findMany({
       where: { teamMemberId: id },
+      select: { id: true, expiresAt: true, createdAt: true, ipAddress: true, userAgent: true },
       orderBy: { createdAt: "desc" },
     }),
     prisma.loginHistory.findMany({
       where: { teamMemberId: id },
+      select: { id: true, createdAt: true, ipAddress: true, userAgent: true, success: true, failureReason: true },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
     prisma.loginHistory.count({
-      where: {
-        teamMemberId: id,
-        success: false,
-        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-      },
+      where: { teamMemberId: id, success: false, createdAt: { gte: startOfToday } },
     }),
   ]);
 
+  if (!member) notFound();
+
   const isLocked = member.lockedUntil && member.lockedUntil > new Date();
   const activeSessions = sessions.filter((s) => s.expiresAt > new Date()).length;
+
+  const auditLogs = await prisma.auditLog.findMany({
+    where: { OR: [{ actorEmail: member.email }, { description: { contains: member.email } }] },
+    select: { id: true, action: true, description: true, actorName: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
 
   return (
     <div className="space-y-8">
@@ -76,7 +74,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 
       <StatCardGrid columns={4}>
         <StatCard title="Status" value={member.status} icon={User} color={member.status === "ACTIVE" ? "green" : "yellow"} />
-        <StatCard title="Role" value={member.role.name} icon={Shield} color="purple" subtitle={`${member.role.permissions.length} permissions`} />
+        <StatCard title="Role" value={member.role.name} icon={Shield} color="purple" subtitle={`${member.role._count.permissions} permissions`} />
         <StatCard title="Last Login" value={member.lastLogin ? formatDateTime(member.lastLogin) : "Never"} icon={Clock} color="blue" />
         <StatCard title="Joined" value={formatDateTime(member.createdAt)} icon={Calendar} color="default" />
       </StatCardGrid>

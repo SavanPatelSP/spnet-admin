@@ -22,16 +22,12 @@ import { GemDistributionChart } from "@/components/gems/GemDistributionChart";
 
 export default async function GemsPage() {
   await requirePermission("View Gem Balances");
-  const [balances, transactions, rewards, allLicenses] = await Promise.all([
+  const [balances, transactions, rewards, searchLicenses] = await Promise.all([
     prisma.gemBalance.findMany({
-      include: { license: { select: { organization: true, key: true, plan: true, status: true } } },
       orderBy: { balance: "desc" },
     }),
     prisma.gemTransaction.findMany({
-      include: {
-        license: { select: { organization: true, key: true } },
-        reward: { select: { name: true } },
-      },
+      include: { reward: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 250,
     }),
@@ -42,10 +38,17 @@ export default async function GemsPage() {
     }),
   ]);
 
+  const licenseData = new Map(searchLicenses.map(l => [l.id, l]));
+  const balanceMap = new Map(balances.map((b) => [b.licenseId, b.balance]));
+  const searchLicensesMapped = searchLicenses.map((l) => ({
+    licenseId: l.id,
+    organization: l.organization,
+    key: l.key,
+    balance: balanceMap.get(l.id) || 0,
+  }));
+
   const totalGems = balances.reduce((sum, b) => sum + b.balance, 0);
   const totalGranted = transactions.filter((t) => t.type === "GRANT" || t.type === "REWARD")
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-  transactions.filter((t) => t.type === "REVOKE")
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   const topBalance = balances.length > 0 ? balances[0].balance : 0;
@@ -62,14 +65,6 @@ export default async function GemsPage() {
     id: r.id, name: r.name, amount: r.amount, description: r.description, category: r.category,
   }));
 
-  const balanceMap = new Map(balances.map((b) => [b.licenseId, b.balance]));
-  const searchLicenses = allLicenses.map((l) => ({
-    licenseId: l.id,
-    organization: l.organization,
-    key: l.key,
-    balance: balanceMap.get(l.id) || 0,
-  }));
-
   return (
     <div className="space-y-8">
       <PageHeader
@@ -78,7 +73,7 @@ export default async function GemsPage() {
       />
 
       <GemsPageActions
-        licenses={searchLicenses}
+        licenses={searchLicensesMapped}
         rewards={rewardOptions}
       />
 
@@ -120,15 +115,16 @@ export default async function GemsPage() {
         </div>
         <div className="space-y-6">
           <TopGemHolders
-            holders={balances.map((b) => ({
-              licenseId: b.licenseId,
-              organization: b.license.organization,
-              key: b.license.key,
-              balance: b.balance,
-            }))}
+            holders={balances.map((b) => {
+              const lic = licenseData.get(b.licenseId) || { organization: "-", key: "-" };
+              return { licenseId: b.licenseId, organization: lic.organization, key: lic.key, balance: b.balance };
+            })}
           />
           <GemDistributionChart
-            balances={balances.map((b) => ({ organization: b.license.organization, balance: b.balance }))}
+            balances={balances.map((b) => {
+              const lic = licenseData.get(b.licenseId) || { organization: "-" };
+              return { organization: lic.organization, balance: b.balance };
+            })}
           />
         </div>
       </div>
@@ -204,17 +200,20 @@ export default async function GemsPage() {
         <div>
           <h2 className="mb-4 text-2xl font-bold">Gem Balances</h2>
           <GemsBalancesTable
-            balances={balances.map((b) => ({
-              id: b.id,
-              licenseId: b.licenseId,
-              organization: b.license.organization,
-              key: b.license.key,
-              plan: b.license.plan,
-              status: b.license.status,
-              balance: b.balance,
-              type: b.type,
-              isInfinite: b.isInfinite,
-            }))}
+            balances={balances.map((b) => {
+              const lic = licenseData.get(b.licenseId) || { organization: "-", key: "-", plan: "-", status: "-" };
+              return {
+                id: b.id,
+                licenseId: b.licenseId,
+                organization: lic.organization,
+                key: lic.key,
+                plan: lic.plan,
+                status: lic.status,
+                balance: b.balance,
+                type: b.type,
+                isInfinite: b.isInfinite,
+              };
+            })}
             rewards={rewardOptions}
           />
         </div>
@@ -233,36 +232,39 @@ export default async function GemsPage() {
               { key: "reason", label: "Reason", sortable: false, searchable: true },
               { key: "performedBy", label: "By", sortable: true },
             ]}
-            rows={transactions.map((t) => ({
-              id: t.id,
-              values: {
-                date: t.createdAt.toISOString(),
-                organization: t.license.organization,
-                type: t.reward?.name || t.type,
-                amount: t.amount,
-                balanceAfter: t.balanceAfter,
-                reason: t.reason || "-",
-                performedBy: t.performedBy || "-",
-              },
-              cells: [
-                <span key="date" className="text-zinc-300">
-                  {new Intl.DateTimeFormat(DEFAULT_LOCALE, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(t.createdAt)}
-                </span>,
-                <span key="organization">{t.license.organization}</span>,
-                <span key="type" className="flex items-center gap-1">
-                  {t.reward && <Gift size={14} className="text-purple-400" />}
-                  <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${typeColors[t.type] || "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
-                    {t.reward?.name || t.type}
-                  </span>
-                </span>,
-                <span key="amount" className={t.amount > 0 ? "font-medium text-green-400" : "font-medium text-red-400"}>
-                  {t.amount > 0 ? "+" : ""}{t.amount.toLocaleString()}
-                </span>,
-                <span key="balanceAfter" className="font-mono text-sm">{t.balanceAfter.toLocaleString()}</span>,
-                <span key="reason" className="text-sm text-zinc-400">{t.reason || "-"}</span>,
-                <span key="performedBy" className="text-sm text-zinc-500">{t.performedBy || "-"}</span>,
-              ],
-            }))}
+            rows={transactions.map((t) => {
+              const lic = licenseData.get(t.licenseId) || { organization: "-" };
+              return ({
+                id: t.id,
+                values: {
+                  date: t.createdAt.toISOString(),
+                  organization: lic.organization,
+                  type: t.reward?.name || t.type,
+                  amount: t.amount,
+                  balanceAfter: t.balanceAfter,
+                  reason: t.reason || "-",
+                  performedBy: t.performedBy || "-",
+                },
+                cells: [
+                  <span key="date" className="text-zinc-300">
+                    {new Intl.DateTimeFormat(DEFAULT_LOCALE, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(t.createdAt)}
+                  </span>,
+                  <span key="organization">{lic.organization}</span>,
+                  <span key="type" className="flex items-center gap-1">
+                    {t.reward && <Gift size={14} className="text-purple-400" />}
+                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${typeColors[t.type] || "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
+                      {t.reward?.name || t.type}
+                    </span>
+                  </span>,
+                  <span key="amount" className={t.amount > 0 ? "font-medium text-green-400" : "font-medium text-red-400"}>
+                    {t.amount > 0 ? "+" : ""}{t.amount.toLocaleString()}
+                  </span>,
+                  <span key="balanceAfter" className="font-mono text-sm">{t.balanceAfter.toLocaleString()}</span>,
+                  <span key="reason" className="text-sm text-zinc-400">{t.reason || "-"}</span>,
+                  <span key="performedBy" className="text-sm text-zinc-500">{t.performedBy || "-"}</span>,
+                ],
+              });
+            })}
             pageSize={15}
             searchPlaceholder="Search by organization or reason..."
             emptyMessage="No transactions yet."

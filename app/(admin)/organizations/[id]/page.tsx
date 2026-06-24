@@ -22,24 +22,32 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
   await requirePermission("View Organizations");
   const { id: orgName } = await params;
 
-  const licenses = await prisma.license.findMany({
-    where: { organization: orgName },
-    include: { activations: true, coinBalance: true, gemBalance: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [licenses, auditLogs] = await Promise.all([
+    prisma.license.findMany({
+      where: { organization: orgName },
+      select: {
+        id: true, key: true, plan: true, status: true, maxDevices: true,
+        expiresAt: true, createdAt: true,
+        _count: { select: { activations: true } },
+        coinBalance: { select: { balance: true } },
+        gemBalance: { select: { balance: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.auditLog.findMany({
+      where: { organization: orgName },
+      select: { id: true, action: true, description: true, actorName: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
 
   if (licenses.length === 0) notFound();
-
-  const auditLogs = await prisma.auditLog.findMany({
-    where: { organization: orgName },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
 
   const stats = {
     licenseCount: licenses.length,
     activeCount: licenses.filter((l) => l.status === "ACTIVE").length,
-    deviceCount: licenses.reduce((s, l) => s + l.activations.length, 0),
+    deviceCount: licenses.reduce((s, l) => s + l._count.activations, 0),
     totalCoins: licenses.reduce((s, l) => s + (l.coinBalance?.balance || 0), 0),
     totalGems: licenses.reduce((s, l) => s + (l.gemBalance?.balance || 0), 0),
     premiumLicenses: licenses.filter((l) => ["ENTERPRISE", "LIFETIME", "BUSINESS"].includes(l.plan)).length,
@@ -51,7 +59,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
       key: l.key,
       plan: l.plan,
       status: l.status,
-      devices: l.activations.length,
+      devices: l._count.activations,
       maxDevices: l.maxDevices,
       coins: l.coinBalance?.balance || 0,
       gems: l.gemBalance?.balance || 0,
@@ -61,7 +69,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
       <Link key="key" href={`/licenses/${l.id}`} className="font-medium text-blue-400 hover:underline">{l.key}</Link>,
       <span key="plan" className="text-sm">{l.plan}</span>,
       <span key="status" className={`text-xs font-medium px-2 py-0.5 rounded-full ${l.status === "ACTIVE" ? "bg-green-500/10 text-green-400" : l.status === "SUSPENDED" ? "bg-yellow-500/10 text-yellow-400" : "bg-red-500/10 text-red-400"}`}>{l.status}</span>,
-      <span key="devices" className="text-sm text-zinc-400">{l.activations.length}/{l.maxDevices}</span>,
+      <span key="devices" className="text-sm text-zinc-400">{l._count.activations}/{l.maxDevices}</span>,
       <span key="coins" className="text-sm text-zinc-400">{l.coinBalance?.balance || 0}</span>,
       <span key="gems" className="text-sm text-zinc-400">{l.gemBalance?.balance || 0}</span>,
       <span key="expiry" className="text-sm text-zinc-500">{formatDate(l.expiresAt)}</span>,

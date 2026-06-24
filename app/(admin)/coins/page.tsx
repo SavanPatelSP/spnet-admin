@@ -20,13 +20,11 @@ import { SourceSinkTracking } from "@/components/coins/SourceSinkTracking";
 
 export default async function CoinsPage() {
   await requirePermission("View Coin Balances");
-  const [balances, transactions, allLicenses] = await Promise.all([
+  const [balances, transactions, searchLicenses] = await Promise.all([
     prisma.coinBalance.findMany({
-      include: { license: { select: { organization: true, key: true, plan: true, status: true } } },
       orderBy: { balance: "desc" },
     }),
     prisma.coinTransaction.findMany({
-      include: { license: { select: { organization: true, key: true } } },
       orderBy: { createdAt: "desc" },
       take: 500,
     }),
@@ -35,6 +33,16 @@ export default async function CoinsPage() {
       orderBy: { createdAt: "desc" },
     }),
   ]);
+
+  const balanceMap = new Map(balances.map((b) => [b.licenseId, b.balance]));
+  const searchLicensesMapped = searchLicenses.map((l) => ({
+    licenseId: l.id,
+    organization: l.organization,
+    key: l.key,
+    balance: balanceMap.get(l.id) || 0,
+  }));
+
+  const licenseData = new Map(searchLicenses.map(l => [l.id, l]));
 
   const totalCoins = balances.reduce((sum, b) => sum + b.balance, 0);
   const totalCredits = transactions.filter((t) => t.type === "CREDIT" || t.type === "REFUND")
@@ -45,14 +53,6 @@ export default async function CoinsPage() {
   const topBalance = balances.length > 0 ? balances[0].balance : 0;
   const infiniteCount = balances.filter((b) => b.isInfinite).length;
 
-  const balanceMap = new Map(balances.map((b) => [b.licenseId, b.balance]));
-  const searchLicenses = allLicenses.map((l) => ({
-    licenseId: l.id,
-    organization: l.organization,
-    key: l.key,
-    balance: balanceMap.get(l.id) || 0,
-  }));
-
   return (
     <div className="space-y-8">
       <PageHeader
@@ -61,7 +61,7 @@ export default async function CoinsPage() {
       />
 
       <CoinsPageActions
-        licenses={searchLicenses}
+        licenses={searchLicensesMapped}
       />
 
       <StatCardGrid columns={4}>
@@ -89,17 +89,18 @@ export default async function CoinsPage() {
         <div className="grid gap-6 lg:grid-cols-4">
           <div className="lg:col-span-1">
             <TopCoinHolders
-              holders={balances.map((b) => ({
-                licenseId: b.licenseId,
-                organization: b.license.organization,
-                key: b.license.key,
-                balance: b.balance,
-              }))}
+              holders={balances.map((b) => {
+                const lic = licenseData.get(b.licenseId) || { organization: "-", key: "-" };
+                return { licenseId: b.licenseId, organization: lic.organization, key: lic.key, balance: b.balance };
+              })}
             />
           </div>
           <div className="lg:col-span-1">
             <CoinDistributionChart
-              balances={balances.map((b) => ({ organization: b.license.organization, balance: b.balance }))}
+              balances={balances.map((b) => {
+                const lic = licenseData.get(b.licenseId) || { organization: "-" };
+                return { organization: lic.organization, balance: b.balance };
+              })}
             />
           </div>
           <div className="lg:col-span-1">
@@ -121,17 +122,20 @@ export default async function CoinsPage() {
         <div>
           <h2 className="mb-4 text-2xl font-bold">Coin Balances</h2>
           <CoinsBalancesTable
-            balances={balances.map((b) => ({
-              id: b.id,
-              licenseId: b.licenseId,
-              organization: b.license.organization,
-              key: b.license.key,
-              plan: b.license.plan,
-              status: b.license.status,
-              balance: b.balance,
-              type: b.type,
-              isInfinite: b.isInfinite,
-            }))}
+            balances={balances.map((b) => {
+              const lic = licenseData.get(b.licenseId) || { organization: "-", key: "-", plan: "-", status: "-" };
+              return {
+                id: b.id,
+                licenseId: b.licenseId,
+                organization: lic.organization,
+                key: lic.key,
+                plan: lic.plan,
+                status: lic.status,
+                balance: b.balance,
+                type: b.type,
+                isInfinite: b.isInfinite,
+              };
+            })}
           />
         </div>
       )}
@@ -140,16 +144,19 @@ export default async function CoinsPage() {
         <div>
           <h2 className="mb-4 text-2xl font-bold">Transaction History</h2>
           <CoinHistoryTable
-            transactions={transactions.map((t) => ({
-              id: t.id,
-              type: t.type,
-              amount: t.amount,
-              balanceAfter: t.balanceAfter,
-              reason: t.reason,
-              performedBy: t.performedBy,
-              createdAt: t.createdAt,
-              organization: t.license.organization,
-            }))}
+            transactions={transactions.map((t) => {
+              const lic = licenseData.get(t.licenseId) || { organization: "-" };
+              return {
+                id: t.id,
+                type: t.type,
+                amount: t.amount,
+                balanceAfter: t.balanceAfter,
+                reason: t.reason,
+                performedBy: t.performedBy,
+                createdAt: t.createdAt,
+                organization: lic.organization,
+              };
+            })}
           />
         </div>
       )}

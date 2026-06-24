@@ -92,37 +92,40 @@ export async function createSecurityAlert(input: AlertInput) {
     // best effort
   }
 
-  // Create notifications scoped to Owner/SuperAdmin + affected user only
+  // Create notifications scoped only to affected user
   try {
-    const ownerAdminMembers = await prisma.teamMember.findMany({
-      where: {
-        status: "ACTIVE",
-        role: { name: { in: ["OWNER", "SUPER_ADMIN"] } },
-      },
-      select: { id: true },
-    });
-    const targetMembers: { id: string }[] = [];
-    const seen = new Set<string>();
-    for (const m of ownerAdminMembers) {
-      if (!seen.has(m.id)) { seen.add(m.id); targetMembers.push(m); }
-    }
+    const targetIds = new Set<string>();
+    if (input.actorId) targetIds.add(input.actorId);
     if (input.entityType === "session" && input.entityId) {
       const sessionMember = await prisma.session.findUnique({
         where: { id: input.entityId },
         select: { teamMemberId: true },
       });
-      if (sessionMember && !seen.has(sessionMember.teamMemberId)) {
-        seen.add(sessionMember.teamMemberId);
-        targetMembers.push({ id: sessionMember.teamMemberId });
-      }
+      if (sessionMember) targetIds.add(sessionMember.teamMemberId);
     }
-    if (targetMembers.length > 0) {
+    if (["PERMISSION_CHANGE", "ROLE_CHANGE", "OWNERSHIP_TRANSFER"].includes(input.type)) {
+      const admins = await prisma.teamMember.findMany({
+        where: { status: "ACTIVE", role: { name: { in: ["OWNER", "SUPER_ADMIN"] } } },
+        select: { id: true },
+      });
+      admins.forEach(a => targetIds.add(a.id));
+    }
+    if (targetIds.size > 0) {
+      const category = input.type.startsWith("PREMIUM") ? "Premium"
+        : input.type.startsWith("COINS") || input.type.startsWith("GEMS") ? "Economy"
+        : input.type.startsWith("LICENSE") ? "Licenses"
+        : input.type.startsWith("ORG") ? "Organizations"
+        : input.type.startsWith("TEAM") ? "Approvals"
+        : input.type.startsWith("SESSION") || input.type === "HIGH_RISK_SESSION" || input.type === "SESSION_HIJACK" ? "Security"
+        : "System";
       await prisma.notification.createMany({
-        data: targetMembers.map(m => ({
-          teamMemberId: m.id,
+        data: [...targetIds].map(id => ({
+          teamMemberId: id,
           title: `Security Alert: ${input.title}`,
           message: input.description || input.title,
           type: severity === "CRITICAL" || severity === "HIGH" ? "WARNING" : "INFO",
+          category,
+          priority: severity === "CRITICAL" ? "CRITICAL" : severity === "HIGH" ? "HIGH" : severity === "MEDIUM" ? "MEDIUM" : "LOW",
         })),
       });
     }

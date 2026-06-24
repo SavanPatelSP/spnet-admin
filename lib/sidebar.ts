@@ -32,6 +32,7 @@ import {
   Inbox,
   ClipboardCheck,
   ShieldAlert,
+  Bell,
 } from "lucide-react";
 
 export interface SidebarPage {
@@ -44,6 +45,7 @@ export interface SidebarPage {
 
 export const SIDEBAR_PAGES: SidebarPage[] = [
   { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { key: "notifications", label: "Notifications", href: "/notifications", icon: Bell },
   { key: "licenses", label: "Licenses", href: "/licenses", permission: "View Licenses", icon: KeyRound },
   { key: "premium", label: "Premium", href: "/premium", permission: "View Premium", icon: Crown },
   { key: "plan-overview", label: "Plan Overview", href: "/premium/plan-overview", permission: "View Premium", icon: Sparkles },

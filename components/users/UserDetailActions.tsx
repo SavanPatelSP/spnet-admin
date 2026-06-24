@@ -7,11 +7,19 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePermission } from "@/hooks/usePermissions";
 import { API_ROUTES } from "@/lib/constants";
 import { Ban, CheckCircle, KeyRound, Trash2 } from "lucide-react";
-import type { TeamMember, Role } from "@prisma/client";
-
-interface MemberWithRole extends TeamMember {
-  role: Role & { permissions: { id: string; permission: string }[] };
-  license?: { id: string; key: string } | null;
+interface MemberWithRole {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  mfaEnabled: boolean;
+  lockedUntil: Date | null;
+  failedLoginAttempts: number;
+  lastLogin: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  role: { name: string; riskLevel: string; _count: { permissions: number } };
+  license: { id: string; key: string; organization: string; plan: string } | null;
 }
 
 interface Props {

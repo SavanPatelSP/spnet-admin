@@ -2,7 +2,8 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { LogOut, Shield, KeyRound, AlertTriangle } from "lucide-react";
+import { LogOut, Shield, KeyRound, AlertTriangle, User, Bell } from "lucide-react";
+import Link from "next/link";
 
 export function SessionStatus() {
   const { data: session, status } = useSession();
@@ -87,7 +88,19 @@ export function SessionStatus() {
               </div>
             </div>
 
-            <div className="border-t border-zinc-800 p-2">
+            <div className="border-t border-zinc-800 p-2 space-y-1">
+              <Link href="/profile" onClick={() => setDropdownOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              >
+                <User size={16} />
+                Profile Center
+              </Link>
+              <Link href="/notifications" onClick={() => setDropdownOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              >
+                <Bell size={16} />
+                Notifications
+              </Link>
               <button
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-red-400 transition-colors hover:bg-zinc-800"

@@ -89,6 +89,16 @@ export const DataTable = memo(function DataTable({
     });
   }, [filtered, sortKey, sortDir]);
 
+  const sortIcons = useMemo(() => {
+    const icons: Record<string, ReactNode> = {};
+    for (const col of columns) {
+      if (!col.sortable) continue;
+      if (sortKey !== col.key) icons[col.key] = <ArrowUpDown size={14} className="ml-1 inline opacity-30 group-hover/sort:opacity-60" />;
+      else icons[col.key] = sortDir === "asc" ? <ArrowUp size={14} className="ml-1 inline text-blue-400" /> : <ArrowDown size={14} className="ml-1 inline text-blue-400" />;
+    }
+    return icons;
+  }, [columns, sortKey, sortDir]);
+
   const totalPages = Math.max(1, Math.ceil(sorted.length / perPage));
   const safePage = Math.min(page, totalPages - 1);
   const paged = sorted.slice(safePage * perPage, (safePage + 1) * perPage);
@@ -118,11 +128,6 @@ export const DataTable = memo(function DataTable({
       onSelectionChange(new Set(paged.map((r) => r.id)));
     }
   }
-
-  const SortIcon = ({ columnKey }: { columnKey: string }) => {
-    if (sortKey !== columnKey) return <ArrowUpDown size={14} className="ml-1 inline opacity-30 group-hover/sort:opacity-60" />;
-    return sortDir === "asc" ? <ArrowUp size={14} className="ml-1 inline text-blue-400" /> : <ArrowDown size={14} className="ml-1 inline text-blue-400" />;
-  };
 
   const getPageNumbers = () => {
     const pages: (number | "...")[] = [];
@@ -228,7 +233,7 @@ export const DataTable = memo(function DataTable({
                 >
                   <span className="inline-flex items-center gap-1">
                     {col.label}
-                    {col.sortable && <SortIcon columnKey={col.key} />}
+                    {col.sortable && sortIcons[col.key]}
                   </span>
                 </th>
               ))}

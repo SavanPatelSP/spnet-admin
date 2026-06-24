@@ -22,18 +22,22 @@ import { daysUntil, formatNumber } from "@/lib/shared";
 export default async function OrganizationsPage() {
   await requirePermission("View Organizations");
 
-  const [licenses, auditLogs, coinBalances, gemBalances, premiumSubs] = await Promise.all([
+  const [licenses, auditLogs, coinBalances, gemBalances, premiumByLicense] = await Promise.all([
     prisma.license.findMany({
-      include: { _count: { select: { activations: true } } },
+      select: {
+        id: true, organization: true, plan: true, status: true, expiresAt: true,
+        _count: { select: { activations: true } },
+      },
       orderBy: { organization: "asc" },
     }),
     prisma.auditLog.findMany({
+      select: { id: true, action: true, organization: true, description: true, actorName: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
-    prisma.coinBalance.findMany({ include: { license: { select: { organization: true } } } }),
-    prisma.gemBalance.findMany({ include: { license: { select: { organization: true } } } }),
-    prisma.premiumSubscription.findMany(),
+    prisma.coinBalance.findMany({ select: { licenseId: true, balance: true } }),
+    prisma.gemBalance.findMany({ select: { licenseId: true, balance: true } }),
+    prisma.premiumSubscription.findMany({ select: { licenseId: true } }),
   ]);
 
   const orgMap = licenses.reduce<Record<string, typeof licenses>>((acc, l) => {
@@ -42,12 +46,15 @@ export default async function OrganizationsPage() {
     return acc;
   }, {});
 
+  const licenseIds = new Set(licenses.map(l => l.id));
+  const coinById = Object.fromEntries(coinBalances.map(c => [c.licenseId, c.balance]));
+  const gemById = Object.fromEntries(gemBalances.map(g => [g.licenseId, g.balance]));
+  const premiumLicenseIds = new Set(premiumByLicense.map(p => p.licenseId));
+
   const orgEntries = Object.entries(orgMap)
     .map(([org, lic]) => {
-      const orgCoinBal = coinBalances.filter((c) => lic.some((l) => l.id === c.licenseId));
-      const orgGemBal = gemBalances.filter((g) => lic.some((l) => l.id === g.licenseId));
       const orgAuditLogs = auditLogs.filter((a) => a.organization === org);
-      const orgPremium = premiumSubs.filter((p) => lic.some((l) => l.id === p.licenseId));
+      const orgPremiumCount = lic.filter((l) => premiumLicenseIds.has(l.id)).length;
       return {
         organization: org,
         licenseCount: lic.length,
@@ -55,10 +62,10 @@ export default async function OrganizationsPage() {
         deviceCount: lic.reduce((s, l) => s + l._count.activations, 0),
         plans: [...new Set(lic.map((l) => l.plan))].join(", "),
         isPremium: lic.some((l) => ["ENTERPRISE", "LIFETIME", "BUSINESS"].includes(l.plan)),
-        totalCoins: orgCoinBal.reduce((s, c) => s + c.balance, 0),
-        totalGems: orgGemBal.reduce((s, g) => s + g.balance, 0),
+        totalCoins: lic.reduce((s, l) => s + (coinById[l.id] || 0), 0),
+        totalGems: lic.reduce((s, l) => s + (gemById[l.id] || 0), 0),
         auditCount: orgAuditLogs.length,
-        premiumCount: orgPremium.length,
+        premiumCount: orgPremiumCount,
         expiringSoon: lic.filter((l) => daysUntil(l.expiresAt) >= 0 && daysUntil(l.expiresAt) <= EXPIRING_SOON_DAYS).length,
       };
     })

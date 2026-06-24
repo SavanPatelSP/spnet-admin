@@ -159,24 +159,25 @@ export async function getSessionFingerprintHistory(teamMemberId: string, limit =
 }
 
 export async function getAggregatedFingerprintStats() {
-  const [total, suspicious, riskCounts, countryDistinct] = await Promise.all([
+  const [total, suspicious, riskGroups, countryDistinct] = await Promise.all([
     prisma.sessionFingerprint.count(),
     prisma.sessionFingerprint.count({ where: { suspicious: true } }),
-    Promise.all(
-      ["LOW", "MEDIUM", "HIGH", "CRITICAL"].map(score =>
-        prisma.sessionFingerprint.count({ where: { riskScore: score } })
-      )
-    ),
+    prisma.sessionFingerprint.groupBy({
+      by: ["riskScore"],
+      where: { riskScore: { in: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] } },
+      _count: true,
+    }),
     prisma.sessionFingerprint.groupBy({ by: ["country"], _count: true }),
   ]);
+  const riskMap = Object.fromEntries(riskGroups.map(r => [r.riskScore, r._count]));
   return {
     total,
     suspicious,
     riskDistribution: {
-      low: riskCounts[0],
-      medium: riskCounts[1],
-      high: riskCounts[2],
-      critical: riskCounts[3],
+      low: riskMap["LOW"] || 0,
+      medium: riskMap["MEDIUM"] || 0,
+      high: riskMap["HIGH"] || 0,
+      critical: riskMap["CRITICAL"] || 0,
     },
     countries: countryDistinct,
   };

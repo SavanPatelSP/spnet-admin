@@ -674,6 +674,7 @@ model LoginHistory {
 
   @@index([teamMemberId])
   @@index([createdAt])
+  @@index([teamMemberId, success, createdAt])
 }
 
 model MfaBackupCode {
@@ -809,11 +810,15 @@ model Notification {
   title         String
   message       String
   type          String   @default("INFO")
+  category      String   @default("System")
+  priority      String   @default("MEDIUM")
   read          Boolean  @default(false)
+  archived      Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   @@index([teamMemberId, read])
   @@index([teamMemberId, createdAt])
+  @@index([teamMemberId, archived])
 }
 
 model SecurityPolicy {

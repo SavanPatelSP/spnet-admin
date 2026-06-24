@@ -37,39 +37,43 @@ export default async function SessionDetailPage(props: { params: Promise<{ id: s
   await requirePermission("Manage Sessions");
   const { id } = await props.params;
 
-  const session = await prisma.session.findUnique({
-    where: { id },
-    include: {
-      teamMember: { select: { name: true, email: true, role: { select: { name: true } } } },
-    },
-  });
+  const [session, fingerprint, timelineEvents] = await Promise.all([
+    prisma.session.findUnique({
+      where: { id },
+      select: {
+        id: true, token: true, ipAddress: true, userAgent: true,
+        expiresAt: true, createdAt: true,
+        overrideDurationMinutes: true, overrideCooldownMinutes: true, lastOverrideAt: true,
+        teamMember: { select: { name: true, email: true, role: { select: { name: true } } } },
+      },
+    }),
+    getSessionFingerprint(id),
+    prisma.auditLog.findMany({
+      where: {
+        OR: [
+          { entityId: id },
+          { description: { contains: id } },
+        ],
+        action: {
+          in: ["SESSION_EXTENDED", "SESSION_POLICY_OVERRIDDEN", "LOGIN_TENURE_OVERRIDDEN", "SESSION_REVOKED", "SESSION_CREATED", "PERMISSION_DENIED"],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        action: true,
+        description: true,
+        actorName: true,
+        actorEmail: true,
+        createdAt: true,
+      },
+    }),
+  ]);
 
   if (!session) notFound();
 
-  const fingerprint = await getSessionFingerprint(id);
   const riskFactors = fingerprint?.riskFactors ? JSON.parse(fingerprint.riskFactors) : [];
-
-  const timelineEvents = await prisma.auditLog.findMany({
-    where: {
-      OR: [
-        { entityId: id },
-        { description: { contains: id } },
-      ],
-      action: {
-        in: ["SESSION_EXTENDED", "SESSION_POLICY_OVERRIDDEN", "LOGIN_TENURE_OVERRIDDEN", "SESSION_REVOKED", "SESSION_CREATED", "PERMISSION_DENIED"],
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    select: {
-      id: true,
-      action: true,
-      description: true,
-      actorName: true,
-      actorEmail: true,
-      createdAt: true,
-    },
-  });
 
   return (
     <div className="space-y-8">

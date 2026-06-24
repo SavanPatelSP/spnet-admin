@@ -148,13 +148,23 @@ export async function getApprovalRequests(options: {
   if (options.requesterId) where.requesterId = options.requesterId;
   if (options.approverId) where.approverId = options.approverId;
 
-  const requests = await prisma.approvalRequest.findMany({
-    where: where as any,
-    orderBy: { createdAt: "desc" },
-    take: options.limit || 50,
-    skip: options.offset || 0,
-  });
-  return { requests, total: 0 };
+  const [requests, total] = await Promise.all([
+    prisma.approvalRequest.findMany({
+      where: where as any,
+      select: {
+        id: true, title: true, description: true, workflowType: true,
+        status: true, priority: true, reason: true, approvalNote: true,
+        requesterName: true, requesterEmail: true,
+        approverName: true, approverEmail: true,
+        submittedAt: true, reviewedAt: true, expiresAt: true, createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: options.limit || 50,
+      skip: options.offset || 0,
+    }),
+    prisma.approvalRequest.count({ where: where as any }),
+  ]);
+  return { requests, total };
 }
 
 export async function getApprovalStats() {

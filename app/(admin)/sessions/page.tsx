@@ -17,7 +17,7 @@ import Link from "next/link";
 export default async function SessionsPage() {
   const authSession = await requirePermission("Manage Sessions");
   const currentUserRole = authSession.user.role;
-  const [sessions, expiredCount] = await Promise.all([
+  const [sessions, expiredCount, fingerprintStats] = await Promise.all([
     prisma.session.findMany({
       orderBy: { createdAt: "desc" },
       take: 200,
@@ -38,11 +38,11 @@ export default async function SessionsPage() {
     prisma.session.count({
       where: { expiresAt: { lt: new Date() } },
     }),
+    getAggregatedFingerprintStats(),
   ]);
 
   const activeSessions = sessions.filter((s) => s.expiresAt > new Date());
   const uniqueUsers = new Set(activeSessions.map((s) => s.teamMemberId)).size;
-  const fingerprintStats = await getAggregatedFingerprintStats();
 
   return (
     <div className="space-y-8">

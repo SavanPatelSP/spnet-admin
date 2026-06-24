@@ -110,13 +110,13 @@ export function SessionsTable({ sessions, currentUserRole }: { sessions: Session
 
   async function bulkRevoke() {
     if (!confirm(`Revoke ${selectedIds.size} session${selectedIds.size > 1 ? "s" : ""}?`)) return;
-    for (const id of selectedIds) {
-      await fetch(API_ROUTES.TEAM_MEMBERS.SESSIONS_REVOKE, {
+    await Promise.all(Array.from(selectedIds).map(id =>
+      fetch(API_ROUTES.TEAM_MEMBERS.SESSIONS_REVOKE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: id }),
-      });
-    }
+      })
+    ));
     setSelectedIds(new Set());
     router.refresh();
   }
