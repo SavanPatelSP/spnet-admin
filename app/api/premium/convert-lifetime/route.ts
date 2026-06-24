@@ -4,11 +4,13 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { createInvoiceForPremiumAction } from "@/lib/invoices";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("premium.convert-lifetime");
-    const { licenseId, notes } = await req.json();
+    const body = await req.json();
+    const { licenseId, notes } = body;
 
     if (!licenseId) {
       return Response.json({ error: "licenseId is required" }, { status: 400 });
@@ -30,6 +32,18 @@ export async function POST(req: Request) {
 
     if (latestSubscription?.subscriptionType === "LIFETIME") {
       return Response.json({ error: "Subscription is already lifetime" }, { status: 409 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "PREMIUM_CONVERT_LIFETIME",
+      title: `Convert to Lifetime for ${license.organization}`,
+      target: license.organization,
+      reason: notes || body.reason || "Convert to lifetime",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const result = await prisma.$transaction(async (tx) => {

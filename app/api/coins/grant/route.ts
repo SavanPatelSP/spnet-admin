@@ -5,13 +5,15 @@ import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 import { getCoinPackage } from "@/lib/economy-pricing";
 import { createInvoice } from "@/lib/invoices";
+import { approvalGuard } from "@/lib/approval-guard";
 
 const COIN_TYPES = ["FINITE", "PROMOTIONAL", "BONUS"];
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("coins.grant");
-    const { licenseId, amount, type, reason, description } = await req.json();
+    const body = await req.json();
+    const { licenseId, amount, type, reason, description } = body;
 
     if (!licenseId || !amount || amount < 1) {
       return Response.json({ error: "licenseId and amount (positive integer) are required" }, { status: 400 });
@@ -24,6 +26,18 @@ export async function POST(req: Request) {
     const license = await prisma.license.findUnique({ where: { id: licenseId } });
     if (!license) {
       return Response.json({ error: "License not found" }, { status: 404 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "COINS_GRANT",
+      title: `Grant Coins to ${license.organization}`,
+      target: license.organization,
+      reason: reason || body.reason || "Grant coins",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const result = await prisma.$transaction(async (tx) => {

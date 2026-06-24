@@ -4,6 +4,7 @@ import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
 import bcrypt from "bcryptjs";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +23,18 @@ export async function POST(req: Request) {
     const existing = await prisma.teamMember.findUnique({ where: { email } });
     if (existing) {
       return Response.json({ success: false, error: "A member with this email already exists" }, { status: 409 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "TEAM_CREATE",
+      title: `Create Team Member ${name}`,
+      target: name,
+      reason: body.reason || `Create team member ${name}`,
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const hashedPassword = await bcrypt.hash(tempPassword, 12);

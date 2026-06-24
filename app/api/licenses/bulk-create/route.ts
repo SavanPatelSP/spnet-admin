@@ -4,12 +4,27 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { generateKey, parseExpiryDate } from "@/lib/shared";
 import { AUDIT_ACTIONS } from "@/lib/constants";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("Bulk Create Licenses");
     const body = await req.json();
     const { count, organization, plan, expiresAt, maxDevices, notes, templateId } = body;
+
+    const guard = await approvalGuard(session, {
+      workflowType: "LICENSE_BULK",
+      title: `Bulk Create ${count || "?"} Licenses for ${organization || "unknown"}`,
+      target: organization || "unknown",
+      reason: notes || body.reason || "Bulk create licenses",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id,
+      requesterName: session.user.name,
+      requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
+    }
 
     if (!count || count < 1 || count > 100) {
       return Response.json({ error: "Count must be between 1 and 100" }, { status: 400 });

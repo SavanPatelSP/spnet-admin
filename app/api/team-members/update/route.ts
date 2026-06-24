@@ -3,11 +3,13 @@ import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function PUT(req: Request) {
   try {
     const session = await requireApiPermission("Edit Team Members");
-    const { id, name, email, roleId, licenseId, status } = await req.json();
+    const body = await req.json();
+    const { id, name, email, roleId, licenseId, status } = body;
 
     if (!id) {
       return Response.json({ error: "Member id is required" }, { status: 400 });
@@ -36,6 +38,18 @@ export async function PUT(req: Request) {
         }
       }
       data.licenseId = licenseId || null;
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "TEAM_UPDATE",
+      title: `Update Team Member ${existing.name}`,
+      target: existing.name,
+      reason: body.reason || `Update team member ${existing.name}`,
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const roleChanged = roleId !== undefined && roleId !== existing.roleId;

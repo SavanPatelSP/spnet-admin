@@ -3,11 +3,13 @@ import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("Revoke Gems");
-    const { licenseId, amount, reason, description } = await req.json();
+    const body = await req.json();
+    const { licenseId, amount, reason, description } = body;
 
     if (!licenseId || !amount || amount < 1) {
       return Response.json({ error: "licenseId and amount (positive integer) are required" }, { status: 400 });
@@ -21,6 +23,18 @@ export async function POST(req: Request) {
     const balance = await prisma.gemBalance.findUnique({ where: { licenseId } });
     if (!balance || balance.balance < amount) {
       return Response.json({ error: "Insufficient gem balance" }, { status: 409 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "GEMS_REVOKE",
+      title: `Revoke Gems from ${license.organization}`,
+      target: license.organization,
+      reason: reason || body.reason || "Revoke gems",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const result = await prisma.$transaction(async (tx) => {

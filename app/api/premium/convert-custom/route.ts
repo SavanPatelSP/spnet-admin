@@ -4,11 +4,13 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { createInvoiceForPremiumAction } from "@/lib/invoices";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("premium.convert-custom");
-    const { licenseId, plan, durationDays, startDate: customStartDate, notes } = await req.json();
+    const body = await req.json();
+    const { licenseId, plan, durationDays, startDate: customStartDate, notes } = body;
 
     if (!licenseId || !plan || !durationDays) {
       return Response.json({ error: "licenseId, plan, and durationDays are required" }, { status: 400 });
@@ -28,6 +30,18 @@ export async function POST(req: Request) {
     const startDate = customStartDate ? new Date(customStartDate) : new Date();
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + Number(durationDays));
+
+    const guard = await approvalGuard(session, {
+      workflowType: "PREMIUM_CONVERT_CUSTOM",
+      title: `Convert to Custom Premium for ${license.organization}`,
+      target: license.organization,
+      reason: notes || body.reason || "Convert to custom premium",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const subscription = await tx.premiumSubscription.create({

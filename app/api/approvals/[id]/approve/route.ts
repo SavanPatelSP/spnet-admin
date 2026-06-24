@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { approveRequest } from "@/lib/approval";
+import { executeApprovedAction } from "@/lib/approval-executor";
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError } from "@/lib/security/errors";
 
@@ -31,6 +32,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Team member not found" }, { status: 404 });
     }
 
+    const payload = existing.metadata ? JSON.parse(existing.metadata) : {};
+    const actionType = payload._actionType as string;
+
+    if (actionType) {
+      const execResult = await executeApprovedAction(actionType, payload, {
+        approvedBy: teamMember.id,
+        approvedByName: teamMember.name || "Unknown",
+        approvedByEmail: session.user.email || "unknown",
+      });
+
+      if (!execResult.success) {
+        return NextResponse.json({ error: execResult.message }, { status: 500 });
+      }
+    }
+
     const result = await approveRequest(
       id,
       teamMember.id,
@@ -39,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       note,
     );
 
-    return NextResponse.json({ request: result });
+    return NextResponse.json({ request: result, executed: actionType ? true : false });
   } catch (error) {
     if (error instanceof ForbiddenError) {
       return NextResponse.json({ error: error.message }, { status: 403 });

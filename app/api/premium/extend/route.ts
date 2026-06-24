@@ -4,11 +4,13 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { createInvoiceForPremiumAction } from "@/lib/invoices";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("Extend Premium");
-    const { licenseId, additionalDays, notes } = await req.json();
+    const body = await req.json();
+    const { licenseId, additionalDays, notes } = body;
 
     if (!licenseId || !additionalDays) {
       return Response.json({ error: "licenseId and additionalDays are required" }, { status: 400 });
@@ -21,6 +23,18 @@ export async function POST(req: Request) {
 
     if (!PREMIUM_PLANS.includes(license.plan as never)) {
       return Response.json({ error: "License is not on a premium plan" }, { status: 409 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "PREMIUM_EXTEND",
+      title: `Extend Premium for ${license.organization}`,
+      target: license.organization,
+      reason: notes || body.reason || "Extend premium",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const newEndDate = new Date(license.expiresAt);

@@ -3,6 +3,7 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
@@ -47,6 +48,18 @@ export async function POST(req: Request) {
 
     if (!adminRole) {
       return Response.json({ error: "Admin role not found" }, { status: 500 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "TRANSFER_OWNERSHIP",
+      title: `Transfer Ownership to ${targetMember.name}`,
+      target: targetMember.name,
+      reason: body.reason || `Transfer ownership to ${targetMember.name}`,
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     await prisma.$transaction([

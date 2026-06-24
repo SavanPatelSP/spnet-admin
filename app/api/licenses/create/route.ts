@@ -6,11 +6,26 @@ import { generateKey, parseExpiryDate } from "@/lib/shared";
 import { DEFAULT_PLAN, DEFAULT_MAX_DEVICES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
 import { createInvoiceForLicense } from "@/lib/invoices";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("Create Licenses");
     const body = await req.json();
+
+    const guard = await approvalGuard(session, {
+      workflowType: "LICENSE_CREATE",
+      title: `Create License for ${body.organization || "unknown"}`,
+      target: body.organization || "unknown",
+      reason: body.notes || body.reason || "Create license",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id,
+      requesterName: session.user.name,
+      requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
+    }
 
     if (!body.organization?.trim()) {
       return Response.json({ error: "Organization is required" }, { status: 400 });

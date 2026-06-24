@@ -4,11 +4,13 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { createInvoiceForPremiumAction } from "@/lib/invoices";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("premium.downgrade");
-    const { licenseId, newPlan, newSubscriptionType, notes } = await req.json();
+    const body = await req.json();
+    const { licenseId, newPlan, newSubscriptionType, notes } = body;
 
     if (!licenseId || !newPlan) {
       return Response.json({ error: "licenseId and newPlan are required" }, { status: 400 });
@@ -36,6 +38,18 @@ export async function POST(req: Request) {
 
     if (newSubscriptionType && !SUBSCRIPTION_TYPES.includes(newSubscriptionType as never)) {
       return Response.json({ error: `Invalid subscription type. Must be one of: ${SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "PREMIUM_DOWNGRADE",
+      title: `Downgrade Premium for ${license.organization}`,
+      target: license.organization,
+      reason: notes || body.reason || "Downgrade premium",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const result = await prisma.$transaction(async (tx) => {

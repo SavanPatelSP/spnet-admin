@@ -4,11 +4,13 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { createInvoiceForPremium } from "@/lib/invoices";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
     const session = await requireApiPermission("Grant Premium");
-    const { licenseId, plan, durationDays, subscriptionType, notes } = await req.json();
+    const body = await req.json();
+    const { licenseId, plan, durationDays, subscriptionType, notes } = body;
 
     if (!licenseId || !plan) {
       return Response.json({ error: "licenseId and plan are required" }, { status: 400 });
@@ -30,6 +32,18 @@ export async function POST(req: Request) {
 
     if (PREMIUM_PLANS.includes(license.plan as never)) {
       return Response.json({ error: "License is already on a premium plan" }, { status: 409 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "PREMIUM_GRANT",
+      title: `Grant Premium to ${license.organization}`,
+      target: license.organization,
+      reason: notes || body.reason || "Grant premium",
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const isLifetime = subType === "LIFETIME";

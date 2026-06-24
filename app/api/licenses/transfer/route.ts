@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { AUDIT_ACTIONS } from "@/lib/constants";
+import { approvalGuard } from "@/lib/approval-guard";
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +23,18 @@ export async function POST(req: Request) {
 
     if (!license) {
       return Response.json({ error: "License not found" }, { status: 404 });
+    }
+
+    const guard = await approvalGuard(session, {
+      workflowType: "LICENSE_TRANSFER",
+      title: `Transfer License to ${newOrganization}`,
+      target: newOrganization,
+      reason: body.reason || `Transfer license from ${license.organization} to ${newOrganization}`,
+      payload: body as Record<string, unknown>,
+      requesterId: session.user.id, requesterName: session.user.name, requesterEmail: session.user.email,
+    });
+    if (!guard.allowed) {
+      return Response.json({ message: guard.message, requestId: guard.requestId, status: "PENDING" }, { status: 202 });
     }
 
     const updated = await prisma.license.update({
