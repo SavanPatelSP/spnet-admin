@@ -92,22 +92,33 @@ export async function createSecurityAlert(input: AlertInput) {
     // best effort
   }
 
-  // Create notifications for all active team members with relevant permissions
+  // Create notifications scoped to Owner/SuperAdmin + affected user only
   try {
-    const members = await prisma.teamMember.findMany({
+    const ownerAdminMembers = await prisma.teamMember.findMany({
       where: {
         status: "ACTIVE",
-        role: {
-          permissions: {
-            some: { permission: "View Security Policies" },
-          },
-        },
+        role: { name: { in: ["OWNER", "SUPER_ADMIN"] } },
       },
       select: { id: true },
     });
-    if (members.length > 0) {
+    const targetMembers: { id: string }[] = [];
+    const seen = new Set<string>();
+    for (const m of ownerAdminMembers) {
+      if (!seen.has(m.id)) { seen.add(m.id); targetMembers.push(m); }
+    }
+    if (input.entityType === "session" && input.entityId) {
+      const sessionMember = await prisma.session.findUnique({
+        where: { id: input.entityId },
+        select: { teamMemberId: true },
+      });
+      if (sessionMember && !seen.has(sessionMember.teamMemberId)) {
+        seen.add(sessionMember.teamMemberId);
+        targetMembers.push({ id: sessionMember.teamMemberId });
+      }
+    }
+    if (targetMembers.length > 0) {
       await prisma.notification.createMany({
-        data: members.map(m => ({
+        data: targetMembers.map(m => ({
           teamMemberId: m.id,
           title: `Security Alert: ${input.title}`,
           message: input.description || input.title,

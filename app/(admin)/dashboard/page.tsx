@@ -77,9 +77,13 @@ export default async function DashboardPage() {
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // Consolidated dashboard queries - reduced from 17 to ~8 independent queries
-const [
-  licenses,
+  const [
+  licenseCount,
+  licenseByStatus,
+  licenseByPlan,
+  licenseMaxDevices,
+  licenseExpiringSoonCount,
+  orgCounts,
   memberCounts,
   activationCounts,
   roleCount,
@@ -93,8 +97,17 @@ const [
   activePremiumSubs,
   sessionCount,
   overriddenSessionCount,
+  sessionsExpiringSoonCount,
+  auditLogs,
 ] = await Promise.all([
-  prisma.license.findMany({ select: { id: true, status: true, plan: true, expiresAt: true, maxDevices: true, organization: true } }),
+  prisma.license.count(),
+  prisma.license.groupBy({ by: ["status"], _count: true }),
+  prisma.license.groupBy({ by: ["plan"], _count: true }),
+  prisma.license.aggregate({ _sum: { maxDevices: true } }),
+  prisma.license.count({
+    where: { expiresAt: { gte: now, lte: thirtyDaysFromNow } },
+  }),
+  prisma.license.groupBy({ by: ["organization"], _count: true }),
   prisma.teamMember.groupBy({ by: ["status"], _count: true }),
   prisma.activation.groupBy({ by: ["status"], _count: true }),
   prisma.role.count(),
@@ -118,13 +131,15 @@ const [
   prisma.session.count({
     where: { expiresAt: { gt: now }, overrideDurationMinutes: { not: null } },
   }),
+  prisma.session.count({
+    where: { expiresAt: { gt: now, lte: thirtyDaysFromNow } },
+  }),
+  prisma.auditLog.findMany({
+    select: { id: true, action: true, description: true, actorName: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  }),
 ]);
-
-const sessionsExpiringSoonCount = await prisma.session.count({
-  where: { expiresAt: { gt: now, lte: thirtyDaysFromNow } },
-});
-
-  const auditLogs = await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5 });
 
   const paidInvoices = invoiceCounts.find(i => i.status === "PAID")?._count ?? 0;
   const outstandingInvoices = invoiceCounts.filter(i => ["PENDING", "OVERDUE"].includes(i.status)).reduce((s, i) => s + i._count, 0);
@@ -132,12 +147,12 @@ const sessionsExpiringSoonCount = await prisma.session.count({
   const todayLogins = todayEvents.find(a => a.action === "LOGIN_SUCCESS")?._count ?? 0;
   const todayErrors = todayEvents.filter(a => ["LOGIN_FAILURE", "PERMISSION_DENIED"].includes(a.action)).reduce((s, a) => s + a._count, 0);
 
-  const activeLicenses = licenses.filter((l) => l.status === "ACTIVE").length;
-  const suspendedLicenses = licenses.filter((l) => l.status === "SUSPENDED").length;
-  const expiredLicenses = licenses.filter((l) => l.status === "EXPIRED").length;
-  const expiringSoon = licenses.filter((l) => l.expiresAt >= now && l.expiresAt <= thirtyDaysFromNow).length;
-  const pendingLicenses = licenses.filter((l) => l.status === "PENDING").length;
-  const totalCapacity = licenses.reduce((t, l) => t + l.maxDevices, 0);
+  const licenseStatusMap = Object.fromEntries(licenseByStatus.map((g) => [g.status, g._count]));
+  const activeLicenses = licenseStatusMap["ACTIVE"] || 0;
+  const suspendedLicenses = licenseStatusMap["SUSPENDED"] || 0;
+  const expiredLicenses = licenseStatusMap["EXPIRED"] || 0;
+  const pendingLicenses = licenseStatusMap["PENDING"] || 0;
+  const totalCapacity = licenseMaxDevices._sum.maxDevices || 0;
   const totalDevices = activationCounts.reduce((s, g) => s + g._count, 0);
   const utilization = totalCapacity === 0 ? 0 : Math.round((totalDevices / totalCapacity) * 100);
   const memberCountMap = Object.fromEntries(memberCounts.map((g) => [g.status, g._count]));
@@ -145,10 +160,7 @@ const sessionsExpiringSoonCount = await prisma.session.count({
   const activeMembers = memberCountMap["ACTIVE"] || 0;
   const suspendedMembers = memberCountMap["SUSPENDED"] || 0;
   const pendingMembers = memberCountMap["PENDING"] || 0;
-  const planBreakdown = licenses.reduce<Record<string, number>>((acc, l) => {
-    acc[l.plan] = (acc[l.plan] || 0) + 1;
-    return acc;
-  }, {});
+  const planBreakdown = Object.fromEntries(licenseByPlan.map((g) => [g.plan, g._count]));
   const usedPlans = Object.keys(planBreakdown).length;
   const totalInvoices = invoiceStats._count;
   const invoiceRevenue = invoiceStats._sum.total || 0;
@@ -160,12 +172,12 @@ const sessionsExpiringSoonCount = await prisma.session.count({
   const totalCoinsWallets = coinStats._count;
   const totalGems = gemStats._sum.balance || 0;
   const totalGemsWallets = gemStats._count;
-  const uniqueOrgs = new Set(licenses.map((l) => l.organization)).size;
+  const uniqueOrgs = orgCounts.length;
 
   const criticalAlerts: { icon: typeof Shield; label: string; value: string | number; color: string }[] = [];
   if (suspendedLicenses > 0) criticalAlerts.push({ icon: AlertTriangle, label: "Suspended Licenses", value: suspendedLicenses, color: "text-yellow-400" });
   if (expiredLicenses > 0) criticalAlerts.push({ icon: AlertTriangle, label: "Expired Licenses", value: expiredLicenses, color: "text-red-400" });
-  if (expiringSoon > 0) criticalAlerts.push({ icon: Clock, label: "Expiring Soon", value: expiringSoon, color: "text-yellow-400" });
+  if (licenseExpiringSoonCount > 0) criticalAlerts.push({ icon: Clock, label: "Expiring Soon", value: licenseExpiringSoonCount, color: "text-yellow-400" });
   if (suspendedMembers > 0) criticalAlerts.push({ icon: AlertTriangle, label: "Suspended Members", value: suspendedMembers, color: "text-yellow-400" });
 
   return (
@@ -200,8 +212,8 @@ const sessionsExpiringSoonCount = await prisma.session.count({
       <StatCardGrid columns={6}>
         <StatCard title="Team Members" value={totalMembers} icon={Users} color="blue"
           subtitle={`${activeMembers} active · ${suspendedMembers} suspended`} />
-        <StatCard title="Licenses" value={licenses.length} icon={KeyRound} color="purple"
-          subtitle={`${activeLicenses} active · ${expiringSoon} expiring soon`} />
+        <StatCard title="Licenses" value={licenseCount} icon={KeyRound} color="purple"
+          subtitle={`${activeLicenses} active · ${licenseExpiringSoonCount} expiring soon`} />
         <StatCard title="Active Devices" value={totalDevices} icon={Monitor} color="green"
           subtitle={`${utilization}% of ${formatNumber(totalCapacity)} capacity`} />
         <StatCard title="Premium" value={activePremiumSubs} icon={Crown} color="yellow"
@@ -318,7 +330,7 @@ const sessionsExpiringSoonCount = await prisma.session.count({
           <InsightCard title="License Health">
             <MetricsRow items={[
               { label: "Active", value: activeLicenses, icon: CheckCircle2, color: "text-green-400" },
-              { label: "Expiring Soon", value: expiringSoon, icon: Clock, color: expiringSoon > 0 ? "text-amber-400" : "text-zinc-500" },
+              { label: "Expiring Soon", value: licenseExpiringSoonCount, icon: Clock, color: licenseExpiringSoonCount > 0 ? "text-amber-400" : "text-zinc-500" },
               { label: "Suspended", value: suspendedLicenses, icon: XCircle, color: suspendedLicenses > 0 ? "text-red-400" : "text-zinc-500" },
               { label: "Pending", value: pendingLicenses, icon: Clock, color: pendingLicenses > 0 ? "text-blue-400" : "text-zinc-500" },
             ]} />
@@ -384,7 +396,7 @@ const sessionsExpiringSoonCount = await prisma.session.count({
           <div className="space-y-2">
             <StatRow label="Total Organizations" value={uniqueOrgs} color="text-blue-400" />
             <StatRow label="Avg Members/Org" value={uniqueOrgs > 0 ? (totalMembers / uniqueOrgs).toFixed(1) : "—"} color="text-green-400" />
-            <StatRow label="Avg Licenses/Org" value={uniqueOrgs > 0 ? (licenses.length / uniqueOrgs).toFixed(1) : "—"} color="text-purple-400" />
+            <StatRow label="Avg Licenses/Org" value={uniqueOrgs > 0 ? (licenseCount / uniqueOrgs).toFixed(1) : "—"} color="text-purple-400" />
             <StatRow label="Orgs w/ Premium" value={activePremiumSubs > 0 ? "Active" : "None"} color="text-yellow-400" />
             <StatRow label="Total Capacity" value={formatNumber(totalCapacity)} color="text-emerald-400" />
           </div>
@@ -477,7 +489,7 @@ const sessionsExpiringSoonCount = await prisma.session.count({
           <InsightCard title="Quick Stats">
             <div className="space-y-2">
               <StatRow label="Total Members" value={totalMembers} color="text-blue-400" />
-              <StatRow label="Total Licenses" value={licenses.length} color="text-purple-400" />
+              <StatRow label="Total Licenses" value={licenseCount} color="text-purple-400" />
               <StatRow label="Total Invoices" value={totalInvoices} color="text-emerald-400" />
               <StatRow label="Total Sessions" value={sessionCount} color="text-amber-400" />
             </div>

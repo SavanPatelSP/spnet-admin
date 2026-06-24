@@ -34,7 +34,7 @@ export default async function AnalyticsPage({
 
   const [licenses, activations, auditLogs, teamMembers, previousActivations] = await Promise.all([
     prisma.license.findMany({
-      include: { activations: true },
+      select: { id: true, key: true, plan: true, status: true, maxDevices: true, expiresAt: true, createdAt: true, organization: true },
       where: days < 90 ? { createdAt: { gte: periodStart } } : undefined,
     }),
     prisma.activation.findMany({

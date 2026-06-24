@@ -10,7 +10,9 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/shared";
 import { getSessionFingerprint } from "@/lib/security/fingerprint";
 import { Card } from "@/components/ui/Card";
-import { Shield, AlertTriangle, Globe, Monitor, Clock, User, Fingerprint, Network, MapPin, Smartphone, Cpu } from "lucide-react";
+import { SessionLiveCountdown, SessionOverrideStatus, SessionCooldownStatus } from "@/components/sessions/SessionLiveCountdown";
+import { SessionTimeline } from "@/components/sessions/SessionTimeline";
+import { Shield, AlertTriangle, Globe, Monitor, Clock, User, Fingerprint, Network, MapPin, Smartphone, Cpu, Timer, Crown, History } from "lucide-react";
 
 const riskColors: Record<string, string> = {
   LOW: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -47,6 +49,28 @@ export default async function SessionDetailPage(props: { params: Promise<{ id: s
   const fingerprint = await getSessionFingerprint(id);
   const riskFactors = fingerprint?.riskFactors ? JSON.parse(fingerprint.riskFactors) : [];
 
+  const timelineEvents = await prisma.auditLog.findMany({
+    where: {
+      OR: [
+        { entityId: id },
+        { description: { contains: id } },
+      ],
+      action: {
+        in: ["SESSION_EXTENDED", "SESSION_POLICY_OVERRIDDEN", "LOGIN_TENURE_OVERRIDDEN", "SESSION_REVOKED", "SESSION_CREATED", "PERMISSION_DENIED"],
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      action: true,
+      description: true,
+      actorName: true,
+      actorEmail: true,
+      createdAt: true,
+    },
+  });
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -70,8 +94,11 @@ export default async function SessionDetailPage(props: { params: Promise<{ id: s
                 ? <StatusBadge status="ACTIVE" />
                 : <StatusBadge status="EXPIRED" />
             } icon={<Clock size={12} />} />
+            <InfoRow label="Remaining" value={<SessionLiveCountdown expiresAt={session.expiresAt.toISOString()} />} icon={<Clock size={12} />} />
             <InfoRow label="Created" value={formatDateTime(session.createdAt)} icon={<Clock size={12} />} />
             <InfoRow label="Expires" value={formatDateTime(session.expiresAt)} icon={<Clock size={12} />} />
+            <InfoRow label="Override" value={<SessionOverrideStatus overrideDurationMinutes={session.overrideDurationMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} expiresAt={session.expiresAt.toISOString()} />} icon={<Crown size={12} />} />
+            <InfoRow label="Cooldown" value={<SessionCooldownStatus overrideCooldownMinutes={session.overrideCooldownMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} />} icon={<Timer size={12} />} />
             <InfoRow label="Token" value={<span className="font-mono text-xs">{session.token.slice(0, 20)}...</span>} icon={<Fingerprint size={12} />} />
           </div>
         </Card>
@@ -132,6 +159,10 @@ export default async function SessionDetailPage(props: { params: Promise<{ id: s
           )}
         </Card>
       </div>
+
+      <Card title="Session Timeline">
+        <SessionTimeline events={timelineEvents.map((e) => ({ ...e, description: e.description || "", createdAt: e.createdAt.toISOString() }))} />
+      </Card>
 
       <Card title="Fingerprint History">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

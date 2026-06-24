@@ -15,14 +15,18 @@ import { formatDate } from "@/lib/shared";
 
 export default async function UsersPage() {
   await requirePermission("View Users");
-  const [teamMembers, roles, sessions, loginHistory] = await Promise.all([
+  const [teamMembers, roles, sessions] = await Promise.all([
     prisma.teamMember.findMany({
-      include: { role: { select: { name: true } } },
+      select: {
+        id: true, name: true, email: true, status: true, role: { select: { name: true } },
+        lastLogin: true, createdAt: true, lockedUntil: true, mfaEnabled: true, department: true,
+        passwordChangedAt: true,
+      },
       orderBy: { createdAt: "desc" },
+      take: 500,
     }),
     prisma.role.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.session.count({ where: { expiresAt: { gt: new Date() } } }),
-    prisma.loginHistory.count(),
   ]);
 
   const activeMembers = teamMembers.filter((m) => m.status === "ACTIVE").length;
@@ -82,7 +86,7 @@ export default async function UsersPage() {
         <StatCard title="MFA Enabled" value={mfaEnabled} icon={ShieldCheck} color="blue" subtitle={`${teamMembers.length > 0 ? Math.round((mfaEnabled / teamMembers.length) * 100) : 0}% of members`} />
         <StatCard title="Active Sessions" value={activeSessions} icon={Activity} color="green" subtitle="Currently active" />
         <StatCard title="Department Distribution" value={Object.keys(departmentCounts).length} icon={Building} color="purple" subtitle={departmentDistribution || "No departments"} />
-        <StatCard title="Login History" value={loginHistory} icon={Calendar} color="default" subtitle="Total recorded" />
+        <StatCard title="Login History" value="—" icon={Calendar} color="default" subtitle="Available in audit logs" />
       </StatCardGrid>
 
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">

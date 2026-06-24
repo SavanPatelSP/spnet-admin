@@ -35,7 +35,13 @@ export async function GET(req: NextRequest) {
         orderBy: { issuedAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { license: { select: { key: true, organization: true, plan: true } } },
+        select: {
+          id: true, invoiceNumber: true, status: true, type: true, category: true,
+          action: true, total: true, currency: true, customerName: true,
+          customerEmail: true, organization: true, issuedAt: true, dueAt: true,
+          paidAt: true, isArchived: true,
+          license: { select: { key: true, organization: true, plan: true } },
+        },
       }),
       prisma.invoice.count({ where }),
     ]);

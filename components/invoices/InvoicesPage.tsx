@@ -93,15 +93,18 @@ export function InvoicesPage() {
   const fetchInvoices = useCallback(async (p: number) => {
     setLoading(true);
     try {
-      const url = new URL(API_ROUTES.INVOICES.LIST, window.location.origin);
-      url.searchParams.set("page", String(p));
-      url.searchParams.set("pageSize", "100");
-      const res = await fetch(url.toString());
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || "Failed to load invoices");
-      setInvoices(data.invoices || []);
-      setTotal(data.total || 0);
+      const res = await fetch(`/api/invoices?page=${p}&pageSize=100`);
+      const text = await res.text();
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(text); } catch {
+        console.error("Invoice fetch: non-JSON response", { status: res.status, body: text.slice(0, 200) });
+        throw new Error(`Server returned ${res.status}: expected JSON, got HTML/text`);
+      }
+      if (!res.ok || !data.success) throw new Error((data.error as string) || `Server error (${res.status})`);
+      setInvoices(data.invoices as Invoice[] || []);
+      setTotal(data.total as number || 0);
     } catch (err) {
+      console.error("Invoice fetch error:", err);
       showToast(err instanceof Error ? err.message : "Failed to load invoices", "error");
     } finally {
       setLoading(false);
@@ -109,30 +112,8 @@ export function InvoicesPage() {
   }, [showToast]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({ page: String(page), pageSize: String(20) });
-        const res = await fetch(`/api/invoices/list?${params}`);
-        const data = await res.json();
-        if (!cancelled) {
-          if (data.success) {
-            setInvoices(data.data || []);
-            setTotal(data.total || 0);
-          } else {
-            showToast("Failed to load invoices", "error");
-          }
-        }
-      } catch (err) {
-        if (!cancelled) showToast(err instanceof Error ? err.message : "Failed to load invoices", "error");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    fetchInvoices(page);
+  }, [page, fetchInvoices]);
 
   const filtered = useMemo(() => {
     return invoices.filter((inv) => {
@@ -379,12 +360,20 @@ export function InvoicesPage() {
         />
 
         <div className="mt-4">
-          <DataTable
-            columns={columns}
-            rows={rows}
-            searchPlaceholder="Search invoices..."
-            emptyMessage="No matching invoices."
-          />
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex h-12 animate-pulse items-center rounded-xl bg-zinc-800/50" />
+              ))}
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={rows}
+              searchPlaceholder="Search invoices..."
+              emptyMessage="No matching invoices."
+            />
+          )}
           {total > 100 && (
             <div className="flex items-center justify-between border-t border-zinc-800 px-5 py-3">
               <button

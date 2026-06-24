@@ -164,9 +164,18 @@ export function SessionPolicyOverrideModal({
       if (!res.ok || !data.success) throw new Error(data.error || "Override failed");
       const newExpiresAt = data.session?.expiresAt;
       mutate("/api/sessions/me");
-      if (newExpiresAt) {
-        window.dispatchEvent(new CustomEvent("session-updated", { detail: { sessionId: session.id, expiresAt: newExpiresAt } }));
-      }
+      const isCooldownOnly = data.verification?.type === "cooldown_override";
+      window.dispatchEvent(new CustomEvent("session-updated", {
+        detail: {
+          sessionId: session.id,
+          expiresAt: newExpiresAt || null,
+          action: isCooldownOnly ? "LOGIN_TENURE_OVERRIDDEN" : "SESSION_POLICY_OVERRIDDEN",
+          description: isCooldownOnly
+            ? `Cooldown set to ${data.verification?.newCooldown ?? "default"} min`
+            : (data.verification?.newPolicy ? `Policy overridden to ${data.verification.newPolicy} until ${new Date(newExpiresAt).toLocaleString("en-IN")}` : `Session policy overridden`),
+          actorName: "Admin",
+        },
+      }));
       setVerification(data.verification || {});
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Override failed", "error");

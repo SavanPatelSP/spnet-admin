@@ -9,8 +9,9 @@ import {
   X, User, Monitor, Smartphone, Globe, Clock, Shield,
   MapPin, Activity, AlertTriangle, ChevronRight, FileText,
   Fingerprint, Network, Terminal, Calendar, Cpu,
-  RefreshCw, Crown, LogOut, ArrowUpCircle, Eye, ExternalLink,
+  RefreshCw, Crown, LogOut, ArrowUpCircle, Eye, ExternalLink, Timer,
 } from "lucide-react";
+import { SessionLiveCountdown, SessionOverrideStatus, SessionCooldownStatus } from "./SessionLiveCountdown";
 
 interface SessionRow {
   id: string;
@@ -21,11 +22,17 @@ interface SessionRow {
   userAgent: string | null;
   expiresAt: Date;
   createdAt: Date;
+  overrideDurationMinutes: number | null;
+  overrideCooldownMinutes: number | null;
+  lastOverrideAt: Date | null;
 }
 
 interface Props {
   session: SessionRow;
   onClose: () => void;
+  onExtend?: (session: SessionRow) => void;
+  onOverride?: (session: SessionRow) => void;
+  onForceLogout?: (session: SessionRow) => void;
 }
 
 function InfoRow({ label, value, icon, className }: { label: string; value: React.ReactNode; icon?: React.ReactNode; className?: string }) {
@@ -68,10 +75,15 @@ function Badge({ label, color }: { label: string; color: "green" | "yellow" | "r
   );
 }
 
-export function SessionDetailDrawer({ session, onClose }: Props) {
+export function SessionDetailDrawer({ session, onClose, onExtend, onOverride, onForceLogout }: Props) {
   const router = useRouter();
   const [now, setNow] = useState<number>(() => Date.now());
   const [liveExpiresAt, setLiveExpiresAt] = useState(session.expiresAt);
+
+  // Sync liveExpiresAt whenever session prop changes (e.g. after re-open)
+  useEffect(() => {
+    setLiveExpiresAt(session.expiresAt);
+  }, [session.id, session.expiresAt]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -216,10 +228,10 @@ export function SessionDetailDrawer({ session, onClose }: Props) {
                 <div className="grid grid-cols-2 gap-2">
                   <InfoRow label="Created" value={formatDateTime(session.createdAt)} icon={<Calendar size={12} />} />
                   <InfoRow label="Expires" value={formatDateTime(liveExpiresAt)} icon={<Clock size={12} />} />
-                  <InfoRow label="Remaining" value={
-                    <span className={cn(isActive ? "text-green-400" : "text-red-400")}>{isActive ? remainingLabel : "Expired"}</span>
-                  } icon={<Clock size={12} />} />
+                  <InfoRow label="Remaining" value={<SessionLiveCountdown expiresAt={liveExpiresAt.toISOString()} />} icon={<Clock size={12} />} />
                   <InfoRow label="Status" value={<Badge label={isActive ? "Active" : "Expired"} color={isActive ? "green" : "zinc"} />} icon={<Activity size={12} />} />
+                  <InfoRow label="Override" value={<SessionOverrideStatus overrideDurationMinutes={session.overrideDurationMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} expiresAt={session.expiresAt.toISOString()} />} icon={<Crown size={12} />} />
+                  <InfoRow label="Cooldown" value={<SessionCooldownStatus overrideCooldownMinutes={session.overrideCooldownMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} />} icon={<Timer size={12} />} />
                 </div>
               </Section>
 
@@ -240,20 +252,20 @@ export function SessionDetailDrawer({ session, onClose }: Props) {
                 <div className="flex flex-wrap gap-2">
                   {isActive && (
                     <button
-                      onClick={() => { onClose(); }}
+                      onClick={() => { onClose(); onExtend?.(session); }}
                       className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/20"
                     >
                       <ArrowUpCircle size={12} /> Extend
                     </button>
                   )}
                   <button
-                    onClick={() => { onClose(); }}
+                    onClick={() => { onClose(); onOverride?.(session); }}
                     className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 px-3 py-2 text-xs font-medium text-purple-400 transition-colors hover:bg-purple-500/20"
                   >
                     <Crown size={12} /> Override
                   </button>
                   <button
-                    onClick={() => { onClose(); }}
+                    onClick={() => { onClose(); onForceLogout?.(session); }}
                     className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
                   >
                     <LogOut size={12} /> Force Logout

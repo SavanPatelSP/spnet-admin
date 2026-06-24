@@ -12,21 +12,6 @@ export async function GET() {
       return Response.json({ success: false, error: "No server session record" }, { status: 401 });
     }
 
-    // Pre-check from JWT to avoid DB query if not expired
-    if (session.user.sessionExpiresAt) {
-      const jwtExpiry = new Date(session.user.sessionExpiresAt);
-      if (jwtExpiry > new Date()) {
-        return Response.json({
-          success: true,
-          session: {
-            id: recordId,
-            createdAt: session.user.sessionCreatedAt,
-            expiresAt: session.user.sessionExpiresAt,
-          },
-        });
-      }
-    }
-
     const record = await prisma.session.findUnique({
       where: { id: recordId },
       select: { id: true, createdAt: true, expiresAt: true },

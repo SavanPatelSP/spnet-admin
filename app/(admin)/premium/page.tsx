@@ -24,7 +24,7 @@ export default async function PremiumPage() {
   const [licenses, allSubscriptions, requestCounts, premiumRequests, allRequests] = await Promise.all([
     prisma.license.findMany({
       orderBy: { createdAt: "desc" },
-      include: { activations: true },
+      select: { id: true, key: true, organization: true, plan: true, status: true, expiresAt: true, maxDevices: true, _count: { select: { activations: true } } },
     }),
     prisma.premiumSubscription.findMany({
       select: {
@@ -281,7 +281,7 @@ export default async function PremiumPage() {
             status: l.status,
             expiresAt: l.expiresAt,
             maxDevices: l.maxDevices,
-            deviceCount: l.activations.length,
+            deviceCount: l._count?.activations ?? 0,
             subscriptionType: latestSubData.get(l.id) || undefined,
           }))}
           availableForGrant={availableForGrant}

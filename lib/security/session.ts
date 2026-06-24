@@ -24,6 +24,17 @@ export async function createSession(
       expiresAt: new Date(Date.now() + 86400 * 1000),
     },
   });
+
+  prisma.auditLog.create({
+    data: {
+      action: "SESSION_CREATED",
+      entityId: session.id,
+      entityType: "session",
+      actorEmail: "system",
+      description: `Session created for team member ${teamMemberId}`,
+    },
+  }).catch(() => {});
+
   return session;
 }
 

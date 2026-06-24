@@ -44,8 +44,14 @@ export function SessionCountdown() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    window.addEventListener("session-updated", () => mutate());
-    return () => window.removeEventListener("session-updated", () => mutate());
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.expiresAt) {
+        mutate();
+      }
+    };
+    window.addEventListener("session-updated", handler);
+    return () => window.removeEventListener("session-updated", handler);
   }, [mutate]);
 
   useEffect(() => {

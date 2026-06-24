@@ -21,7 +21,7 @@ export default async function LicensesPage() {
   await requirePermission("View Licenses");
   const [licenses, templates, trialLicenses, transferredLicenses] = await Promise.all([
     prisma.license.findMany({
-      include: { _count: { select: { activations: true } } },
+      select: { id: true, key: true, organization: true, plan: true, status: true, maxDevices: true, expiresAt: true, createdAt: true, _count: { select: { activations: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.licenseTemplate.findMany({ orderBy: { name: "asc" } }),

@@ -148,25 +148,23 @@ export async function getApprovalRequests(options: {
   if (options.requesterId) where.requesterId = options.requesterId;
   if (options.approverId) where.approverId = options.approverId;
 
-  const [requests, total] = await Promise.all([
-    prisma.approvalRequest.findMany({
-      where: where as any,
-      orderBy: { createdAt: "desc" },
-      take: options.limit || 50,
-      skip: options.offset || 0,
-    }),
-    prisma.approvalRequest.count({ where: where as any }),
-  ]);
-  return { requests, total };
+  const requests = await prisma.approvalRequest.findMany({
+    where: where as any,
+    orderBy: { createdAt: "desc" },
+    take: options.limit || 50,
+    skip: options.offset || 0,
+  });
+  return { requests, total: 0 };
 }
 
 export async function getApprovalStats() {
-  const [pending, approved, rejected, typeCounts] = await Promise.all([
-    prisma.approvalRequest.count({ where: { status: "PENDING" } }),
-    prisma.approvalRequest.count({ where: { status: "APPROVED" } }),
-    prisma.approvalRequest.count({ where: { status: "REJECTED" } }),
+  const [counts, typeCounts] = await Promise.all([
+    prisma.approvalRequest.groupBy({ by: ["status"], _count: true }),
     prisma.approvalRequest.groupBy({ by: ["workflowType"], _count: true }),
   ]);
+  const pending = counts.find(c => c.status === "PENDING")?._count || 0;
+  const approved = counts.find(c => c.status === "APPROVED")?._count || 0;
+  const rejected = counts.find(c => c.status === "REJECTED")?._count || 0;
   return { pending, approved, rejected, typeCounts };
 }
 

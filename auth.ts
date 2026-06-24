@@ -346,6 +346,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             });
           } catch {}
           try {
+            if (sessionRecordId) {
+              await prisma.auditLog.create({
+                data: {
+                  action: "SESSION_CREATED",
+                  entityId: sessionRecordId,
+                  entityType: "session",
+                  actorEmail: member.email,
+                  actorName: member.name,
+                  description: `Session created for ${member.email}`,
+                },
+              });
+            }
+          } catch {}
+          try {
             const oldSessions = await prisma.session.findMany({
               where: { teamMemberId: member.id },
               orderBy: { createdAt: "desc" },

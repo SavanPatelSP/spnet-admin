@@ -106,7 +106,15 @@ export function SessionExtendModal({
       const newExpiresAt = data.session?.expiresAt;
       mutate("/api/sessions/me");
       if (newExpiresAt) {
-        window.dispatchEvent(new CustomEvent("session-updated", { detail: { sessionId: session.id, expiresAt: newExpiresAt } }));
+        window.dispatchEvent(new CustomEvent("session-updated", {
+        detail: {
+          sessionId: session.id,
+          expiresAt: newExpiresAt,
+          action: "SESSION_EXTENDED",
+          description: `Session extended by ${effectiveMinutes} minutes until ${new Date(newExpiresAt).toLocaleString("en-IN")}`,
+          actorName: "Admin",
+        },
+      }));
       }
       showToast(
         premium ? `Premium session extended by ${effectiveMinutes} minutes` : `Session extended by ${effectiveMinutes} minutes`,

@@ -15,14 +15,23 @@ import { Clock, Activity, Users, AlertTriangle, Shield, Fingerprint, Globe } fro
 import Link from "next/link";
 
 export default async function SessionsPage() {
-  await requirePermission("Manage Sessions");
-  const authSession = await getAuthSession();
-  const currentUserRole = authSession?.user.role || "";
+  const authSession = await requirePermission("Manage Sessions");
+  const currentUserRole = authSession.user.role;
   const [sessions, expiredCount] = await Promise.all([
     prisma.session.findMany({
       orderBy: { createdAt: "desc" },
       take: 200,
-      include: {
+      select: {
+        id: true,
+        teamMemberId: true,
+        token: true,
+        ipAddress: true,
+        userAgent: true,
+        expiresAt: true,
+        createdAt: true,
+        overrideDurationMinutes: true,
+        overrideCooldownMinutes: true,
+        lastOverrideAt: true,
         teamMember: { select: { name: true, email: true, role: { select: { name: true } } } },
       },
     }),

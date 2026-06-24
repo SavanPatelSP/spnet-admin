@@ -1,10 +1,7 @@
 import { randomBytes } from "crypto";
 import { LICENSE_KEY_PREFIX, DEFAULT_LOCALE } from "./constants";
 
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+export { formatDateTime, formatDate, daysUntil, isExpiringSoon, isExpired } from "./dates";
 
 export function generateKey(): string {
   return `${LICENSE_KEY_PREFIX}-${randomBytes(8).toString("hex").toUpperCase()}`;
@@ -13,66 +10,6 @@ export function generateKey(): string {
 export function parseExpiryDate(dateString: string): Date {
   const [year, month, day] = dateString.split("-").map(Number);
   return new Date(year, month - 1, day, 12, 0, 0);
-}
-
-function pad(n: number): string {
-  return n < 10 ? "0" + n : String(n);
-}
-
-function formatDateTimeParts(date: Date) {
-  return {
-    day: date.getDate(),
-    month: MONTHS_SHORT[date.getMonth()],
-    year: date.getFullYear(),
-    hour: date.getHours(),
-    minute: date.getMinutes(),
-  };
-}
-
-export function formatDate(
-  date: Date | string | number,
-  options?: { month?: string; day?: string; year?: string; hour?: string; minute?: string; weekday?: string }
-): string {
-  const d = new Date(date);
-  const { day, month, year, hour, minute } = formatDateTimeParts(d);
-  const day2 = pad(day);
-  const opts = options || { day: "2-digit", month: "short", year: "numeric" };
-
-  if (opts.weekday === "long") {
-    const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    return DAYS[d.getDay()];
-  }
-
-  if (opts.hour && opts.minute) {
-    const hour12 = hour % 12 || 12;
-    const ampm = hour < 12 ? "am" : "pm";
-    return `${day} ${month} ${year}, ${hour12}:${pad(minute)} ${ampm}`;
-  }
-
-  return `${day2} ${month} ${year}`;
-}
-
-export function formatDateTime(date: Date | string | number): string {
-  const d = new Date(date);
-  const { day, month, year, hour, minute } = formatDateTimeParts(d);
-  const hour12 = hour % 12 || 12;
-  const ampm = hour < 12 ? "am" : "pm";
-  return `${day} ${month} ${year}, ${hour12}:${pad(minute)} ${ampm}`;
-}
-
-export function daysUntil(date: Date | string | number): number {
-  const target = new Date(date).getTime();
-  const now = Date.now();
-  return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
-}
-
-export function isExpiringSoon(date: Date | string | number, thresholdDays = 30): boolean {
-  const days = daysUntil(date);
-  return days >= 0 && days <= thresholdDays;
-}
-
-export function isExpired(date: Date | string | number): boolean {
-  return new Date(date).getTime() <= Date.now();
 }
 
 export function cn(...inputs: (string | boolean | undefined | null)[]): string {
