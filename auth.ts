@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { AUTH } from "@/lib/constants";
 import { resolveGeoFromApi } from "@/lib/geo";
 import { markStart, markEnd } from "@/lib/perf";
+import { captureFingerprint } from "@/lib/security/fingerprint";
+import { createSecurityAlert } from "@/lib/security/alerts";
 
 const IP_ATTEMPT_WINDOW = 60_000;
 const IP_MAX_ATTEMPTS = 10;
@@ -401,6 +403,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                   trustScore: 50, status: "ACTIVE",
                 },
               });
+            }
+          } catch {}
+          try {
+            if (sessionRecordId) {
+              const fpResult = await captureFingerprint({
+                ipAddress,
+                userAgent,
+                teamMemberId: member.id,
+                sessionId: sessionRecordId,
+              });
+              if (fpResult.suspicious) {
+                createSecurityAlert({
+                  type: "SUSPICIOUS_ACTIVITY",
+                  title: "Suspicious session detected",
+                  description: `Suspicious login for ${email}: ${fpResult.riskFactors.join(", ")}`,
+                  severity: fpResult.riskScore === "CRITICAL" ? "CRITICAL" : fpResult.riskScore === "HIGH" ? "HIGH" : "MEDIUM",
+                  entityType: "session",
+                  entityId: sessionRecordId,
+                  actorEmail: email,
+                  actorName: member.name,
+                  metadata: {
+                    riskScore: fpResult.riskScore,
+                    riskFactors: fpResult.riskFactors,
+                    isNewDevice: fpResult.isNewDevice,
+                    isNewCountry: fpResult.isNewCountry,
+                    ipChanged: fpResult.ipChanged,
+                  },
+                });
+              }
             }
           } catch {}
           logAuthEvent("LOGIN_SUCCESS", {

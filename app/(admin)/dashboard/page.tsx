@@ -400,14 +400,13 @@ const sessionsExpiringSoonCount = await prisma.session.count({
           </div>
         </InsightCard>
 
-        {/* Coins & Gems */}
-        <InsightCard title="Coins & Gems">
+        {/* Security Center */}
+        <InsightCard title="Security Center">
           <div className="space-y-2">
-            <StatRow label="Total Coins" value={formatNumber(totalCoins)} color="text-blue-400" />
-            <StatRow label="Active Coin Wallets" value={totalCoinsWallets} color="text-cyan-400" />
-            <StatRow label="Total Gems" value={formatNumber(totalGems)} color="text-purple-400" />
-            <StatRow label="Active Gem Wallets" value={totalGemsWallets} color="text-violet-400" />
-            <StatRow label="Avg Coins/Wallet" value={totalCoinsWallets > 0 ? formatNumber(Math.round(totalCoins / totalCoinsWallets)) : "—"} color="text-zinc-400" />
+            <StatRow label="Active Sessions" value={sessionCount} color="text-blue-400" />
+            <StatRow label="Today Errors" value={todayErrors} color={todayErrors > 0 ? "text-red-400" : "text-zinc-500"} />
+            <StatRow label="Policy Overrides" value={overriddenSessionCount} color={overriddenSessionCount > 0 ? "text-amber-400" : "text-zinc-500"} />
+            <StatRow label="Expiring ≤30d" value={sessionsExpiringSoonCount} color={sessionsExpiringSoonCount > 0 ? "text-amber-400" : "text-zinc-500"} />
           </div>
         </InsightCard>
       </div>

@@ -383,6 +383,7 @@ model TeamMember {
   loginHistory  LoginHistory[]
   mfaBackupCodes MfaBackupCode[]
   notifications Notification[]
+  temporaryPermissions TemporaryPermission[]
 
   @@index([roleId])
   @@index([status])
@@ -405,10 +406,259 @@ model Session {
   overrideCooldownMinutes  Int?   // cooldown in minutes before next override is allowed
   lastOverrideAt           DateTime? // when the last override was applied
 
+  // Session Fingerprinting
+  fingerprint   SessionFingerprint?
+
   @@index([teamMemberId])
   @@index([expiresAt])
   @@index([teamMemberId, expiresAt])
   @@index([token, expiresAt])
+}
+
+model SessionFingerprint {
+  id              String   @id @default(cuid())
+  sessionId       String   @unique
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  ipAddress       String?
+  country         String?
+  countryName     String?
+  region          String?
+  city            String?
+  isp             String?
+  latitude        Float?
+  longitude       Float?
+
+  browser         String?
+  browserVersion  String?
+  os              String?
+  osVersion       String?
+  deviceType      String?   // DESKTOP, MOBILE, TABLET, SERVER, OTHER
+  deviceId        String?   // fingerprint hash
+  userAgent       String?
+
+  firstSeen       DateTime  @default(now())
+  lastSeen        DateTime  @default(now())
+
+  riskScore       String    @default("LOW")   // LOW, MEDIUM, HIGH, CRITICAL
+  riskFactors     String?   // JSON array of risk factor strings
+
+  isNewDevice     Boolean   @default(false)
+  isNewBrowser    Boolean   @default(false)
+  isNewCountry    Boolean   @default(false)
+  isNewRegion     Boolean   @default(false)
+  ipChanged       Boolean   @default(false)
+  deviceChanged   Boolean   @default(false)
+  suspicious      Boolean   @default(false)
+
+  metadata        String?   // JSON
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([sessionId])
+  @@index([deviceId])
+  @@index([riskScore])
+  @@index([suspicious])
+  @@index([country])
+  @@index([createdAt])
+}
+
+model SecurityAlert {
+  id            String   @id @default(cuid())
+  type          String   // LOGIN, LOGOUT, NEW_DEVICE, FAILED_LOGIN, LOCKED_ACCOUNT,
+                         // PERMISSION_CHANGE, ROLE_CHANGE, TEMP_PERMISSION_GRANT, TEMP_PERMISSION_REVOKE,
+                         // PREMIUM_GRANT, PREMIUM_REVOKE, LIFETIME_CONVERT,
+                         // COINS_GRANTED, COINS_REMOVED, GEMS_GRANTED, GEMS_REMOVED,
+                         // LICENSE_CREATE, LICENSE_TRANSFER, LICENSE_DELETE,
+                         // ORG_CREATE, ORG_DELETE,
+                         // TEAM_CREATE, TEAM_EDIT, TEAM_DELETE, OWNERSHIP_TRANSFER,
+                         // HIGH_RISK_SESSION, SESSION_HIJACK, SUSPICIOUS_ACTIVITY
+  severity      String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  title         String
+  description   String?
+  metadata      String?  // JSON
+
+  entityType    String?  // session, team_member, license, organization, etc.
+  entityId      String?
+
+  actorId       String?
+  actorName     String?
+  actorEmail    String?
+
+  resolved      Boolean  @default(false)
+  resolvedAt    DateTime?
+  resolvedBy    String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([type])
+  @@index([severity])
+  @@index([resolved])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([severity, createdAt])
+  @@index([type, createdAt])
+}
+
+model ApprovalRequest {
+  id              String   @id @default(cuid())
+  workflowType    String   // PREMIUM_GRANT, PREMIUM_EXTEND, PREMIUM_REVOKE, PREMIUM_PLAN_CHANGE,
+                           // PREMIUM_LIFETIME_CONVERT, PREMIUM_CUSTOM_CONVERT,
+                           // COINS_GRANT, COINS_REMOVE, COINS_SET,
+                           // GEMS_GRANT, GEMS_REMOVE, GEMS_SET,
+                           // LICENSE_CREATE, LICENSE_DELETE, LICENSE_TRANSFER, LICENSE_BULK,
+                           // USER_BAN, USER_SUSPEND, USER_DELETE, USER_VERIFICATION,
+                           // ROLE_CREATE, ROLE_DELETE, ROLE_PERMISSION_CHANGE,
+                           // TEAM_CREATE, TEAM_EDIT, TEAM_DELETE, TEAM_ROLE_CHANGE, OWNERSHIP_TRANSFER,
+                           // ORG_CREATE, ORG_EDIT, ORG_DELETE
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED, EXPIRED
+  priority        String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+
+  title           String
+  description     String?
+  reason          String?
+  metadata        String?  // JSON payload with request details
+
+  requesterId     String
+  requesterName   String?
+  requesterEmail  String?
+
+  approverId      String?
+  approverName    String?
+  approverEmail   String?
+
+  approvalNote    String?
+
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  executedAt      DateTime?
+
+  expiresAt       DateTime? // auto-expiry for time-sensitive approvals
+
+  auditId         String?   // link to audit log entry
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([workflowType])
+  @@index([status])
+  @@index([requesterId])
+  @@index([approverId])
+  @@index([status, workflowType])
+  @@index([status, createdAt])
+  @@index([requesterId, status])
+  @@index([createdAt])
+}
+
+model TemporaryPermission {
+  id              String    @id @default(cuid())
+  permission      String    // the permission key being granted temporarily
+  roleId          String?
+  role            Role?     @relation(fields: [roleId], references: [id])
+  teamMemberId    String?
+  teamMember      TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  grantedById     String?
+  grantedByName   String?
+  grantedByEmail  String?
+
+  duration        Int       // duration in minutes
+  expiresAt       DateTime
+  reason          String?
+
+  active          Boolean   @default(true)
+  revokedAt       DateTime?
+  revokedById     String?
+
+  auditLogId      String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([teamMemberId, active])
+  @@index([roleId, active])
+  @@index([expiresAt])
+  @@index([permission])
+  @@index([active, expiresAt])
+}
+
+model AuditChainLink {
+  id              String    @id @default(cuid())
+  auditLogId      String    @unique
+  auditHash       String    @unique
+  previousHash    String?   // null for genesis link
+  chainIndex      Int       // sequential index in the chain
+
+  action          String
+  entityType      String?
+  entityId        String?
+  timestamp       DateTime
+
+  integrityStatus String    @default("VERIFIED") // VERIFIED, TAMPERED, MISSING, UNVERIFIED
+
+  createdAt       DateTime  @default(now())
+
+  @@index([auditLogId])
+  @@index([auditHash])
+  @@index([previousHash])
+  @@index([chainIndex])
+  @@index([integrityStatus])
+  @@index([chainIndex, integrityStatus])
+}
+
+model WaitlistEntry {
+  id              String    @id @default(cuid())
+  fullName        String
+  email           String    @unique
+  country         String?
+  referralCode    String?   // the referrer's code
+  interestCategory String?  // what they're interested in
+
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED, CONVERTED, INVITED
+  position        Int       @unique             // position in the waitlist queue
+
+  inviteSentAt    DateTime?
+  invitedBy       String?
+  approvedAt      DateTime?
+  approvedBy      String?
+  convertedAt     DateTime?
+  convertedUserId String?   // if converted to actual user
+
+  // Referral tracking
+  ownReferralCode String    @unique             // this user's referral code
+  referralCount   Int       @default(0)
+  referralRank    Int       @default(0)
+  referralConversionRate Float  @default(0)
+
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([position])
+  @@index([referralCode])
+  @@index([ownReferralCode])
+  @@index([status, position])
+  @@index([referralCount, referralRank])
+  @@index([createdAt])
+}
+
+model WaitlistInviteCode {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  maxUses         Int       @default(1)
+  usedCount       Int       @default(0)
+  createdBy       String?
+  expiresAt       DateTime?
+  active          Boolean   @default(true)
+
+  createdAt       DateTime  @default(now())
+
+  @@index([code])
+  @@index([active, expiresAt])
 }
 
 model LoginHistory {
@@ -452,6 +702,7 @@ model Role {
 
   members     TeamMember[]
   permissions Permission[]
+  temporaryPermissions TemporaryPermission[]
 }
 
 model Permission {

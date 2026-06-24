@@ -8,8 +8,10 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
-import { ClipboardList, Users, Building2, CalendarDays, ShieldAlert } from "lucide-react";
+import { getChainStats } from "@/lib/audit-chain";
+import { ClipboardList, Users, Building2, CalendarDays, ShieldAlert, Link2, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import { formatDateTime } from "@/lib/shared";
 
 const severityColors: Record<string, string> = {
@@ -152,6 +154,7 @@ export default async function AuditLogsPage() {
   const todayLogs = logs.filter((log) => new Date(log.createdAt).toDateString() === new Date().toDateString()).length;
   const uniqueUsers = new Set(logs.map((log) => log.actorName).filter(Boolean)).size;
   const uniqueOrganizations = new Set(logs.map((log) => log.organization).filter(Boolean)).size;
+  const chainStats = await getChainStats();
 
   const actionCounts = logs.reduce<Record<string, number>>((acc, log) => {
     const cat = actionCategories[log.action] || "Other";
@@ -166,12 +169,42 @@ export default async function AuditLogsPage() {
         description="Enterprise activity tracking and security auditing. All actions are logged immutably."
       />
 
-      <StatCardGrid columns={4}>
+      <StatCardGrid columns={5}>
         <StatCard title="Total Events" value={totalLogs} icon={ClipboardList} color="blue" />
         <StatCard title="Today's Events" value={todayLogs} icon={CalendarDays} color="green" subtitle="Last 24 hours" />
         <StatCard title="Unique Actors" value={uniqueUsers} icon={Users} color="purple" />
         <StatCard title="Organizations" value={uniqueOrganizations} icon={Building2} color="yellow" />
+        <StatCard
+          title="Chain Integrity"
+          value={chainStats.integrity === "INTACT" ? "Intact" : "Compromised"}
+          icon={chainStats.integrity === "INTACT" ? CheckCircle2 : AlertTriangle}
+          color={chainStats.integrity === "INTACT" ? "green" : "red"}
+          subtitle={`${chainStats.verified}/${chainStats.total} verified`}
+        />
       </StatCardGrid>
+
+      <Card title="Audit Chain Verification">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="text-center p-3 rounded-lg bg-zinc-800/30">
+            <p className="text-2xl font-bold text-blue-400">{chainStats.chainLength}</p>
+            <p className="text-xs text-zinc-500 mt-1">Chain Length</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-zinc-800/30">
+            <p className="text-2xl font-bold text-green-400">{chainStats.verified}</p>
+            <p className="text-xs text-zinc-500 mt-1">Verified Links</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-zinc-800/30">
+            <p className="text-2xl font-bold text-red-400">{chainStats.tampered}</p>
+            <p className="text-xs text-zinc-500 mt-1">Tampered</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-zinc-800/30">
+            <p className={`text-2xl font-bold ${chainStats.integrity === "INTACT" ? "text-green-400" : "text-red-400"}`}>
+              {chainStats.integrity === "INTACT" ? "✓" : "✗"}
+            </p>
+            <p className="text-xs text-zinc-500 mt-1">Status</p>
+          </div>
+        </div>
+      </Card>
 
       {Object.keys(actionCounts).length > 0 && (
         <div className="flex flex-wrap gap-2">

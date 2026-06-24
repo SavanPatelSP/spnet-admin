@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, parseUA, formatPrice } from "@/lib/shared";
 import { cn } from "@/lib/shared";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   X, User, Monitor, Smartphone, Globe, Clock, Shield,
   MapPin, Activity, AlertTriangle, ChevronRight, FileText,
   Fingerprint, Network, Terminal, Calendar, Cpu,
-  RefreshCw, Crown, LogOut, ArrowUpCircle, Eye,
+  RefreshCw, Crown, LogOut, ArrowUpCircle, Eye, ExternalLink,
 } from "lucide-react";
 
 interface SessionRow {
@@ -138,6 +139,10 @@ export function SessionDetailDrawer({ session, onClose }: Props) {
                 <h2 className="text-sm font-semibold text-zinc-100">Session Details</h2>
                 <p className="text-[11px] text-zinc-500">Session ID: {session.id.slice(0, 12)}...</p>
               </div>
+              <Link href={`/sessions/${session.id}`} className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300">
+                <ExternalLink size={12} />
+                Full Details
+              </Link>
             </div>
             <button onClick={onClose} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300">
               <X size={16} />

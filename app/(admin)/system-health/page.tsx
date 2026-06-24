@@ -11,10 +11,11 @@ import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
 import {
   Activity, Database, Globe, Shield, Users,
   CheckCircle2, AlertTriangle, XCircle,
-  Server, Cpu, HardDrive,
+  Server, Cpu, HardDrive, Link2,
 } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/shared";
 import { getAppEnvironment } from "@/lib/env";
+import { getChainStats } from "@/lib/audit-chain";
 
 async function checkDb(): Promise<{ status: "healthy" | "degraded" | "down"; latency: string; error?: string }> {
   const start = Date.now();
@@ -87,10 +88,11 @@ const statusConfig = {
 
 export default async function SystemHealthPage() {
   await requireAuth();
-  const [dbHealth, dbStats, apiChecks] = await Promise.all([
+  const [dbHealth, dbStats, apiChecks, chainStats] = await Promise.all([
     checkDb(),
     getDbStats(),
     getApiHealth(),
+    getChainStats(),
   ]);
 
   const recentErrors = await prisma.auditLog.findMany({
@@ -241,6 +243,8 @@ export default async function SystemHealthPage() {
               { label: "Activations", value: formatNumber(dbStats.activationCount), icon: Server },
               { label: "Team Members", value: formatNumber(dbStats.memberCount), icon: Users },
               { label: "Audit Events", value: formatNumber(dbStats.auditCount), icon: Activity },
+              { label: "Audit Chain", value: `${chainStats.verified}/${chainStats.total}`, icon: Link2 },
+              { label: "Chain Integrity", value: chainStats.integrity, icon: chainStats.integrity === "INTACT" ? CheckCircle2 : AlertTriangle },
               { label: "Support Tickets", value: formatNumber(dbStats.ticketCount), icon: Globe },
               { label: "Moderation Reports", value: formatNumber(dbStats.reportCount), icon: AlertTriangle },
             ].map((s) => {

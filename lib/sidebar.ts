@@ -72,4 +72,5 @@ export const SIDEBAR_PAGES: SidebarPage[] = [
   { key: "settings-security", label: "Security", href: "/settings/security", permission: "View Security Policies", icon: Lock },
   { key: "settings-system", label: "System", href: "/settings/system", permission: "Edit System Settings", icon: Server },
   { key: "system-health", label: "System Health", href: "/system-health", icon: Activity },
+  { key: "waitlist", label: "Waitlist", href: "/waitlist", icon: Users },
 ];
