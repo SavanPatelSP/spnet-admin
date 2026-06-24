@@ -103,6 +103,9 @@ async function main() {
     create: { name: "OWNER", description: "Platform owner with full access", riskLevel: "High", protected: true },
   });
   await assignPermissions(owner.id, ALL_PERMISSIONS);
+  await prisma.permission.create({
+    data: { roleId: owner.id, permission: "Approve Requests" },
+  });
 
   const superAdmin = await prisma.role.upsert({
     where: { name: "SUPER_ADMIN" },
@@ -110,6 +113,9 @@ async function main() {
     create: { name: "SUPER_ADMIN", description: "Super administrator with elevated access", riskLevel: "High", protected: true },
   });
   await assignPermissions(superAdmin.id, ALL_PERMISSIONS);
+  await prisma.permission.create({
+    data: { roleId: superAdmin.id, permission: "Approve Requests" },
+  });
 
   const admin = await prisma.role.upsert({
     where: { name: "ADMIN" },

@@ -509,6 +509,7 @@ export const PERMISSION_GROUPS = {
     "Edit Security Policies",
     "Toggle Security Policies",
     "Emergency Lockdown",
+    "Approve Requests",
   ],
   "Audit & Compliance": [
     "View Audit Logs",
@@ -658,7 +659,10 @@ export const PERMISSION_GROUPS = {
   ],
 } as const;
 
-export const ALL_PERMISSIONS = Object.values(PERMISSION_GROUPS).flat();
+const _ALL_PERMISSIONS_RAW = Object.values(PERMISSION_GROUPS).flat();
+export const ALL_PERMISSIONS = _ALL_PERMISSIONS_RAW.filter(
+  (p) => p !== "Approve Requests"
+);
 
 export const CACHING = {
   DYNAMIC: "force-dynamic" as const,

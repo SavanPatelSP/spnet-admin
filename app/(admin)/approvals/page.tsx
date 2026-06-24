@@ -11,7 +11,10 @@ import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getApprovalStats, getApprovalRequests } from "@/lib/approval";
 import { formatDateTime } from "@/lib/shared";
-import { CheckCircle2, XCircle, Clock, Inbox, Activity } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Inbox } from "lucide-react";
+import ApprovalActions from "@/components/approvals/ApprovalActions";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const workflowLabels: Record<string, string> = {
   PREMIUM_GRANT: "Premium Grant",
@@ -47,6 +50,17 @@ const workflowLabels: Record<string, string> = {
   ORG_DELETE: "Delete Organization",
 };
 
+const workflowCategories: { label: string; value: string; types: string[] }[] = [
+  { label: "All", value: "", types: [] },
+  { label: "Premium", value: "PREMIUM", types: ["PREMIUM_GRANT", "PREMIUM_EXTEND", "PREMIUM_REVOKE", "PREMIUM_PLAN_CHANGE", "PREMIUM_LIFETIME_CONVERT", "PREMIUM_CUSTOM_CONVERT"] },
+  { label: "Economy", value: "ECONOMY", types: ["COINS_GRANT", "COINS_REMOVE", "COINS_SET", "GEMS_GRANT", "GEMS_REMOVE", "GEMS_SET"] },
+  { label: "Licensing", value: "LICENSING", types: ["LICENSE_CREATE", "LICENSE_DELETE", "LICENSE_TRANSFER", "LICENSE_BULK"] },
+  { label: "Users", value: "USERS", types: ["USER_BAN", "USER_SUSPEND", "USER_DELETE", "USER_VERIFICATION"] },
+  { label: "Roles", value: "ROLES", types: ["ROLE_CREATE", "ROLE_DELETE", "ROLE_PERMISSION_CHANGE"] },
+  { label: "Team", value: "TEAM", types: ["TEAM_CREATE", "TEAM_EDIT", "TEAM_DELETE", "TEAM_ROLE_CHANGE", "OWNERSHIP_TRANSFER"] },
+  { label: "Organizations", value: "ORGS", types: ["ORG_CREATE", "ORG_EDIT", "ORG_DELETE"] },
+];
+
 const priorityColors: Record<string, string> = {
   LOW: "bg-green-500/10 text-green-400",
   MEDIUM: "bg-yellow-500/10 text-yellow-400",
@@ -54,12 +68,24 @@ const priorityColors: Record<string, string> = {
   CRITICAL: "bg-red-500/10 text-red-400",
 };
 
-export default async function ApprovalsPage() {
-  await requirePermission("View Roles");
+export default async function ApprovalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  const session = await requirePermission("Approve Requests");
+  if (session.user.role !== "OWNER" && session.user.role !== "SUPER_ADMIN") {
+    redirect("/unauthorized");
+  }
+  const { type } = await searchParams;
+  const activeCategory = workflowCategories.find((c) => c.value === type);
+
+  const workflowFilter = activeCategory?.types.length ? activeCategory.types : undefined;
+
   const [stats, pendingResult, historyResult] = await Promise.all([
     getApprovalStats(),
-    getApprovalRequests({ status: "PENDING", limit: 50 }),
-    getApprovalRequests({ limit: 50 }),
+    getApprovalRequests({ status: "PENDING", limit: 50, workflowType: workflowFilter }),
+    getApprovalRequests({ limit: 50, workflowType: workflowFilter }),
   ]);
 
   return (
@@ -76,6 +102,26 @@ export default async function ApprovalsPage() {
         <StatCard title="Total" value={stats.pending + stats.approved + stats.rejected} icon={Inbox} color="blue" />
       </StatCardGrid>
 
+      <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+        {workflowCategories.map((cat) => {
+          const href = cat.value ? `/approvals?type=${cat.value}` : "/approvals";
+          const isActive = type === cat.value || (!type && !cat.value);
+          return (
+            <Link
+              key={cat.value}
+              href={href}
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                isActive
+                  ? "bg-blue-600/15 text-blue-400"
+                  : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+              }`}
+            >
+              {cat.label}
+            </Link>
+          );
+        })}
+      </div>
+
       <Card title="Pending Approvals" description="Requests awaiting your review">
         <DataTable
           columns={[
@@ -85,6 +131,7 @@ export default async function ApprovalsPage() {
             { key: "priority", label: "Priority", sortable: true },
             { key: "reason", label: "Reason", searchable: true },
             { key: "submittedAt", label: "Submitted", sortable: true },
+            { key: "actions", label: "Actions" },
           ]}
           rows={pendingResult.requests.map((req) => ({
             id: req.id,
@@ -95,6 +142,7 @@ export default async function ApprovalsPage() {
               priority: req.priority,
               reason: req.reason || "",
               submittedAt: req.submittedAt.toISOString(),
+              actions: "",
             },
             cells: [
               <span key="wf" className="text-xs font-medium text-zinc-300">{workflowLabels[req.workflowType] || req.workflowType}</span>,
@@ -103,6 +151,7 @@ export default async function ApprovalsPage() {
               <span key="pri" className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${priorityColors[req.priority] || priorityColors.MEDIUM}`}>{req.priority}</span>,
               <span key="reason" className="text-sm text-zinc-500 truncate max-w-[200px]">{req.reason || "-"}</span>,
               <span key="date" className="text-xs text-zinc-500">{formatDateTime(req.submittedAt)}</span>,
+              <span key="actions"><ApprovalActions requestId={req.id} title={req.title} /></span>,
             ],
           }))}
           pageSize={15}

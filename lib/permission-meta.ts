@@ -248,6 +248,10 @@ export const PERMISSION_META: Record<string, PermissionMeta> = {
     friendlyName: "Emergency Lockdown",
     description: "Allows the user to trigger an emergency platform lockdown.",
   },
+  "Approve Requests": {
+    friendlyName: "Approve Requests",
+    description: "Allows the user to review and approve/reject pending approval requests across all domains.",
+  },
   "View Audit Logs": {
     friendlyName: "View Audit Logs",
     description: "Allows the user to view all audit log entries.",

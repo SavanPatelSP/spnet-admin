@@ -8,18 +8,20 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard, StatCardGrid } from "@/components/ui/StatCard";
-import { Crown, CalendarDays, Clock, ClipboardList, ArrowUpRight, Download, Tags, Sparkles } from "lucide-react";
+import { DataTable } from "@/components/ui/DataTable";
+import { Crown, CalendarDays, Clock, ClipboardList, Download, Tags, Sparkles, CheckCircle, XCircle } from "lucide-react";
 import { PREMIUM_PLANS, EXPIRING_SOON_DAYS } from "@/lib/constants";
-import { daysUntil } from "@/lib/shared";
+import { formatDateTime, daysUntil } from "@/lib/shared";
 import GrantPremiumModal from "@/components/premium/GrantPremiumModal";
 import { PremiumTable } from "@/components/premium/PremiumTable";
 import { PremiumAnalytics } from "@/components/premium/PremiumAnalytics";
 import { PremiumHistoryTable } from "@/components/premium/PremiumHistoryTable";
+import PremiumRequestActions from "@/components/premium/PremiumRequestActions";
 import Link from "next/link";
 
 export default async function PremiumPage() {
   await requirePermission("View Premium");
-  const [licenses, allSubscriptions, requestCounts, premiumRequests] = await Promise.all([
+  const [licenses, allSubscriptions, requestCounts, premiumRequests, allRequests] = await Promise.all([
     prisma.license.findMany({
       orderBy: { createdAt: "desc" },
       include: { activations: true },
@@ -51,6 +53,13 @@ export default async function PremiumPage() {
     }).then((rows) => rows.filter((r): r is { licenseId: string; submittedBy: string; organization: string } =>
       r.submittedBy !== null && r.organization !== null
     )),
+    prisma.premiumRequest.findMany({
+      orderBy: { submittedAt: "desc" },
+      take: 500,
+      include: {
+        license: { select: { organization: true, key: true, plan: true } },
+      },
+    }),
   ]);
 
   const history = allSubscriptions;
@@ -98,13 +107,12 @@ export default async function PremiumPage() {
   const approvedRequests = requestCounts.find((r) => r.status === "APPROVED")?._count.id || 0;
   const rejectedRequests = requestCounts.find((r) => r.status === "REJECTED")?._count.id || 0;
 
-  const requestLicenses = await prisma.premiumRequest.findMany({
-    orderBy: { submittedAt: "desc" },
-    take: 5,
-    include: {
-      license: { select: { organization: true, key: true } },
-    },
-  });
+  const statusColors: Record<string, string> = {
+    PENDING: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    APPROVED: "bg-green-500/10 text-green-400 border-green-500/20",
+    REJECTED: "bg-red-500/10 text-red-400 border-red-500/20",
+    EXPIRED: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+  };
 
   return (
     <div className="space-y-10">
@@ -200,42 +208,66 @@ export default async function PremiumPage() {
       </div>
 
       <div>
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-zinc-100">Premium Requests</h2>
-          <Link href="/premium-requests" className="flex items-center gap-1 text-sm text-blue-400 hover:underline">
-            View all <ArrowUpRight size={14} />
-          </Link>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            { label: "Pending", count: pendingRequests, color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20" },
-            { label: "Approved", count: approvedRequests, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20" },
-            { label: "Rejected", count: rejectedRequests, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
-          ].map((s) => (
-            <Link
-              key={s.label}
-              href={`/premium-requests?status=${s.label.toUpperCase()}`}
-              className={`rounded-2xl border ${s.border} ${s.bg} p-5 transition-all hover:scale-[1.02]`}
-            >
-              <p className={`text-3xl font-bold ${s.color}`}>{s.count}</p>
-              <p className="mt-1 text-sm text-zinc-400">{s.label}</p>
-            </Link>
-          ))}
-        </div>
-        {requestLicenses.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {requestLicenses.map((r) => (
-              <Link
-                key={r.id}
-                href="/premium-requests"
-                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-sm transition-colors hover:bg-zinc-800"
-              >
-                <span className="text-zinc-300">{r.license.organization}</span>
-                <span className="text-zinc-500">{r.requestedPlan} &middot; {r.requestedDurationDays}d</span>
-              </Link>
-            ))}
-          </div>
-        )}
+        <h2 className="mb-5 text-xl font-bold text-zinc-100">Premium Requests</h2>
+        <DataTable
+          columns={[
+            { key: "submittedAt", label: "Submitted", sortable: true },
+            { key: "organization", label: "Organization", sortable: true, searchable: true },
+            { key: "licenseKey", label: "License", sortable: true, searchable: true },
+            { key: "requestedPlan", label: "Plan", sortable: true },
+            { key: "duration", label: "Duration", sortable: true },
+            { key: "reason", label: "Reason", searchable: true },
+            { key: "status", label: "Status", sortable: true },
+            { key: "submittedBy", label: "By", sortable: true },
+            { key: "reviewedBy", label: "Reviewed", sortable: true },
+            { key: "actions", label: "Actions" },
+          ]}
+          rows={allRequests.map((r) => ({
+            id: r.id,
+            values: {
+              submittedAt: r.submittedAt.toISOString(),
+              organization: r.organization || r.license.organization,
+              licenseKey: r.license.key,
+              requestedPlan: r.requestedPlan,
+              duration: `${r.requestedDurationDays} days`,
+              reason: r.reason || "-",
+              status: r.status,
+              submittedBy: r.submittedBy || "-",
+              reviewedBy: r.reviewedBy || "-",
+            },
+            cells: [
+              <span key="submittedAt" className="text-sm text-zinc-400">{formatDateTime(r.submittedAt)}</span>,
+              <Link key="organization" href={`/licenses/${r.licenseId}`} className="text-sm text-blue-400 hover:underline">
+                {r.organization || r.license.organization}
+              </Link>,
+              <code key="licenseKey" className="text-xs font-mono text-zinc-400">{r.license.key}</code>,
+              <span key="plan" className="font-medium">{r.requestedPlan}</span>,
+              <span key="duration" className="text-sm text-zinc-400">{r.requestedDurationDays} days</span>,
+              <span key="reason" className="text-sm text-zinc-300 max-w-xs truncate">{r.reason || "-"}</span>,
+              <span key="status" className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusColors[r.status] || "bg-zinc-500/10 text-zinc-400"}`}>
+                {r.status}
+              </span>,
+              <span key="submittedBy" className="text-sm text-zinc-400">{r.submittedBy || "-"}</span>,
+              <span key="reviewedBy" className="text-sm text-zinc-400">{r.reviewedBy || "-"}</span>,
+              <PremiumRequestActions
+                key={`actions-${r.id}`}
+                requestId={r.id}
+                licenseId={r.licenseId}
+                organization={r.organization || r.license.organization}
+                requestedPlan={r.requestedPlan}
+                requestedDurationDays={r.requestedDurationDays}
+                reason={r.reason}
+                status={r.status}
+                submittedBy={r.submittedBy}
+                licenseKey={r.license.key}
+                convertedSubscriptionId={r.convertedSubscriptionId}
+              />,
+            ],
+          }))}
+          pageSize={10}
+          searchPlaceholder="Search requests..."
+          emptyMessage="No premium requests yet."
+        />
       </div>
 
       <div>

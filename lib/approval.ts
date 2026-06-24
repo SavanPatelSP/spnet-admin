@@ -130,7 +130,7 @@ export async function rejectRequest(
 
 export async function getApprovalRequests(options: {
   status?: string;
-  workflowType?: string;
+  workflowType?: string | string[];
   requesterId?: string;
   approverId?: string;
   limit?: number;
@@ -138,7 +138,13 @@ export async function getApprovalRequests(options: {
 } = {}) {
   const where: Record<string, unknown> = {};
   if (options.status) where.status = options.status;
-  if (options.workflowType) where.workflowType = options.workflowType;
+  if (options.workflowType) {
+    if (Array.isArray(options.workflowType)) {
+      where.workflowType = { in: options.workflowType };
+    } else {
+      where.workflowType = options.workflowType;
+    }
+  }
   if (options.requesterId) where.requesterId = options.requesterId;
   if (options.approverId) where.approverId = options.approverId;
 
