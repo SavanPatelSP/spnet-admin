@@ -25,6 +25,11 @@ const DATASOURCE_URL = BUILD_PHASE && isProduction && !DB_URL
   ? "postgresql://placeholder:ignored@localhost:5432/postgres"
   : (DB_URL || (isProduction ? "" : "file:./prisma/dev.db"));
 
+// schema.pg.prisma requires DIRECT_URL — fall back to the resolved datasource URL
+if (!process.env.DIRECT_URL) {
+  process.env.DIRECT_URL = DATASOURCE_URL;
+}
+
 if (!BUILD_PHASE && !DB_URL && APP_ENV === "production") {
   console.warn(
     "╔══════════════════════════════════════════════════════════════════╗\n" +
