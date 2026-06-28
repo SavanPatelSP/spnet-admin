@@ -136,8 +136,8 @@ export const DataTable = memo(function DataTable({
       for (let i = 0; i < totalPages; i++) pages.push(i);
     } else {
       pages.push(0);
-      let start = Math.max(1, safePage - 1);
-      let end = Math.min(totalPages - 2, safePage + 1);
+      const start = Math.max(1, safePage - 1);
+      const end = Math.min(totalPages - 2, safePage + 1);
       if (start > 1) pages.push("...");
       for (let i = start; i <= end; i++) pages.push(i);
       if (end < totalPages - 2) pages.push("...");

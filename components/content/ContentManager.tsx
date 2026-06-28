@@ -67,7 +67,7 @@ export function ContentManager({ initialData, initialTotal }: { initialData: Con
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [search, status, page]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));

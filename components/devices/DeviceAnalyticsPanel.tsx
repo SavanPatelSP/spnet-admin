@@ -480,7 +480,7 @@ export function DeviceAnalyticsPanel() {
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
   usePolling(fetchAnalytics, 30000, autoRefresh);
 
