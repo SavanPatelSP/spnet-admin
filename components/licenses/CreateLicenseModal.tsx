@@ -41,16 +41,12 @@ export default function CreateLicenseModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [approvalData, setApprovalData] = useState<{ requestId: string; message: string; status: string } | null>(null);
-
-  if (!hasPermission("Create Licenses") && !open) return null;
-
   const [organization, setOrganization] = useState("");
   const [plan, setPlan] = useState(DEFAULT_PLAN);
   const [maxDevices, setMaxDevices] = useState(DEFAULT_MAX_DEVICES);
   const [status, setStatus] = useState("ACTIVE");
   const [expiresAt, setExpiresAt] = useState("");
   const [notes, setNotes] = useState("");
-
   const [useDuration, setUseDuration] = useState(false);
   const [durationValue, setDurationValue] = useState(1);
   const [durationUnit, setDurationUnit] = useState<"days" | "weeks" | "months" | "years">("years");
@@ -139,6 +135,9 @@ export default function CreateLicenseModal() {
       setLoading(false);
     }
   }
+
+  const hasPermissionToCreate = hasPermission("Create Licenses");
+  if (!hasPermissionToCreate && !open) return null;
 
   return (
     <>
