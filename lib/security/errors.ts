@@ -49,7 +49,7 @@ export function handleApiError(error: unknown): Response {
     return Response.json(
       {
         success: false,
-        error: error.message,
+        error: getSafeErrorMessage(error),
         code: error.code,
       },
       { status: error.statusCode }
@@ -84,7 +84,12 @@ function isPrismaError(error: unknown, code: string): boolean {
 
 export function getSafeErrorMessage(error: unknown): string {
   if (error instanceof AppError) {
+    if (process.env.NODE_ENV === "production" && error.statusCode >= 500) {
+      return "An internal error occurred";
+    }
     return error.message;
   }
   return "An internal error occurred";
 }
+
+

@@ -3,7 +3,7 @@ import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
 import { AUDIT_ACTIONS } from "@/lib/constants";
-import { createInvoiceForPromotion } from "@/lib/invoices";
+import { createInvoiceForPromotion, type PromotionProductType } from "@/lib/invoices";
 
 const PRODUCT_TYPES = ["PROMO_CODE", "DISCOUNT_COUPON", "CAMPAIGN", "LIMITED_TIME_OFFER", "FREE_TRIAL", "UPGRADE_PROMOTION"];
 const DISCOUNT_TYPES = ["PERCENTAGE", "FIXED"];
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
       await createInvoiceForPromotion(
         {
           code: promotion.code,
-          productType: promotion.productType as never,
+          productType: promotion.productType as PromotionProductType,
           appliesTo: promotion.appliesTo,
           targetPlan: promotion.targetPlan,
           discountType: promotion.discountType,

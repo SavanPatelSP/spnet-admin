@@ -16,14 +16,14 @@ export async function POST(req: Request) {
       return Response.json({ error: "licenseId, plan, and durationDays are required" }, { status: 400 });
     }
 
-    if (!PREMIUM_PLANS.includes(plan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === plan)) {
       return Response.json({ error: `Invalid plan. Must be one of: ${PREMIUM_PLANS.join(", ")}` }, { status: 400 });
     }
 
     const license = await prisma.license.findUnique({ where: { id: licenseId } });
     if (!license) return Response.json({ error: "License not found" }, { status: 404 });
 
-    if (!PREMIUM_PLANS.includes(license.plan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === license.plan)) {
       return Response.json({ error: "License is not on a premium plan" }, { status: 409 });
     }
 

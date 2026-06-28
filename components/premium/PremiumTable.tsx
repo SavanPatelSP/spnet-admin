@@ -54,7 +54,7 @@ export function PremiumTable({ licenses, availableForGrant }: Props) {
     return f;
   }, [licenses, statusFilter, planFilter]);
 
-  const premiumIds = useMemo(() => new Set(filtered.filter((l) => PREMIUM_PLANS.includes(l.plan as never)).map((l) => l.id)), [filtered]);
+  const premiumIds = useMemo(() => new Set(filtered.filter((l) => PREMIUM_PLANS.some(p => p === l.plan)).map((l) => l.id)), [filtered]);
 
   function handleExportCSV() {
     const headers = ["Organization", "License Key", "Plan", "Status", "Expires At", "Days Left", "Devices", "Max Devices"];
@@ -161,7 +161,7 @@ export function PremiumTable({ licenses, availableForGrant }: Props) {
         { key: "actions", label: "", sortable: false, className: "w-12" },
       ]}
       rows={filtered.map((l) => {
-        const isPremium = PREMIUM_PLANS.includes(l.plan as never);
+        const isPremium = PREMIUM_PLANS.some(p => p === l.plan);
         const expiry = new Date(l.expiresAt);
         const days = daysUntil(expiry);
         const daysColor = days < 0 ? "text-red-400" : days <= EXPIRING_SOON_DAYS ? "text-yellow-400" : "text-zinc-300";

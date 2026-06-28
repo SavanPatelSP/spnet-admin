@@ -17,7 +17,7 @@ import {
   BarChart3, PieChart, TrendingUp, Download, RefreshCw,
 } from "lucide-react";
 
-interface LicenseData {
+export interface LicenseData {
   id: string;
   key: string;
   organization: string;

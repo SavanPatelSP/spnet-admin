@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "License not found" }, { status: 404 });
     }
 
-    if (!PREMIUM_PLANS.includes(license.plan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === license.plan)) {
       return Response.json({ error: "License is not on a premium plan" }, { status: 409 });
     }
 

@@ -1,5 +1,5 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { randomBytes } from "crypto";
 
 async function getNextPosition(): Promise<number> {
@@ -106,7 +106,7 @@ export async function getWaitlistEntries(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const where: Record<string, unknown> = {};
+  const where: Prisma.WaitlistEntryWhereInput = {};
   if (options.status) where.status = options.status;
   if (options.search) {
     where.OR = [
@@ -117,13 +117,12 @@ export async function getWaitlistEntries(options: {
 
   const [entries, total] = await Promise.all([
     prisma.waitlistEntry.findMany({
-      where: where as any,
+      where,
       orderBy: { position: "asc" },
       take: options.limit || 50,
       skip: options.offset || 0,
     }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prisma.waitlistEntry.count({ where: where as any }),
+    prisma.waitlistEntry.count({ where }),
   ]);
   return { entries, total };
 }
@@ -154,7 +153,7 @@ export async function updateWaitlistEntryStatus(
   status: string,
   userId?: string,
 ) {
-  const data: Record<string, unknown> = { status };
+  const data: Prisma.WaitlistEntryUpdateInput = { status };
   if (status === "APPROVED") {
     data.approvedAt = new Date();
     data.approvedBy = userId;
@@ -167,7 +166,7 @@ export async function updateWaitlistEntryStatus(
   }
   return prisma.waitlistEntry.update({
     where: { id },
-    data: data as any,
+    data,
   });
 }
 

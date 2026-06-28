@@ -13,6 +13,7 @@ import { EXPIRING_SOON_DAYS } from "@/lib/constants";
 import { daysUntil, calculateUtilization } from "@/lib/shared";
 import CreateLicenseModal from "@/components/licenses/CreateLicenseModal";
 import LicensingAdminActions from "@/components/licenses/LicensingAdminActions";
+import type { LicenseWithActivations } from "@/types/common";
 import { LicensesTable } from "@/components/licenses/LicensesTable";
 import LicenseTemplatesManager from "@/components/licenses/LicenseTemplatesManager";
 import BulkCreateButton from "./BulkCreateButton";
@@ -114,7 +115,7 @@ export default async function LicensesPage() {
         </div>
       )}
 
-      <LicensesTable licenses={licenses as never} />
+      <LicensesTable licenses={licenses as unknown as LicenseWithActivations[]} />
     </div>
   );
 }

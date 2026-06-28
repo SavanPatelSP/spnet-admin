@@ -73,8 +73,8 @@ export default async function PremiumPage() {
     }
   }
 
-  const premiumLicenses = licenses.filter((l) => PREMIUM_PLANS.includes(l.plan as never));
-  const nonPremiumLicenses = licenses.filter((l) => !PREMIUM_PLANS.includes(l.plan as never));
+  const premiumLicenses = licenses.filter((l) => PREMIUM_PLANS.some(p => p === l.plan));
+  const nonPremiumLicenses = licenses.filter((l) => !PREMIUM_PLANS.some(p => p === l.plan));
   const conversionRate = licenses.length > 0 ? Math.round((premiumLicenses.length / licenses.length) * 100) : 0;
 
   const lifetimeCount = premiumLicenses.filter((l) => latestSubData.get(l.id) === "LIFETIME").length;

@@ -12,8 +12,9 @@ import { calculateTrend, formatTrend } from "@/lib/analytics";
 import { BarChart3, ShieldCheck, Activity, ArrowUpRight } from "lucide-react";
 
 const PLAN_COLORS: Record<string, string> = {
-  FREE: "#71717a", BASIC: "#a1a1aa", STUDENT: "#22c55e",
-  PLUS: "#3b82f6", PRO: "#a855f7", BUSINESS: "#f59e0b", ENTERPRISE: "#ef4444",
+  FREE: "#6b7280", BASIC: "#3b82f6", STUDENT: "#6366f1",
+  PLUS: "#a855f7", PRO: "#06b6d4", BUSINESS: "#f97316",
+  ENTERPRISE: "#ef4444", EXTREME: "#ec4899", SP_PLAN: "#eab308",
 };
 
 const STATUS_COLORS: Record<string, string> = {

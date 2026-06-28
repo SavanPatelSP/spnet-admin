@@ -12,9 +12,7 @@ export function parseExpiryDate(dateString: string): Date {
   return new Date(year, month - 1, day, 12, 0, 0);
 }
 
-export function cn(...inputs: (string | boolean | undefined | null)[]): string {
-  return inputs.filter(Boolean).join(" ");
-}
+export { cn } from "./utils";
 
 export function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");

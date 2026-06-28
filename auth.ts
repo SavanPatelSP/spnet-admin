@@ -1,63 +1,14 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { DefaultSession } from "next-auth";
-import type { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { AUTH } from "@/lib/constants";
-import { resolveGeoFromApi } from "@/lib/geo";
 import { markStart, markEnd } from "@/lib/perf";
-import { captureFingerprint } from "@/lib/security/fingerprint";
-import { createSecurityAlert } from "@/lib/security/alerts";
-
-const IP_ATTEMPT_WINDOW = 60_000;
-const IP_MAX_ATTEMPTS = 10;
-
-interface IpRecord {
-  attempts: number;
-  firstAttempt: number;
-  blockedUntil: number;
-  strikeCount: number;
-}
-
-const ipAttempts = new Map<string, IpRecord>();
-
-function checkIpRateLimit(ip: string): { allowed: boolean; retryAfter: number } {
-  const now = Date.now();
-  const record = ipAttempts.get(ip);
-
-  if (record && record.blockedUntil > now) {
-    return { allowed: false, retryAfter: Math.ceil((record.blockedUntil - now) / 1000) };
-  }
-
-  if (record && record.firstAttempt < now - IP_ATTEMPT_WINDOW) {
-    ipAttempts.set(ip, { attempts: 1, firstAttempt: now, blockedUntil: 0, strikeCount: record.strikeCount });
-    return { allowed: true, retryAfter: 0 };
-  }
-
-  if (record && record.attempts >= IP_MAX_ATTEMPTS) {
-    const blockDuration = [60_000, 300_000, 600_000, 3_600_000][Math.min(record.strikeCount, 3)];
-    record.blockedUntil = now + blockDuration;
-    record.attempts = 0;
-    record.strikeCount += 1;
-    return { allowed: false, retryAfter: Math.ceil(blockDuration / 1000) };
-  }
-
-  if (record) {
-    record.attempts += 1;
-  } else {
-    ipAttempts.set(ip, { attempts: 1, firstAttempt: now, blockedUntil: 0, strikeCount: 0 });
-  }
-
-  return { allowed: true, retryAfter: 0 };
-}
-
-const LOCKOUT_STAGES = [15, 60, 360, 1440];
-
-function computeLockoutDuration(strikeCount: number): number {
-  return LOCKOUT_STAGES[Math.min(strikeCount, LOCKOUT_STAGES.length - 1)] * 60 * 1000;
-}
+import { checkIpRateLimit, computeLockoutDuration } from "@/lib/security/ip-rate-limit";
+import { logAuthEvent } from "@/lib/security/auth-logger";
+import { handlePostLoginActivation, handleFingerprintCheck } from "@/lib/device-activation";
 
 declare module "next-auth" {
   interface Session {
@@ -94,25 +45,116 @@ declare module "@auth/core/jwt" {
   }
 }
 
-async function logAuthEvent(
-  action: string,
-  details: {
-    teamMemberId?: string;
-    email?: string;
-    description: string;
+async function loginHistoryEntry(data: {
+  teamMemberId: string | null; email: string; ipAddress: string;
+  userAgent: string; success: boolean; failureReason?: string;
+}) {
+  const createData: {
+    teamMemberId?: string; email?: string; ipAddress?: string;
+    userAgent?: string; success: boolean; failureReason?: string;
+  } = { success: data.success };
+  if (data.teamMemberId) createData.teamMemberId = data.teamMemberId;
+  if (data.email) createData.email = data.email;
+  if (data.ipAddress) createData.ipAddress = data.ipAddress;
+  if (data.userAgent) createData.userAgent = data.userAgent;
+  if (data.failureReason) createData.failureReason = data.failureReason;
+
+  try {
+    await prisma.loginHistory.create({ data: createData });
+  } catch (e) {
+    console.error("Failed to create login history entry:", e);
   }
+}
+
+async function handleLoginFailure(
+  memberOrEmail: { id: string; email: string } | string,
+  ipAddress: string,
+  userAgent: string,
+  failureReason: string,
+) {
+  const email = typeof memberOrEmail === "string" ? memberOrEmail : memberOrEmail.email;
+  const memberId: string | null = typeof memberOrEmail === "string" ? null : memberOrEmail.id;
+  logAuthEvent("LOGIN_FAILURE", {
+    teamMemberId: memberId ?? undefined, email,
+    description: `Login failed: ${failureReason}`,
+  });
+  loginHistoryEntry({ teamMemberId: memberId, email, ipAddress, userAgent, success: false, failureReason });
+}
+
+async function checkLicenseValidity(license: {
+  id: string; key: string; expiresAt: Date; status: string;
+  plan: string; teamMemberId: string | null;
+}, member: { id: string; email: string }, ipAddress: string, userAgent: string): Promise<string | null> {
+  if (license.expiresAt < new Date()) {
+    handleLoginFailure(member, ipAddress, userAgent, "License expired");
+    logAuthEvent("LICENSE_EXPIRED_DENIAL", {
+      teamMemberId: member.id, email: member.email,
+      description: `Login denied: license ${license.key} expired on ${license.expiresAt.toISOString()}`,
+    });
+    return "License expired";
+  }
+  if (license.status === "SUSPENDED") {
+    handleLoginFailure(member, ipAddress, userAgent, "License suspended");
+    logAuthEvent("LICENSE_SUSPENDED_DENIAL", {
+      teamMemberId: member.id, email: member.email,
+      description: `Login denied: license ${license.key} is suspended`,
+    });
+    return "License suspended";
+  }
+  if (license.status !== "ACTIVE") {
+    handleLoginFailure(member, ipAddress, userAgent, `License status: ${license.status}`);
+    return `License status: ${license.status}`;
+  }
+  return null;
+}
+
+async function syncPermissionsVersion(
+  token: { roleId: string; rolePermissionsVersion?: number; permissions?: string[] }
 ) {
   try {
-    await prisma.auditLog.create({
-      data: {
-        action,
-        actorEmail: details.email || "unknown",
-        description: details.description,
-      },
+    const role = await prisma.role.findUnique({
+      where: { id: token.roleId },
+      select: { permissionsVersion: true },
     });
+    const currentVersion = role?.permissionsVersion ?? 0;
+    if (currentVersion !== (token.rolePermissionsVersion ?? 0)) {
+      const permissionRows = await prisma.permission.findMany({
+        where: { roleId: token.roleId },
+        select: { permission: true },
+      });
+      token.permissions = permissionRows.map(p => p.permission);
+      token.rolePermissionsVersion = currentVersion;
+    }
   } catch {
-    // Swallow audit logging errors to prevent auth loops
+    // Best-effort; stale permissions acceptable temporarily
   }
+}
+
+async function revalidateLicense(token: {
+  licenseId: string; licenseStatus?: string;
+  licenseLastVerifiedAt?: string | null;
+}) {
+  const LICENSE_REFRESH_MS = 5 * 60 * 1000;
+  const lastVerified = token.licenseLastVerifiedAt
+    ? new Date(token.licenseLastVerifiedAt).getTime()
+    : 0;
+  if (Date.now() - lastVerified > LICENSE_REFRESH_MS) {
+    try {
+      const license = await prisma.license.findUnique({
+        where: { id: token.licenseId },
+        select: { status: true, expiresAt: true },
+      });
+      if (!license) return false;
+      if (license.expiresAt < new Date() || license.status !== "ACTIVE") return false;
+      if (token.licenseStatus !== license.status) {
+        token.licenseStatus = license.status;
+      }
+      token.licenseLastVerifiedAt = new Date().toISOString();
+    } catch {
+      // Best-effort; license state re-checked on next interval
+    }
+  }
+  return true;
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -124,7 +166,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
         licenseKey: { label: "License Key", type: "text" },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         markStart("AUTH_TOTAL");
 
         const headersList = await headers();
@@ -137,9 +179,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = String(credentials?.password ?? "");
         const licenseKey = String(credentials?.licenseKey ?? "").trim();
 
-        if (!email || !password || !licenseKey) {
-          return null;
-        }
+        if (!email || !password || !licenseKey) return null;
 
         const ipCheck = checkIpRateLimit(ipAddress);
         if (!ipCheck.allowed) {
@@ -150,34 +190,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // 1. Find user by email (avoid include: { role: true } — permissionsVersion may not exist in prod)
-        let member: Prisma.TeamMemberGetPayload<{ include: { license: true } }> | null;
+        let member: { id: string; email: string; name: string | null; password: string;
+          roleId: string; licenseId: string; status: string; failedLoginAttempts: number;
+          lockedUntil: Date | null; lastLogin: Date | null; lastLoginIp: string | null;
+          lastUserAgent: string | null;
+          license: { id: string; key: string; expiresAt: Date; status: string; plan: string; teamMemberId: string | null; } | null;
+        } | null;
         let roleName: string | null = null;
         let rolePermissionsVersion = 0;
+
         try {
           markStart("TEAM_MEMBER_LOOKUP");
           member = await prisma.teamMember.findUnique({
             where: { email },
             include: { license: true },
-          });
+          }) as typeof member;
           markEnd("TEAM_MEMBER_LOOKUP", member ? 1 : 0);
-        } catch {
+        } catch (e) {
+          console.error("TeamMember lookup failed:", e);
           markEnd("TEAM_MEMBER_LOOKUP", 0);
           return null;
         }
 
         if (!member) {
-          logAuthEvent("LOGIN_FAILURE", {
-            email,
-            description: `Login failed: no account found for ${email}`,
-          });
-          prisma.loginHistory.create({
-            data: { teamMemberId: "unknown", email, ipAddress, userAgent, success: false, failureReason: "No account found" },
-          }).catch(() => {});
+          handleLoginFailure(email, ipAddress, userAgent, "No account found");
           return null;
         }
 
-        // Fetch role name + version separately (permissionsVersion may not exist in prod)
+        if (member.status !== "ACTIVE") {
+          logAuthEvent("LOGIN_FAILURE", {
+            teamMemberId: member.id, email,
+            description: `Login blocked: account status is ${member.status}`,
+          });
+          return null;
+        }
+
         try {
           const role = await prisma.role.findUnique({
             where: { id: member.roleId },
@@ -188,13 +235,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             rolePermissionsVersion = role.permissionsVersion ?? 0;
           }
         } catch {
-          // permissionsVersion column does not exist yet — safe defaults apply
+          // permissionsVersion column may not exist in production
         }
 
         if (member.lockedUntil && member.lockedUntil > new Date()) {
           logAuthEvent("LOGIN_FAILURE", {
-            teamMemberId: member.id,
-            email,
+            teamMemberId: member.id, email,
             description: `Login blocked: account locked until ${member.lockedUntil.toISOString()}`,
           });
           return null;
@@ -203,42 +249,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         markStart("BCRYPT_COMPARE");
         const isValidPassword = await bcrypt.compare(password, member.password);
         markEnd("BCRYPT_COMPARE");
+
         if (!isValidPassword) {
           const newAttempts = member.failedLoginAttempts + 1;
-          const lockoutDuration = computeLockoutDuration(Math.floor(newAttempts / AUTH.MAX_LOGIN_ATTEMPTS));
-          const update: {
-            failedLoginAttempts: number;
-            lockedUntil?: Date;
-          } = {
+          const lockoutMs = computeLockoutDuration(Math.floor(newAttempts / AUTH.MAX_LOGIN_ATTEMPTS));
+          const update: { failedLoginAttempts: number; lockedUntil?: Date } = {
             failedLoginAttempts: newAttempts,
           };
           if (newAttempts >= AUTH.MAX_LOGIN_ATTEMPTS) {
-            update.lockedUntil = new Date(Date.now() + Math.max(lockoutDuration, AUTH.LOCKOUT_DURATION_MINUTES * 60 * 1000));
+            update.lockedUntil = new Date(Date.now() + Math.max(lockoutMs, AUTH.LOCKOUT_DURATION_MINUTES * 60 * 1000));
             update.failedLoginAttempts = 0;
           }
           prisma.teamMember.update({ where: { id: member.id }, data: update }).catch(() => {});
-
-          prisma.loginHistory.create({
-            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid password" },
-          }).catch(() => {});
-
-          logAuthEvent("LOGIN_FAILURE", {
-            teamMemberId: member.id,
-            email,
-            description: `Login failed: invalid password (attempt ${newAttempts})`,
-          });
+          handleLoginFailure({ id: member.id, email }, ipAddress, userAgent, `Invalid password (attempt ${newAttempts})`);
           return null;
         }
 
         if (!member.license) {
-          logAuthEvent("LOGIN_FAILURE", {
-            teamMemberId: member.id,
-            email,
-            description: `Login failed: no license assigned to ${email}`,
-          });
-          prisma.loginHistory.create({
-            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "No license assigned" },
-          }).catch(() => {});
+          handleLoginFailure({ id: member.id, email }, ipAddress, userAgent, "No license assigned");
           return null;
         }
 
@@ -246,64 +274,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (license.key !== licenseKey) {
           logAuthEvent("INVALID_LICENSE_KEY", {
-            teamMemberId: member.id,
-            email,
+            teamMemberId: member.id, email,
             description: `Login failed: invalid license key provided for ${email}`,
           });
-          prisma.loginHistory.create({
-            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "Invalid license key" },
-          }).catch(() => {});
+          loginHistoryEntry({ teamMemberId: member.id, email, ipAddress, userAgent, success: false, failureReason: "Invalid license key" });
           return null;
         }
 
         if (member.licenseId !== license.id) {
           logAuthEvent("INVALID_LICENSE_KEY", {
-            teamMemberId: member.id,
-            email,
+            teamMemberId: member.id, email,
             description: `License ${license.key} does not belong to ${email}`,
           });
           return null;
         }
 
-        if (license.expiresAt < new Date()) {
-          logAuthEvent("LICENSE_EXPIRED_DENIAL", {
-            teamMemberId: member.id,
-            email,
-            description: `Login denied: license ${license.key} expired on ${license.expiresAt.toISOString()}`,
-          });
-          prisma.loginHistory.create({
-            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License expired" },
-          }).catch(() => {});
-          return null;
-        }
+        const licenseError = await checkLicenseValidity(license, { id: member.id, email }, ipAddress, userAgent);
+        if (licenseError) return null;
 
-        if (license.status === "SUSPENDED") {
-          logAuthEvent("LICENSE_SUSPENDED_DENIAL", {
-            teamMemberId: member.id,
-            email,
-            description: `Login denied: license ${license.key} is suspended`,
-          });
-          prisma.loginHistory.create({
-            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: "License suspended" },
-          }).catch(() => {});
-          return null;
-        }
-
-        if (license.status !== "ACTIVE") {
-          logAuthEvent("LOGIN_FAILURE", {
-            teamMemberId: member.id,
-            email,
-            description: `Login denied: license ${license.key} has status ${license.status}`,
-          });
-          prisma.loginHistory.create({
-            data: { teamMemberId: member.id, ipAddress, userAgent, success: false, failureReason: `License status: ${license.status}` },
-          }).catch(() => {});
-          return null;
-        }
-
-        // ── Critical path (must complete before return) ──
-
-        // Session + permissions are independent — run in parallel
+        // ── Critical path: create session and fetch permissions ──
         markStart("SESSION_CREATE");
         markStart("PERMISSION_QUERY");
         const sessionToken = crypto.randomUUID();
@@ -311,16 +300,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const sessionExpiresAt = new Date(sessionCreatedAt.getTime() + AUTH.SESSION_MAX_AGE_SECONDS * 1000);
         let sessionRecordId: string | null = null;
         let permissions: string[] = [];
+
         try {
           const [sessionRecord, permissionRows] = await Promise.all([
             prisma.session.create({
-              data: {
-                teamMemberId: member.id,
-                token: sessionToken,
-                ipAddress,
-                userAgent,
-                expiresAt: sessionExpiresAt,
-              },
+              data: { teamMemberId: member.id, token: sessionToken, ipAddress, userAgent, expiresAt: sessionExpiresAt },
             }),
             prisma.permission.findMany({
               where: { roleId: member.roleId },
@@ -334,7 +318,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch {
           markEnd("PERMISSION_QUERY");
           markEnd("SESSION_CREATE");
-          // Session/permission query failed — null return will prevent login
+          return null;
         }
 
         // ── Non-critical operations (fire-and-forget) ──
@@ -344,21 +328,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               where: { id: member.id },
               data: { failedLoginAttempts: 0, lockedUntil: null, lastLogin: new Date(), lastLoginIp: ipAddress, lastUserAgent: userAgent },
             });
-          } catch {}
+          } catch (e) { console.error("Failed to update member post-login:", e); }
           try {
             if (sessionRecordId) {
               await prisma.auditLog.create({
-                data: {
-                  action: "SESSION_CREATED",
-                  entityId: sessionRecordId,
-                  entityType: "session",
-                  actorEmail: member.email,
-                  actorName: member.name,
-                  description: `Session created for ${member.email}`,
-                },
+                data: { action: "SESSION_CREATED", entityId: sessionRecordId, entityType: "session", actorEmail: member.email, actorName: member.name, description: `Session created for ${member.email}` },
               });
             }
-          } catch {}
+          } catch (e) { console.error("Failed to create session audit log:", e); }
           try {
             const oldSessions = await prisma.session.findMany({
               where: { teamMemberId: member.id },
@@ -366,94 +343,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               skip: 4,
             });
             if (oldSessions.length > 0) {
-              await prisma.session.deleteMany({
-                where: { id: { in: oldSessions.map(s => s.id) } },
-              });
+              await prisma.session.deleteMany({ where: { id: { in: oldSessions.map(s => s.id) } } });
             }
-          } catch {}
+          } catch (e) { console.error("Failed to clean old sessions:", e); }
           try {
-            await prisma.loginHistory.create({
-              data: { teamMemberId: member.id, ipAddress, userAgent, success: true },
-            });
-          } catch {}
+            await loginHistoryEntry({ teamMemberId: member.id, email, ipAddress, userAgent, success: true });
+          } catch (e) { console.error("Failed to create login history:", e); }
           try {
-            const deviceId = `device-${member.id}-${license.id}`;
-            const existingActivation = await prisma.activation.findFirst({ where: { deviceId } });
-            const os = userAgent.includes("Windows") ? "Windows"
-              : userAgent.includes("Mac") ? "macOS"
-              : userAgent.includes("Linux") ? "Linux"
-              : userAgent.includes("Android") ? "Android"
-              : userAgent.includes("iOS") ? "iOS"
-              : "Unknown";
-            const osVersion = userAgent.match(/(?:Windows NT |Mac OS X |Android )([\d._]+)/)?.[1]?.replace(/_/g, ".") ?? null;
-            const browser = userAgent.includes("Chrome") ? "Chrome"
-              : userAgent.includes("Firefox") ? "Firefox"
-              : userAgent.includes("Safari") && !userAgent.includes("Chrome") ? "Safari"
-              : userAgent.includes("Edge") ? "Edge"
-              : "Unknown";
-            const browserVersion = userAgent.match(/(?:Chrome|Firefox|Safari|Edge)\/([\d.]+)/)?.[1] ?? null;
-            const deviceType = userAgent.includes("Mobile") ? "MOBILE"
-              : userAgent.includes("Tablet") || userAgent.includes("iPad") ? "TABLET"
-              : "DESKTOP";
-            const geo = await resolveGeoFromApi(ipAddress);
-            if (existingActivation) {
-              await prisma.activation.update({
-                where: { id: existingActivation.id },
-                data: {
-                  ipAddress, os, osVersion, browser, browserVersion, deviceType, userAgent,
-                  country: geo.country, city: geo.city, isp: geo.isp,
-                  lastSeenAt: new Date(),
-                  trustScore: Math.min(100, existingActivation.trustScore + 5),
-                },
-              });
-            } else {
-              await prisma.activation.create({
-                data: {
-                  deviceId,
-                  deviceName: `${member.name || member.email}'s ${os} device`,
-                  licenseId: license.id, ipAddress, os, osVersion, browser, browserVersion,
-                  deviceType, userAgent,
-                  country: geo.country, city: geo.city, isp: geo.isp,
-                  trustScore: 50, status: "ACTIVE",
-                },
-              });
-            }
-          } catch {}
+            await handlePostLoginActivation(member, ipAddress, userAgent);
+          } catch (e) { console.error("Failed to handle post-login activation:", e); }
           try {
             if (sessionRecordId) {
-              const fpResult = await captureFingerprint({
-                ipAddress,
-                userAgent,
-                teamMemberId: member.id,
-                sessionId: sessionRecordId,
-              });
-              if (fpResult.suspicious) {
-                createSecurityAlert({
-                  type: "SUSPICIOUS_ACTIVITY",
-                  title: "Suspicious session detected",
-                  description: `Suspicious login for ${email}: ${fpResult.riskFactors.join(", ")}`,
-                  severity: fpResult.riskScore === "CRITICAL" ? "CRITICAL" : fpResult.riskScore === "HIGH" ? "HIGH" : "MEDIUM",
-                  entityType: "session",
-                  entityId: sessionRecordId,
-                  actorEmail: email,
-                  actorName: member.name,
-                  metadata: {
-                    riskScore: fpResult.riskScore,
-                    riskFactors: fpResult.riskFactors,
-                    isNewDevice: fpResult.isNewDevice,
-                    isNewCountry: fpResult.isNewCountry,
-                    ipChanged: fpResult.ipChanged,
-                  },
-                });
-              }
+              await handleFingerprintCheck(ipAddress, userAgent, member.id, sessionRecordId, email, member.name);
             }
-          } catch {}
+          } catch (e) { console.error("Failed to check fingerprint:", e); }
           logAuthEvent("LOGIN_SUCCESS", {
-            teamMemberId: member.id,
-            email,
+            teamMemberId: member.id, email,
             description: `Login successful for ${email}`,
           });
-        })();
+        })().catch((e) => console.error("Post-login fire-and-forget failed:", e));
 
         markEnd("AUTH_TOTAL");
         return {
@@ -477,66 +385,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        // Creating a new token on sign-in
-        token.id = user.id as string;
-        token.role = (user as { role: string }).role;
-        token.roleId = (user as { roleId: string }).roleId;
-        token.licenseId = (user as { licenseId: string | null }).licenseId;
-        token.licenseStatus = (user as { licenseStatus: string | null }).licenseStatus;
-        token.licensePlan = (user as { licensePlan: string | null }).licensePlan;
-        token.permissions = (user as { permissions: string[] }).permissions;
-        token.sessionRecordId = (user as { sessionRecordId: string | null }).sessionRecordId;
-        token.sessionCreatedAt = (user as { sessionCreatedAt: string | null }).sessionCreatedAt;
-        token.sessionExpiresAt = (user as { sessionExpiresAt: string | null }).sessionExpiresAt;
+        const u = user as { id: string; role: string; roleId: string; licenseId: string | null;
+          licenseStatus: string | null; licensePlan: string | null; permissions: string[];
+          sessionRecordId: string | null; sessionCreatedAt: string | null; sessionExpiresAt: string | null; };
+        token.id = u.id;
+        token.role = u.role;
+        token.roleId = u.roleId;
+        token.licenseId = u.licenseId;
+        token.licenseStatus = u.licenseStatus;
+        token.licensePlan = u.licensePlan;
+        token.permissions = u.permissions;
+        token.sessionRecordId = u.sessionRecordId;
+        token.sessionCreatedAt = u.sessionCreatedAt;
+        token.sessionExpiresAt = u.sessionExpiresAt;
         token.licenseLastVerifiedAt = new Date().toISOString();
       } else {
-        // ── Lightweight permissionsVersion check on every call ──
-        // PK lookup returning a single integer — <5ms with connection pool.
-        // Only re-fetches the full permissions list when version actually changes.
-        try {
-          const role = await prisma.role.findUnique({
-            where: { id: token.roleId as string },
-            select: { permissionsVersion: true },
-          });
-          const currentVersion = role?.permissionsVersion ?? 0;
-          if (currentVersion !== (token.rolePermissionsVersion ?? 0)) {
-            const permissionRows = await prisma.permission.findMany({
-              where: { roleId: token.roleId as string },
-              select: { permission: true },
-            });
-            token.permissions = permissionRows.map(p => p.permission);
-            token.rolePermissionsVersion = currentVersion;
-          }
-        } catch {
-          // Best-effort; stale permissions are acceptable temporarily.
-        }
-
-        // ── Periodic license re-validation (5 min interval) ──
-        const LICENSE_REFRESH_MS = 5 * 60 * 1000;
-        const lastVerified = token.licenseLastVerifiedAt
-          ? new Date(token.licenseLastVerifiedAt).getTime()
-          : 0;
-        if (Date.now() - lastVerified > LICENSE_REFRESH_MS) {
-          try {
-            const license = await prisma.license.findUnique({
-              where: { id: token.licenseId as string },
-              select: { status: true, expiresAt: true },
-            });
-            if (!license) return null;
-            if (license.expiresAt < new Date() || license.status !== "ACTIVE") return null;
-            if (token.licenseStatus !== license.status) {
-              token.licenseStatus = license.status;
-            }
-            token.licenseLastVerifiedAt = new Date().toISOString();
-          } catch {
-            // Best-effort; license state is re-checked on next interval.
-          }
-        }
-
-        // ── Server-driven session expiry check ──
-        if (token.sessionExpiresAt && new Date(token.sessionExpiresAt) < new Date()) {
-          return null;
-        }
+        await syncPermissionsVersion(token);
+        if (!token.licenseId) return null;
+        const valid = await revalidateLicense(token as { licenseId: string; licenseStatus?: string; licenseLastVerifiedAt?: string | null });
+        if (!valid) return null;
+        if (token.sessionExpiresAt && new Date(token.sessionExpiresAt) < new Date()) return null;
       }
       return token;
     },
@@ -558,23 +426,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   events: {
     async signOut(message) {
       if (!("token" in message) || !message.token?.sessionRecordId) return;
-      const token = message.token;
+      const token = message.token as { sessionRecordId: string; email?: string; name?: string; role?: string };
       try {
-        await prisma.session.update({
-          where: { id: token.sessionRecordId as string },
-          data: { expiresAt: new Date() },
-        }).catch(() => {});
+        await prisma.session.update({ where: { id: token.sessionRecordId }, data: { expiresAt: new Date() } });
         await prisma.auditLog.create({
           data: {
-            action: "LOGOUT",
-            actorEmail: (token.email as string) || "unknown",
-            actorName: (token.name as string) || null,
-            actorRole: (token.role as string) || null,
-            entityType: "session",
-            entityId: token.sessionRecordId as string,
-            description: `User logged out: session ${(token.sessionRecordId as string).slice(0, 12)}...`,
+            action: "LOGOUT", actorEmail: token.email || "unknown", actorName: token.name || null,
+            actorRole: token.role || null, entityType: "session", entityId: token.sessionRecordId,
+            description: `User logged out: session ${token.sessionRecordId.slice(0, 12)}...`,
           },
-        }).catch(() => {});
+        });
       } catch {
         // Swallow errors during sign-out
       }

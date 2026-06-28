@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LicensingDashboard } from "@/components/settings/licensing/LicensingDashboard";
+import type { LicenseData } from "@/components/settings/licensing/LicensingDashboard";
 
 export default async function LicensingSettingsPage() {
   await requirePermission("View Licenses");
@@ -22,7 +23,7 @@ export default async function LicensingSettingsPage() {
         title="Licensing"
         description="Monitor license health, usage, and lifecycle across all organizations."
       />
-      <LicensingDashboard licenses={licenses as never} />
+      <LicensingDashboard licenses={licenses as unknown as LicenseData[]} />
     </div>
   );
 }

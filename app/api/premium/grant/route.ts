@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
+import { PREMIUM_PLANS, ADMIN_SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { createInvoiceForPremium } from "@/lib/invoices";
 import { approvalGuard } from "@/lib/approval-guard";
 
@@ -16,13 +16,13 @@ export async function POST(req: Request) {
       return Response.json({ error: "licenseId and plan are required" }, { status: 400 });
     }
 
-    if (!PREMIUM_PLANS.includes(plan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === plan)) {
       return Response.json({ error: `Invalid premium plan. Must be one of: ${PREMIUM_PLANS.join(", ")}` }, { status: 400 });
     }
 
     const subType = subscriptionType || "MONTHLY";
-    if (!SUBSCRIPTION_TYPES.includes(subType as never)) {
-      return Response.json({ error: `Invalid subscription type. Must be one of: ${SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
+    if (!ADMIN_SUBSCRIPTION_TYPES.some(s => s === subType)) {
+      return Response.json({ error: `Invalid subscription type. Must be one of: ${ADMIN_SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
     }
 
     const license = await prisma.license.findUnique({ where: { id: licenseId } });
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "License not found" }, { status: 404 });
     }
 
-    if (PREMIUM_PLANS.includes(license.plan as never)) {
+    if (PREMIUM_PLANS.some(p => p === license.plan)) {
       return Response.json({ error: "License is already on a premium plan" }, { status: 409 });
     }
 

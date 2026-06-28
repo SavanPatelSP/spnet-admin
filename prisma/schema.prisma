@@ -194,13 +194,20 @@ model PremiumSubscription {
   license   License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
 
   plan      String
-  action    String   // GRANTED, EXTENDED, PLAN_CHANGED, REVOKED, CANCELLED, RENEWED, DOWNGRADED, CONVERTED_TO_LIFETIME
+  action    String   // GRANTED, EXTENDED, PLAN_CHANGED, REVOKED, CANCELLED, RENEWED, DOWNGRADED, CONVERTED_TO_LIFETIME, CONVERTED_TO_CUSTOM
 
-  subscriptionType String @default("MONTHLY")  // MONTHLY, YEARLY, CUSTOM, LIFETIME
+  subscriptionType String @default("MONTHLY")  // DAILY, WEEKLY, MONTHLY, YEARLY, LIFETIME, CUSTOM
 
   startDate DateTime @default(now())
   endDate   DateTime
   durationDays Int?
+
+  basePrice       Float?  // Monthly base price for this plan
+  calculatedPrice Float?  // Auto-calculated price for this subscription type
+  customPrice     Float?  // Overridden/custom price
+  discount        Float?  // Discount amount
+  savings         Float?  // Total savings compared to monthly
+  currency        String? // Currency code (e.g. "$", "USD")
 
   grantedBy String?
   notes     String?

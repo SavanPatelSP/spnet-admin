@@ -1,47 +1,45 @@
 "use client";
 
 import { cn } from "@/lib/shared";
-import { PLAN_META, getNextPlan, getPlanUpgradePath, getPlanIndex, ALL_PLANS } from "@/lib/premium";
+import { PLAN_META, getNextPlan, getPlanUpgradePath, getPlanIndex, ALL_PLANS, colorConfig } from "@/lib/premium";
 import { ArrowRight, ArrowDown, Check, Crown, Sparkles } from "lucide-react";
 
 interface UpgradePathProps {
   fromPlan: string;
 }
 
-const colorConfig: Record<string, { text: string; border: string; bg: string }> = {
-  zinc:   { text: "text-zinc-400", border: "border-zinc-500/20", bg: "bg-zinc-500/10" },
-  green:  { text: "text-green-400", border: "border-green-500/20", bg: "bg-green-500/10" },
-  blue:   { text: "text-blue-400", border: "border-blue-500/20", bg: "bg-blue-500/10" },
-  purple: { text: "text-purple-400", border: "border-purple-500/20", bg: "bg-purple-500/10" },
-  amber:  { text: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/10" },
-  red:    { text: "text-red-400", border: "border-red-500/20", bg: "bg-red-500/10" },
-  cyan:   { text: "text-cyan-400", border: "border-cyan-500/20", bg: "bg-cyan-500/10" },
-};
-
 export function UpgradePath({ fromPlan }: UpgradePathProps) {
   const path = getPlanUpgradePath(fromPlan);
   const meta = PLAN_META[fromPlan];
-  const colors = colorConfig[meta.color] || colorConfig.zinc;
+  const colors = colorConfig[meta.color] || colorConfig.gray;
   const Icon = meta.icon;
-  const isTopTier = fromPlan === "SP_PLAN";
+  const showTopTier = !path || colors.badgeGradient;
 
-  if (isTopTier || !path) {
+  if (showTopTier) {
     return (
-      <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/20 to-zinc-900 p-6 text-center">
+      <div className={cn(
+        "rounded-2xl border bg-gradient-to-b to-zinc-900 p-6 text-center",
+        colors.compareBorder,
+        colors.compareBg
+      )}>
         <div className="mb-3 flex items-center justify-center gap-2">
           <Crown size={24} className="text-amber-400" />
-          <Sparkles size={20} className="text-cyan-400" />
+          <Sparkles size={20} className={colors.text} />
         </div>
         <p className="text-lg font-bold text-zinc-100">You&apos;re on the top tier!</p>
         <p className="mt-1 text-sm text-zinc-500">
-          SP&apos;s Plan includes every feature across all tiers with exclusive priority access.
+          {meta.badge === "Founder Edition"
+            ? "SP's Plan includes every feature across all tiers with exclusive priority access."
+            : meta.badge === "Elite"
+            ? "Extreme plan offers maximum capabilities with elite-level resources and support."
+            : `${meta.label} includes every feature across all tiers with exclusive priority access.`}
         </p>
       </div>
     );
   }
 
   const nextMeta = PLAN_META[path.next!];
-  const nextColors = colorConfig[nextMeta.color] || colorConfig.zinc;
+  const nextColors = colorConfig[nextMeta.color] || colorConfig.gray;
   const NextIcon = nextMeta.icon;
 
   return (

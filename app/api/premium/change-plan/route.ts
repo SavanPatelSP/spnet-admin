@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES, PLAN_TIERS } from "@/lib/constants";
+import { PREMIUM_PLANS, ADMIN_SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES, PLAN_TIERS } from "@/lib/constants";
 import { createInvoiceForPremiumAction } from "@/lib/invoices";
 import { approvalGuard } from "@/lib/approval-guard";
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "License not found" }, { status: 404 });
     }
 
-    if (!PREMIUM_PLANS.includes(license.plan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === license.plan)) {
       return Response.json({ error: "License is not on a premium plan" }, { status: 409 });
     }
 
@@ -38,14 +38,14 @@ export async function POST(req: Request) {
     }
 
     if (planChanged) {
-      if (!PREMIUM_PLANS.includes(newPlan as never)) {
+      if (!PREMIUM_PLANS.some(p => p === newPlan)) {
         return Response.json({ error: `Invalid premium plan. Must be one of: ${PREMIUM_PLANS.join(", ")}` }, { status: 400 });
       }
     }
 
     if (typeChanged) {
-      if (!SUBSCRIPTION_TYPES.includes(newSubscriptionType as never)) {
-        return Response.json({ error: `Invalid subscription type. Must be one of: ${SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
+      if (!ADMIN_SUBSCRIPTION_TYPES.some(s => s === newSubscriptionType)) {
+        return Response.json({ error: `Invalid subscription type. Must be one of: ${ADMIN_SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
       }
     }
 
@@ -64,8 +64,9 @@ export async function POST(req: Request) {
     const finalPlan = planChanged ? newPlan : license.plan;
     const finalType = typeChanged ? newSubscriptionType : (latestSubscription?.subscriptionType || "MONTHLY");
 
-    const currentIndex = PLAN_TIERS.indexOf(license.plan as never);
-    const targetIndex = PLAN_TIERS.indexOf(finalPlan as never);
+    const planTiers = PLAN_TIERS as readonly string[];
+    const currentIndex = planTiers.indexOf(license.plan);
+    const targetIndex = planTiers.indexOf(finalPlan);
     const direction = planChanged ? (targetIndex > currentIndex ? "UPGRADE" : "DOWNGRADE") : "CHANGE_PLAN";
 
     const changes: string[] = [];

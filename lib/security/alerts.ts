@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 type AlertType =
   | "LOGIN" | "LOGOUT" | "NEW_DEVICE" | "FAILED_LOGIN" | "LOCKED_ACCOUNT"
@@ -143,19 +144,19 @@ export async function getSecurityAlerts(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const where: Record<string, unknown> = {};
+  const where: Prisma.SecurityAlertWhereInput = {};
   if (options.resolved !== undefined) where.resolved = options.resolved;
   if (options.type) where.type = options.type;
   if (options.severity) where.severity = options.severity;
 
   const [alerts, total] = await Promise.all([
     prisma.securityAlert.findMany({
-      where: where as any,
+      where,
       orderBy: { createdAt: "desc" },
       take: options.limit || 50,
       skip: options.offset || 0,
     }),
-    prisma.securityAlert.count({ where: where as any }),
+    prisma.securityAlert.count({ where }),
   ]);
   return { alerts, total };
 }

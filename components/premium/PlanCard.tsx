@@ -1,7 +1,7 @@
 "use client";
 
 import { cn, formatPrice } from "@/lib/shared";
-import { getPlanIndex, ALL_PLANS, getPlanYearlyPrice, getPlanLifetimePrice } from "@/lib/premium";
+import { getPlanIndex, ALL_PLANS, getYearlyPrice, getLifetimePrice, colorConfig } from "@/lib/premium";
 import type { PlanMeta } from "@/lib/premium";
 import { Sparkles, ArrowRight, Check } from "lucide-react";
 
@@ -14,38 +14,29 @@ interface PlanCardProps {
   onCompare: () => void;
 }
 
-const colorConfig: Record<string, { text: string; border: string; bg: string; badge: string; glow: string }> = {
-  zinc:   { text: "text-zinc-400",   border: "border-zinc-500/20",   bg: "bg-zinc-500/10",   badge: "bg-zinc-500/20 text-zinc-300",       glow: "" },
-  green:  { text: "text-green-400",  border: "border-green-500/20",  bg: "bg-green-500/10",  badge: "bg-green-500/20 text-green-300",     glow: "" },
-  blue:   { text: "text-blue-400",   border: "border-blue-500/20",   bg: "bg-blue-500/10",   badge: "bg-blue-500/20 text-blue-300",       glow: "" },
-  purple: { text: "text-purple-400", border: "border-purple-500/20", bg: "bg-purple-500/10", badge: "bg-purple-500/20 text-purple-300",   glow: "" },
-  amber:  { text: "text-amber-400",  border: "border-amber-500/20",  bg: "bg-amber-500/10",  badge: "bg-amber-500/20 text-amber-300",     glow: "" },
-  red:    { text: "text-red-400",    border: "border-red-500/20",    bg: "bg-red-500/10",    badge: "bg-red-500/20 text-red-300",         glow: "" },
-  cyan:   { text: "text-cyan-400",   border: "border-cyan-500/20",   bg: "bg-cyan-500/10",   badge: "bg-cyan-500/20 text-cyan-300",       glow: "shadow-[0_0_20px_rgba(6,182,212,0.15)]" },
-};
-
 export function PlanCard({ plan, meta, highlights, price, onViewDetails, onCompare }: PlanCardProps) {
-  const isTopTier = plan === "SP_PLAN";
-  const colors = colorConfig[meta.color] || colorConfig.zinc;
+  const colors = colorConfig[meta.color] || colorConfig.gray;
   const Icon = meta.icon;
   const tierIndex = getPlanIndex(plan);
+  const showFloatingBadge = colors.badgeGradient && meta.badge;
 
   return (
     <div
       className={cn(
         "group relative flex flex-col rounded-2xl border bg-zinc-900 p-6 transition-all duration-300",
         colors.border,
-        isTopTier
-          ? "border-cyan-500/40 bg-gradient-to-b from-cyan-950/30 to-zinc-900 hover:border-cyan-400/60"
-          : "hover:border-zinc-700 hover:bg-zinc-800/80",
-        isTopTier && colors.glow
+        colors.cardGradient ? `${colors.cardGradient} ${colors.hoverBorder}` : `${colors.hoverBorder} ${colors.hoverBg}`,
+        colors.cardGradient && colors.glow
       )}
     >
-      {isTopTier && (
+      {showFloatingBadge && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-0.5 text-xs font-bold text-white shadow-lg">
+          <span className={cn(
+            "inline-flex items-center gap-1 rounded-full bg-gradient-to-r px-3 py-0.5 text-xs font-bold text-white shadow-lg",
+            colors.badgeGradient
+          )}>
             <Sparkles size={12} />
-            Top Tier
+            {meta.badge}
           </span>
         </div>
       )}
@@ -68,7 +59,7 @@ export function PlanCard({ plan, meta, highlights, price, onViewDetails, onCompa
 
       <p className="mb-4 text-sm leading-relaxed text-zinc-500">{meta.description}</p>
 
-      <div className={cn("mb-1 flex items-center gap-1 text-xs", isTopTier ? "text-cyan-600" : "text-zinc-600")}>
+      <div className={cn("mb-1 flex items-center gap-1 text-xs", colors.tierText)}>
         <span>Tier {tierIndex + 1} of {ALL_PLANS.length}</span>
         <ArrowRight size={10} />
       </div>
@@ -80,9 +71,9 @@ export function PlanCard({ plan, meta, highlights, price, onViewDetails, onCompa
             <span className="ml-1 text-sm text-zinc-500">/mo</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-            <span>{formatPrice(getPlanYearlyPrice(plan), "$")}/yr</span>
+            <span>{formatPrice(getYearlyPrice(plan), "$")}/yr</span>
             <span className="text-zinc-700">|</span>
-            <span>{formatPrice(getPlanLifetimePrice(plan), "$")} lifetime</span>
+            <span>{formatPrice(getLifetimePrice(plan), "$")} lifetime</span>
           </div>
         </div>
       )}
@@ -101,9 +92,9 @@ export function PlanCard({ plan, meta, highlights, price, onViewDetails, onCompa
           onClick={onViewDetails}
           className={cn(
             "flex-1 rounded-xl py-2 text-xs font-medium transition-colors",
-            isTopTier
-              ? "bg-cyan-600 text-white hover:bg-cyan-500"
-              : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+            colors.btnBg,
+            colors.btnText,
+            colors.btnHoverBg
           )}
         >
           View Details

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
+import { PREMIUM_PLANS, ADMIN_SUBSCRIPTION_TYPES, AUDIT_ACTIONS, PLAN_PRICES } from "@/lib/constants";
 import { createInvoiceForPremiumAction } from "@/lib/invoices";
 import { approvalGuard } from "@/lib/approval-guard";
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "License not found" }, { status: 404 });
     }
 
-    if (!PREMIUM_PLANS.includes(license.plan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === license.plan)) {
       return Response.json({ error: "License is not on a premium plan" }, { status: 409 });
     }
 
@@ -36,8 +36,8 @@ export async function POST(req: Request) {
 
     const finalType = newSubscriptionType || latestSubscription?.subscriptionType || "MONTHLY";
 
-    if (newSubscriptionType && !SUBSCRIPTION_TYPES.includes(newSubscriptionType as never)) {
-      return Response.json({ error: `Invalid subscription type. Must be one of: ${SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
+    if (newSubscriptionType && !ADMIN_SUBSCRIPTION_TYPES.some(s => s === newSubscriptionType)) {
+      return Response.json({ error: `Invalid subscription type. Must be one of: ${ADMIN_SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
     }
 
     const guard = await approvalGuard(session, {

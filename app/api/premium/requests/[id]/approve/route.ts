@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const finalPlan = plan || existing.requestedPlan;
     const finalDurationDays = durationDays || existing.requestedDurationDays;
 
-    if (!PREMIUM_PLANS.includes(finalPlan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === finalPlan)) {
       return Response.json({ error: `Invalid plan. Must be one of: ${PREMIUM_PLANS.join(", ")}` }, { status: 400 });
     }
 

@@ -15,18 +15,23 @@ interface PremiumAnalyticsProps {
 }
 
 const PLAN_COLORS: Record<string, string> = {
-  PLUS: "#3b82f6",
-  PRO: "#a855f7",
-  BUSINESS: "#f59e0b",
+  FREE: "#6b7280",
+  BASIC: "#3b82f6",
+  STUDENT: "#6366f1",
+  PLUS: "#a855f7",
+  PRO: "#06b6d4",
+  BUSINESS: "#f97316",
   ENTERPRISE: "#ef4444",
-  STUDENT: "#22c55e",
-  SP_PLAN: "#06b6d4",
+  EXTREME: "#ec4899",
+  SP_PLAN: "#eab308",
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  MONTHLY: "#3b82f6",
+  DAILY: "#6b7280",
+  WEEKLY: "#3b82f6",
+  MONTHLY: "#a855f7",
   YEARLY: "#22c55e",
-  LIFETIME: "#a855f7",
+  LIFETIME: "#f59e0b",
   CUSTOM: "#06b6d4",
 };
 

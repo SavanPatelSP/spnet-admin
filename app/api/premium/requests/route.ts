@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 import { logAudit } from "@/lib/audit";
@@ -11,8 +12,8 @@ export async function GET(req: Request) {
     const status = searchParams.get("status");
     const licenseId = searchParams.get("licenseId");
 
-    const where: Record<string, unknown> = {};
-    if (status && PREMIUM_REQUEST_STATUSES.includes(status as never)) where.status = status;
+    const where: Prisma.PremiumRequestWhereInput = {};
+    if (status && PREMIUM_REQUEST_STATUSES.some(s => s === status)) where.status = status;
     if (licenseId) where.licenseId = licenseId;
 
     const requests = await prisma.premiumRequest.findMany({
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "licenseId, requestedPlan, and requestedDurationDays are required" }, { status: 400 });
     }
 
-    if (!PREMIUM_PLANS.includes(requestedPlan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === requestedPlan)) {
       return Response.json({ error: `Invalid plan. Must be one of: ${PREMIUM_PLANS.join(", ")}` }, { status: 400 });
     }
 

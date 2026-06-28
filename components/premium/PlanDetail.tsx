@@ -12,8 +12,9 @@ import {
   getNextPlan,
   getPrevPlan,
   getPlanComparison,
-  getPlanYearlyPrice,
-  getPlanLifetimePrice,
+  getYearlyPrice,
+  getLifetimePrice,
+  colorConfig,
 } from "@/lib/premium";
 import { UpgradePath } from "./UpgradePath";
 import { ChevronDown, ChevronRight, Check, X, ArrowRight } from "lucide-react";
@@ -25,25 +26,14 @@ interface PlanDetailProps {
   price?: number;
 }
 
-const colorConfig: Record<string, { text: string; border: string; bg: string; badge: string }> = {
-  zinc:   { text: "text-zinc-400", border: "border-zinc-500/20", bg: "bg-zinc-500/10", badge: "bg-zinc-500/20 text-zinc-300" },
-  green:  { text: "text-green-400", border: "border-green-500/20", bg: "bg-green-500/10", badge: "bg-green-500/20 text-green-300" },
-  blue:   { text: "text-blue-400", border: "border-blue-500/20", bg: "bg-blue-500/10", badge: "bg-blue-500/20 text-blue-300" },
-  purple: { text: "text-purple-400", border: "border-purple-500/20", bg: "bg-purple-500/10", badge: "bg-purple-500/20 text-purple-300" },
-  amber:  { text: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/10", badge: "bg-amber-500/20 text-amber-300" },
-  red:    { text: "text-red-400", border: "border-red-500/20", bg: "bg-red-500/10", badge: "bg-red-500/20 text-red-300" },
-  cyan:   { text: "text-cyan-400", border: "border-cyan-500/20", bg: "bg-cyan-500/10", badge: "bg-cyan-500/20 text-cyan-300" },
-};
-
 export function PlanDetail({ plan, open, onClose, price }: PlanDetailProps) {
   const meta = PLAN_META[plan];
-  const colors = colorConfig[meta.color] || colorConfig.zinc;
+  const colors = colorConfig[meta.color] || colorConfig.gray;
   const Icon = meta.icon;
   const categories = getPlanCategories(plan);
   const features = PLAN_FEATURES_BY_CATEGORY[plan] || {};
   const nextPlan = getNextPlan(plan);
   const prevPlan = getPrevPlan(plan);
-  const isTopTier = plan === "SP_PLAN";
 
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(categories.length > 0 ? [categories[0]] : [])
@@ -101,10 +91,10 @@ export function PlanDetail({ plan, open, onClose, price }: PlanDetailProps) {
                     {formatPrice(price, "$")}<span className="text-xs font-normal text-zinc-500">/mo</span>
                   </span>
                   <span className="text-xs text-zinc-500">
-                    {formatPrice(getPlanYearlyPrice(plan), "$")}/yr
+                    {formatPrice(getYearlyPrice(plan), "$")}/yr
                   </span>
                   <span className="text-xs text-zinc-500">
-                    {formatPrice(getPlanLifetimePrice(plan), "$")} lifetime
+                    {formatPrice(getLifetimePrice(plan), "$")} lifetime
                   </span>
                 </>
               )}

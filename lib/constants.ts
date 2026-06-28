@@ -5,17 +5,23 @@ export const APP_BUILD = "300";
 
 export const LICENSE_KEY_PREFIX = process.env.LICENSE_KEY_PREFIX || "SPNET";
 
-export const PLANS = ["FREE", "BASIC", "STUDENT", "PLUS", "PRO", "BUSINESS", "ENTERPRISE", "SP_PLAN"] as const;
+export const PLANS = ["FREE", "BASIC", "STUDENT", "PLUS", "PRO", "BUSINESS", "ENTERPRISE", "EXTREME", "SP_PLAN"] as const;
 export type Plan = (typeof PLANS)[number];
 
-export const PLAN_TIERS = ["FREE", "BASIC", "STUDENT", "PLUS", "PRO", "BUSINESS", "ENTERPRISE", "SP_PLAN"] as const;
+export const PLAN_TIERS = ["FREE", "BASIC", "STUDENT", "PLUS", "PRO", "BUSINESS", "ENTERPRISE", "EXTREME", "SP_PLAN"] as const;
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
-export const PREMIUM_PLANS = ["PLUS", "PRO", "BUSINESS", "ENTERPRISE", "SP_PLAN"] as const;
+export const PREMIUM_PLANS = ["PLUS", "PRO", "BUSINESS", "ENTERPRISE", "EXTREME", "SP_PLAN"] as const;
 export type PremiumPlan = (typeof PREMIUM_PLANS)[number];
 
-export const SUBSCRIPTION_TYPES = ["MONTHLY", "YEARLY", "CUSTOM", "LIFETIME"] as const;
-export type SubscriptionType = (typeof SUBSCRIPTION_TYPES)[number];
+export const USER_SUBSCRIPTION_TYPES = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"] as const;
+export type UserSubscriptionType = (typeof USER_SUBSCRIPTION_TYPES)[number];
+
+export const ADMIN_SUBSCRIPTION_TYPES = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY", "LIFETIME", "CUSTOM"] as const;
+export type AdminSubscriptionType = (typeof ADMIN_SUBSCRIPTION_TYPES)[number];
+
+export const SUBSCRIPTION_DURATION_UNITS = ["DAYS", "WEEKS", "MONTHS", "YEARS", "LIFETIME"] as const;
+export type SubscriptionDurationUnit = (typeof SUBSCRIPTION_DURATION_UNITS)[number];
 
 export const PREMIUM_ACTIONS = ["GRANTED", "EXTENDED", "PLAN_CHANGED", "REVOKED", "CANCELLED", "RENEWED", "DOWNGRADED", "UPGRADED", "CONVERTED_TO_LIFETIME", "CONVERTED_TO_CUSTOM"] as const;
 export type PremiumAction = (typeof PREMIUM_ACTIONS)[number];
@@ -34,8 +40,17 @@ export const AUDIT_RETENTION_DAYS = Number(process.env.NEXT_PUBLIC_AUDIT_RETENTI
 export const DEFAULT_LOCALE = process.env.NEXT_PUBLIC_DEFAULT_LOCALE || "en-IN";
 
 export const PLAN_PRICES: Record<string, number> = {
-  FREE: 0, BASIC: 4, STUDENT: 6, PLUS: 9, PRO: 29, BUSINESS: 99, ENTERPRISE: 299, SP_PLAN: 599,
+  FREE: 0, BASIC: 4, STUDENT: 6, PLUS: 15, PRO: 29, BUSINESS: 99, ENTERPRISE: 299, EXTREME: 499, SP_PLAN: 999,
 };
+
+export const PRICE_ENGINE = {
+  LIFETIME_MULTIPLIER: 120,
+  DAYS_IN_MONTH: 30,
+  MONTHS_IN_YEAR: 12,
+  DAYS_IN_WEEK: 7,
+  DAYS_IN_YEAR: 365,
+  CURRENCY: "$",
+} as const;
 
 export type { CoinPackage, GemPackage } from "./economy-pricing";
 export { COIN_PACKAGES, GEM_PACKAGES } from "./economy-pricing";
@@ -663,6 +678,49 @@ const _ALL_PERMISSIONS_RAW = Object.values(PERMISSION_GROUPS).flat();
 export const ALL_PERMISSIONS = _ALL_PERMISSIONS_RAW.filter(
   (p) => p !== "Approve Requests"
 );
+
+export const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
+  "coins.add": "Add Coins",
+  "coins.remove": "Remove Coins",
+  "coins.refund": "Refund Coins",
+  "coins.bulk-add": "Bulk Add Coins",
+  "coins.bulk-remove": "Bulk Remove Coins",
+  "coins.set": "Set Coin Balance",
+  "coins.set-infinite": "Set Infinite Coins",
+  "coins.remove-infinite": "Remove Infinite Coins",
+  "coins.grant": "Grant Coins",
+  "coins.view-balance": "View Coin Balances",
+  "coins.view-history": "View Coin History",
+  "gems.grant": "Grant Gems",
+  "gems.revoke": "Revoke Gems",
+  "gems.bulk-grant": "Bulk Grant Gems",
+  "gems.bulk-revoke": "Bulk Revoke Gems",
+  "gems.set": "Set Gem Balance",
+  "gems.set-infinite": "Set Infinite Gems",
+  "gems.remove-infinite": "Remove Infinite Gems",
+  "gems.view-balance": "View Gem Balances",
+  "gems.view-history": "View Gem History",
+  "gems.manage-rewards": "Manage Rewards",
+  "premium.grant": "Grant Premium",
+  "premium.revoke": "Revoke Premium",
+  "premium.extend": "Extend Premium",
+  "premium.change-plan": "Change Premium Plan",
+  "premium.bulk-grant": "Bulk Grant Premium",
+  "premium.convert-lifetime": "Convert to Lifetime",
+  "premium.downgrade": "Downgrade Premium",
+  "premium.convert-custom": "Convert to Custom",
+  "premium.requests.view": "View Premium Requests",
+  "premium.requests.approve": "Approve Premium Requests",
+  "premium.requests.reject": "Reject Premium Requests",
+  "premium.requests.convert": "Convert Premium Request",
+  "page:dashboard": "Access Dashboard",
+  "page:plan-overview": "Access Plan Overview",
+  "page:system-health": "Access System Health",
+};
+
+export function getPermissionDisplayName(permission: string): string {
+  return PERMISSION_DISPLAY_NAMES[permission] || permission;
+}
 
 export const CACHING = {
   DYNAMIC: "force-dynamic" as const,

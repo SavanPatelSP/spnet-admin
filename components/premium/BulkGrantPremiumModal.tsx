@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES } from "@/lib/constants";
+import { PREMIUM_PLANS, ADMIN_SUBSCRIPTION_TYPES } from "@/lib/constants";
 import { CheckCircle } from "lucide-react";
 
 interface BulkGrantPremiumModalProps {
@@ -112,7 +112,7 @@ export default function BulkGrantPremiumModal({ licenseIds, onClose }: BulkGrant
             <label className="mb-1.5 block text-xs font-medium text-zinc-400">Subscription Type</label>
             <select value={subscriptionType} onChange={(e) => setSubscriptionType(e.target.value)}
               className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500">
-              {SUBSCRIPTION_TYPES.map((t) => (
+              {ADMIN_SUBSCRIPTION_TYPES.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>

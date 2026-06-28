@@ -1,14 +1,19 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
-type WorkflowType =
+export type WorkflowType =
   | "PREMIUM_GRANT" | "PREMIUM_EXTEND" | "PREMIUM_REVOKE" | "PREMIUM_PLAN_CHANGE"
-  | "PREMIUM_LIFETIME_CONVERT" | "PREMIUM_CUSTOM_CONVERT"
+  | "PREMIUM_LIFETIME_CONVERT" | "PREMIUM_CUSTOM_CONVERT" | "PREMIUM_CHANGE_PLAN"
+  | "PREMIUM_DOWNGRADE" | "PREMIUM_CONVERT_LIFETIME" | "PREMIUM_CONVERT_CUSTOM"
   | "COINS_GRANT" | "COINS_REMOVE" | "COINS_SET"
-  | "GEMS_GRANT" | "GEMS_REMOVE" | "GEMS_SET"
+  | "GEMS_GRANT" | "GEMS_REVOKE" | "GEMS_REMOVE" | "GEMS_SET"
   | "LICENSE_CREATE" | "LICENSE_DELETE" | "LICENSE_TRANSFER" | "LICENSE_BULK"
+  | "LICENSE_REGENERATE_KEY"
   | "USER_BAN" | "USER_SUSPEND" | "USER_DELETE" | "USER_VERIFICATION"
   | "ROLE_CREATE" | "ROLE_DELETE" | "ROLE_PERMISSION_CHANGE"
   | "TEAM_CREATE" | "TEAM_EDIT" | "TEAM_DELETE" | "TEAM_ROLE_CHANGE" | "OWNERSHIP_TRANSFER"
+  | "TEAM_CHANGE_ROLE" | "TEAM_UPDATE"
+  | "TRANSFER_OWNERSHIP"
   | "ORG_CREATE" | "ORG_EDIT" | "ORG_DELETE";
 
 interface ApprovalInput {
@@ -136,7 +141,7 @@ export async function getApprovalRequests(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const where: Record<string, unknown> = {};
+  const where: Prisma.ApprovalRequestWhereInput = {};
   if (options.status) where.status = options.status;
   if (options.workflowType) {
     if (Array.isArray(options.workflowType)) {
@@ -150,7 +155,7 @@ export async function getApprovalRequests(options: {
 
   const [requests, total] = await Promise.all([
     prisma.approvalRequest.findMany({
-      where: where as any,
+      where,
       select: {
         id: true, title: true, description: true, workflowType: true,
         status: true, priority: true, reason: true, approvalNote: true,
@@ -162,7 +167,7 @@ export async function getApprovalRequests(options: {
       take: options.limit || 50,
       skip: options.offset || 0,
     }),
-    prisma.approvalRequest.count({ where: where as any }),
+    prisma.approvalRequest.count({ where }),
   ]);
   return { requests, total };
 }

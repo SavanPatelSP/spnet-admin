@@ -8,9 +8,10 @@ import {
   PLAN_FEATURES_BY_CATEGORY,
   getPlanCategories,
   getPlanIndex,
-  getPlanYearlyPrice,
-  getPlanLifetimePrice,
+  getYearlyPrice,
+  getLifetimePrice,
   getPlanComparison,
+  colorConfig,
 } from "@/lib/premium";
 import { Check, X, ArrowRight, Search, TrendingUp } from "lucide-react";
 
@@ -22,20 +23,10 @@ interface PlanComparisonProps {
   onSelectSecond: (plan: string) => void;
 }
 
-const colorConfig: Record<string, { text: string; border: string; bg: string; badge: string }> = {
-  zinc:   { text: "text-zinc-400", border: "border-zinc-500/20", bg: "bg-zinc-500/10", badge: "bg-zinc-500/20 text-zinc-300" },
-  green:  { text: "text-green-400", border: "border-green-500/20", bg: "bg-green-500/10", badge: "bg-green-500/20 text-green-300" },
-  blue:   { text: "text-blue-400", border: "border-blue-500/20", bg: "bg-blue-500/10", badge: "bg-blue-500/20 text-blue-300" },
-  purple: { text: "text-purple-400", border: "border-purple-500/20", bg: "bg-purple-500/10", badge: "bg-purple-500/20 text-purple-300" },
-  amber:  { text: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/10", badge: "bg-amber-500/20 text-amber-300" },
-  red:    { text: "text-red-400", border: "border-red-500/20", bg: "bg-red-500/10", badge: "bg-red-500/20 text-red-300" },
-  cyan:   { text: "text-cyan-400", border: "border-cyan-500/20", bg: "bg-cyan-500/10", badge: "bg-cyan-500/20 text-cyan-300" },
-};
-
 function PlanSelect({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const meta = PLAN_META[value];
   const Icon = meta.icon;
-  const colors = colorConfig[meta.color] || colorConfig.zinc;
+  const colors = colorConfig[meta.color] || colorConfig.gray;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -66,14 +57,16 @@ function PlanSelect({ value, onChange, label }: { value: string; onChange: (v: s
 
 function PlanHeader({ plan, price }: { plan: string; price?: number }) {
   const meta = PLAN_META[plan];
-  const colors = colorConfig[meta.color] || colorConfig.zinc;
+  const colors = colorConfig[meta.color] || colorConfig.gray;
   const Icon = meta.icon;
-  const isTopTier = plan === "SP_PLAN";
 
   return (
     <div className={cn(
       "flex flex-col items-center gap-3 rounded-2xl border bg-zinc-900 p-5 text-center",
-      isTopTier ? "border-cyan-500/40 bg-gradient-to-b from-cyan-950/20 to-zinc-900" : colors.border
+      colors.compareBorder,
+      "bg-gradient-to-b",
+      colors.compareBg,
+      "to-zinc-900"
     )}>
       <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl", colors.bg)}>
         <Icon size={24} className={colors.text} />
@@ -93,9 +86,9 @@ function PlanHeader({ plan, price }: { plan: string; price?: number }) {
             <span className="ml-1 text-sm text-zinc-500">/mo</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-            <span>{formatPrice(getPlanYearlyPrice(plan), "$")}/yr</span>
+            <span>{formatPrice(getYearlyPrice(plan), "$")}/yr</span>
             <span className="text-zinc-700">|</span>
-            <span>{formatPrice(getPlanLifetimePrice(plan), "$")} lifetime</span>
+            <span>{formatPrice(getLifetimePrice(plan), "$")} lifetime</span>
           </div>
         </div>
       )}
@@ -157,8 +150,8 @@ export function PlanComparison({ firstPlan, secondPlan, pricing, onSelectFirst, 
 
   const metricRows = [
     { label: "Monthly Price", first: formatPrice(firstPrice, "$"), second: formatPrice(secondPrice, "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
-    { label: "Yearly Price", first: formatPrice(getPlanYearlyPrice(firstPlan), "$"), second: formatPrice(getPlanYearlyPrice(secondPlan), "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
-    { label: "Lifetime Price", first: formatPrice(getPlanLifetimePrice(firstPlan), "$"), second: formatPrice(getPlanLifetimePrice(secondPlan), "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
+    { label: "Yearly Price", first: formatPrice(getYearlyPrice(firstPlan), "$"), second: formatPrice(getYearlyPrice(secondPlan), "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
+    { label: "Lifetime Price", first: formatPrice(getLifetimePrice(firstPlan), "$"), second: formatPrice(getLifetimePrice(secondPlan), "$"), better: firstPrice < secondPrice ? 1 : firstPrice > secondPrice ? -1 : 0 },
     { label: "Tier Position", first: `Tier ${idx1 + 1}`, second: `Tier ${idx2 + 1}`, better: idx1 > idx2 ? 1 : idx1 < idx2 ? -1 : 0 },
     { label: "Audience", first: PLAN_META[firstPlan].description, second: PLAN_META[secondPlan].description, better: 0 },
   ];

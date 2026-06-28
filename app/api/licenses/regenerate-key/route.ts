@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const license = await prisma.license.findUnique({ where: { id: body.id } });
 
     const guard = await approvalGuard(session, {
-      workflowType: "REGENERATE_KEY",
+      workflowType: "LICENSE_REGENERATE_KEY",
       title: `Regenerate License Key for ${license?.organization || "unknown"}`,
       target: license?.organization || "unknown",
       reason: body.reason || "Regenerate license key",

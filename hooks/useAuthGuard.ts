@@ -22,13 +22,17 @@ export function useAuthGuard(requiredPermission?: string): AuthGuardResult {
       router.replace("/login");
       return;
     }
-    if (requiredPermission && session?.user?.role) {
-      // Basic role-based permission check; extend as needed
-      if (!hasPermissionForRole(session.user.role, requiredPermission)) {
+    if (requiredPermission && session?.user?.permissions) {
+      if (!session.user.permissions.includes(requiredPermission)) {
         router.replace("/403");
         return;
       }
     }
+    if (requiredPermission && !session?.user?.permissions) {
+      router.replace("/403");
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(false);
   }, [status, session, requiredPermission, router]);
 
@@ -37,17 +41,6 @@ export function useAuthGuard(requiredPermission?: string): AuthGuardResult {
     isAuthenticated: status === "authenticated",
     isLoading,
     hasPermission: (perm: string) =>
-      session?.user?.role ? hasPermissionForRole(session.user.role, perm) : false,
+      session?.user?.permissions?.includes(perm) ?? false,
   };
-}
-
-function hasPermissionForRole(role: string, permission: string): boolean {
-  // Admins and SuperAdmins have all permissions
-  if (role === "SuperAdmin" || role === "Admin") return true;
-  // Basic permissions for lower roles
-  const basicPermissions: Record<string, string[]> = {
-    Owner: ["View Premium", "Manage Invoices"],
-  };
-  const perms = basicPermissions[role] || [];
-  return perms.includes(permission);
 }

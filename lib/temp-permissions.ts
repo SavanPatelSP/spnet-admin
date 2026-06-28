@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 const VALID_DURATIONS = [15, 30, 60, 240, 1440]; // minutes
 
@@ -110,12 +111,12 @@ export async function getActiveTemporaryPermissions(options: {
   roleId?: string;
   limit?: number;
 } = {}) {
-  const where: Record<string, unknown> = { active: true, expiresAt: { gt: new Date() } };
+  const where: Prisma.TemporaryPermissionWhereInput = { active: true, expiresAt: { gt: new Date() } };
   if (options.teamMemberId) where.teamMemberId = options.teamMemberId;
   if (options.roleId) where.roleId = options.roleId;
 
   return prisma.temporaryPermission.findMany({
-    where: where as any,
+    where,
     orderBy: { expiresAt: "asc" },
     take: options.limit || 50,
     include: {

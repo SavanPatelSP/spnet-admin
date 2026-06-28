@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { requireApiPermission } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
-import { PREMIUM_PLANS, SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
+import { PREMIUM_PLANS, ADMIN_SUBSCRIPTION_TYPES, AUDIT_ACTIONS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
@@ -15,13 +15,13 @@ export async function POST(req: Request) {
     if (!plan) {
       return Response.json({ error: "plan is required" }, { status: 400 });
     }
-    if (!PREMIUM_PLANS.includes(plan as never)) {
+    if (!PREMIUM_PLANS.some(p => p === plan)) {
       return Response.json({ error: `Invalid premium plan. Must be one of: ${PREMIUM_PLANS.join(", ")}` }, { status: 400 });
     }
 
     const subType = subscriptionType || "MONTHLY";
-    if (!SUBSCRIPTION_TYPES.includes(subType as never)) {
-      return Response.json({ error: `Invalid subscription type. Must be one of: ${SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
+    if (!ADMIN_SUBSCRIPTION_TYPES.some(s => s === subType)) {
+      return Response.json({ error: `Invalid subscription type. Must be one of: ${ADMIN_SUBSCRIPTION_TYPES.join(", ")}` }, { status: 400 });
     }
 
     const licenses = await prisma.license.findMany({
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const results = await prisma.$transaction(async (tx) => {
       const items = [];
       for (const license of licenses) {
-        if (PREMIUM_PLANS.includes(license.plan as never)) {
+        if (PREMIUM_PLANS.some(p => p === license.plan)) {
           items.push({ licenseId: license.id, organization: license.organization, skipped: true, reason: "Already on premium plan" });
           continue;
         }

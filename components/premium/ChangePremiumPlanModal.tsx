@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { API_ROUTES, PLAN_TIERS, PLAN_PRICES, SUBSCRIPTION_TYPES } from "@/lib/constants";
+import { API_ROUTES, PLAN_TIERS, PLAN_PRICES, ADMIN_SUBSCRIPTION_TYPES } from "@/lib/constants";
 import { getPlanFeatureList } from "@/lib/premium";
 import { daysUntil, formatPrice } from "@/lib/shared";
 import { ArrowUp, ArrowDown, Check, Minus, ArrowRight, RefreshCw, Calendar } from "lucide-react";
@@ -68,8 +68,9 @@ export default function ChangePremiumPlanModal({
   }, [customStartDate, customDurationDays, isCustomSubscription]);
 
   const remainingDays = daysUntil(new Date(currentExpiry));
-  const currentIndex = PLAN_TIERS.indexOf(currentPlan as never);
-  const targetIndex = PLAN_TIERS.indexOf(newPlan as never);
+  const planTiers: readonly string[] = PLAN_TIERS;
+  const currentIndex = planTiers.indexOf(currentPlan);
+  const targetIndex = planTiers.indexOf(newPlan);
 
   const direction = useMemo(() => {
     if (!newPlan) return null;
@@ -211,7 +212,7 @@ export default function ChangePremiumPlanModal({
                 >
                   <option value="">Select a target plan...</option>
                   {PLAN_TIERS.map((p) => {
-                    const pIndex = PLAN_TIERS.indexOf(p as never);
+                    const pIndex = planTiers.indexOf(p);
                     const isCurrent = p === currentPlan;
                     const isUpgrade = pIndex > currentIndex;
                     const isDowngrade = pIndex < currentIndex;
@@ -233,7 +234,7 @@ export default function ChangePremiumPlanModal({
                   onChange={(e) => setNewSubscriptionType(e.target.value)}
                   className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500"
                 >
-                  {SUBSCRIPTION_TYPES.map((t) => (
+                  {ADMIN_SUBSCRIPTION_TYPES.map((t) => (
                     <option key={t} value={t} disabled={t === currentSubscriptionType}>
                       {t}{t === currentSubscriptionType ? " (current)" : ""}
                     </option>

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { requireApiAuth } from "@/lib/auth-helpers";
 import { handleApiError } from "@/lib/security/errors";
 
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
     const archived = searchParams.get("archived");
     const unreadOnly = searchParams.get("unreadOnly") === "true";
 
-    const where: Record<string, unknown> = { teamMemberId: memberId };
+    const where: Prisma.NotificationWhereInput = { teamMemberId: memberId };
     if (category) where.category = category;
     if (archived === "true") where.archived = true;
     else if (archived !== "all") where.archived = false;
@@ -22,12 +23,12 @@ export async function GET(req: NextRequest) {
 
     const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
-        where: where as any,
+        where,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      prisma.notification.count({ where: where as any }),
+      prisma.notification.count({ where }),
       prisma.notification.count({
         where: { teamMemberId: memberId, read: false, archived: false },
       }),

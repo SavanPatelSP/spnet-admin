@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { generateKey, parseExpiryDate } from "@/lib/shared";
-import { DEFAULT_PLAN, DEFAULT_MAX_DEVICES, AUDIT_ACTIONS, PREMIUM_PLANS, SUBSCRIPTION_TYPES, PLAN_PRICES, DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
+import { DEFAULT_PLAN, DEFAULT_MAX_DEVICES, AUDIT_ACTIONS, PREMIUM_PLANS, ADMIN_SUBSCRIPTION_TYPES, PLAN_PRICES, DEFAULT_EXPIRY_YEAR } from "@/lib/constants";
 import { createInvoiceForLicense, createInvoiceForPremium, createInvoice } from "@/lib/invoices";
 import { getCoinPackage } from "@/lib/economy-pricing";
 import bcrypt from "bcryptjs";
@@ -88,13 +88,13 @@ async function executePremiumGrant(payload: Record<string, unknown>, ctx: Execut
   const durationDays = payload.durationDays as number || 365;
   const subType = (payload.subscriptionType as string) || "MONTHLY";
   const notes = payload.notes as string;
+  if (!PREMIUM_PLANS.some(p => p === plan)) return { success: false, message: `Invalid premium plan` };
 
-  if (!PREMIUM_PLANS.includes(plan as never)) return { success: false, message: `Invalid premium plan` };
-  if (!SUBSCRIPTION_TYPES.includes(subType as never)) return { success: false, message: `Invalid subscription type` };
+  if (!ADMIN_SUBSCRIPTION_TYPES.some(s => s === subType)) return { success: false, message: `Invalid subscription type` };
 
   const license = await prisma.license.findUnique({ where: { id: licenseId } });
   if (!license) return { success: false, message: "License not found" };
-  if (PREMIUM_PLANS.includes(license.plan as never)) return { success: false, message: "License is already on a premium plan" };
+  if (PREMIUM_PLANS.some(p => p === license.plan)) return { success: false, message: "License is already on a premium plan" };
 
   const isLifetime = subType === "LIFETIME";
   const startDate = new Date();
@@ -137,7 +137,7 @@ async function executePremiumPlanChange(payload: Record<string, unknown>, ctx: E
 
   const license = await prisma.license.findUnique({ where: { id: licenseId } });
   if (!license) return { success: false, message: "License not found" };
-  if (!PREMIUM_PLANS.includes(newPlan as never)) return { success: false, message: `Invalid premium plan` };
+  if (!PREMIUM_PLANS.some(p => p === newPlan)) return { success: false, message: `Invalid premium plan` };
 
   await prisma.license.update({ where: { id: licenseId }, data: { plan: newPlan } });
 

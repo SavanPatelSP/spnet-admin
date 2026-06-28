@@ -1,4 +1,4 @@
-import { createApprovalRequest } from "@/lib/approval";
+import { createApprovalRequest, type WorkflowType } from "@/lib/approval";
 import type { AuthSession } from "@/lib/auth-helpers";
 
 const OWNER_OR_SUPERADMIN = ["OWNER", "SUPER_ADMIN"];
@@ -8,7 +8,7 @@ export function isOwnerOrSuperAdmin(session: AuthSession): boolean {
 }
 
 interface GuardOptions {
-  workflowType: string;
+  workflowType: WorkflowType;
   title: string;
   requesterId: string;
   requesterName?: string;
@@ -25,7 +25,7 @@ export async function approvalGuard(session: AuthSession, opts: GuardOptions) {
   }
 
   const request = await createApprovalRequest({
-    workflowType: opts.workflowType as any,
+    workflowType: opts.workflowType,
     title: opts.title,
     reason: opts.reason || "No reason provided",
     metadata: {

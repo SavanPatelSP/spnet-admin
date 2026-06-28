@@ -11,7 +11,7 @@ import {
   ArrowRight, Calendar, Clock, TrendingUp, Shield, Star,
   BarChart3, Gem, Layers, Award, ArrowUpDown, ChevronRight,
 } from "lucide-react";
-import { ALL_PLANS, PLAN_META, PLAN_HIGHLIGHTS, PLAN_FEATURES_BY_CATEGORY, getPlanFeatureList, getPlanIndex, getPrevPlan, getPlanComparison } from "@/lib/premium";
+import { ALL_PLANS, PLAN_META, PLAN_HIGHLIGHTS, PLAN_FEATURES_BY_CATEGORY, getPlanFeatureList, getPlanIndex, getPrevPlan, getPlanComparison, PLAN_CSS_COLORS, PLAN_BORDER_COLORS, PLAN_SELECT_COLORS, colorConfig } from "@/lib/premium";
 import { PLAN_PRICES } from "@/lib/constants";
 import { formatPrice } from "@/lib/shared";
 
@@ -39,10 +39,16 @@ const DURATION_UNITS = ["days", "weeks", "months", "years"] as const;
 
 function Badge({ label, color }: { label: string; color: string }) {
   const cls: Record<string, string> = {
+    gray: "bg-gray-500/15 text-gray-400 border-gray-500/25",
     blue: "bg-blue-500/15 text-blue-400 border-blue-500/25",
+    indigo: "bg-indigo-500/15 text-indigo-400 border-indigo-500/25",
     purple: "bg-purple-500/15 text-purple-400 border-purple-500/25",
-    amber: "bg-amber-500/15 text-amber-400 border-amber-500/25",
+    cyan: "bg-cyan-500/15 text-cyan-400 border-cyan-500/25",
+    orange: "bg-orange-500/15 text-orange-400 border-orange-500/25",
     red: "bg-red-500/15 text-red-400 border-red-500/25",
+    pink: "bg-pink-500/15 text-pink-400 border-pink-500/25",
+    gold: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",
+    amber: "bg-amber-500/15 text-amber-400 border-amber-500/25",
     green: "bg-green-500/15 text-green-400 border-green-500/25",
     zinc: "bg-zinc-500/15 text-zinc-400 border-zinc-500/25",
   };
@@ -96,7 +102,8 @@ export default function GrantPremiumModal({
     if (isCustom) {
       end.setDate(end.getDate() + customDurationDays);
     } else {
-      end.setDate(end.getDate() + (subscriptionType === "MONTHLY" ? 30 : 365));
+      const daysMap: Record<string, number> = { DAILY: 1, WEEKLY: 7, MONTHLY: 30, YEARLY: 365 };
+      end.setDate(end.getDate() + (daysMap[subscriptionType] || 30));
     }
     return end;
   }, [startDate, customDurationDays, isLifetime, isCustom, subscriptionType]);
@@ -107,15 +114,6 @@ export default function GrantPremiumModal({
   }, [computedEndDate, startDate]);
 
   const planPrice = PLAN_PRICES[plan] || 0;
-
-  const planBorderMap: Record<string, string> = {
-    PLUS: "border-blue-500/30 bg-blue-500/5 ring-blue-500/10",
-    PRO: "border-purple-500/30 bg-purple-500/5 ring-purple-500/10",
-    BUSINESS: "border-amber-500/30 bg-amber-500/5 ring-amber-500/10",
-    ENTERPRISE: "border-red-500/30 bg-red-500/5 ring-red-500/10",
-    STUDENT: "border-green-500/30 bg-green-500/5 ring-green-500/10",
-    SP_PLAN: "border-cyan-500/30 bg-cyan-500/5 ring-cyan-500/10",
-  };
 
   const computedBilling = useMemo(() => {
     if (planPrice === 0) return { total: 0, perMonth: 0, label: "Free", short: "$0" };
@@ -131,6 +129,14 @@ export default function GrantPremiumModal({
     if (subscriptionType === "YEARLY") {
       const total = perMonth * 12;
       return { total, perMonth, label: `${formatPrice(total, "$")}/yr`, short: `${formatPrice(total, "$")}/yr` };
+    }
+    if (subscriptionType === "WEEKLY") {
+      const total = (perMonth / 30) * 7;
+      return { total, perMonth, label: `${formatPrice(total, "$")}/wk`, short: `${formatPrice(total, "$")}/wk` };
+    }
+    if (subscriptionType === "DAILY") {
+      const total = perMonth / 30;
+      return { total, perMonth, label: `${formatPrice(total, "$")}/day`, short: `${formatPrice(total, "$")}/day` };
     }
     return { total: perMonth, perMonth, label: `${formatPrice(perMonth, "$")}/mo`, short: `${formatPrice(perMonth, "$")}/mo` };
   }, [planPrice, subscriptionType, isCustom, isLifetime, customDuration, customDurationUnit, customDurationDays]);
@@ -166,6 +172,7 @@ export default function GrantPremiumModal({
   );
 
   const planMeta = PLAN_META[plan];
+  const pc = colorConfig[planMeta?.color || 'gray'];
 
   const prev = getPrevPlan(plan);
   const prevFeatures = prev ? getPlanFeatureList(prev) : [];
@@ -375,20 +382,12 @@ export default function GrantPremiumModal({
                 const Icon = meta.icon;
                 const highlights = PLAN_HIGHLIGHTS[p] || [];
 
-                const selectedStyles: Record<string, string> = {
-                  zinc: "border-zinc-500/50 bg-zinc-500/10 shadow-zinc-500/10",
-                  green: "border-green-500/50 bg-green-500/10 shadow-green-500/10",
-                  blue: "border-blue-500/50 bg-blue-500/10 shadow-blue-500/10",
-                  purple: "border-purple-500/50 bg-purple-500/10 shadow-purple-500/10",
-                  amber: "border-amber-500/50 bg-amber-500/10 shadow-amber-500/10",
-                  red: "border-red-500/50 bg-red-500/10 shadow-red-500/10",
-                  cyan: "border-cyan-500/50 bg-cyan-500/10 shadow-cyan-500/10",
-                };
+                const pc2 = colorConfig[meta.color] || colorConfig.gray;
                 return (
                   <button key={p} type="button" onClick={() => setPlan(p)}
                     className={`relative rounded-xl border-2 p-5 text-left transition-all duration-200 ${
                       isSelected
-                        ? `${selectedStyles[meta.color] || selectedStyles.zinc} shadow-lg scale-[1.02]`
+                        ? `${PLAN_SELECT_COLORS[meta.color] || PLAN_SELECT_COLORS.gray} shadow-lg scale-[1.02]`
                         : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-500 hover:bg-zinc-800"
                     }`}
                   >
@@ -401,24 +400,10 @@ export default function GrantPremiumModal({
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <Icon size={16} className={
-                            p === "PLUS" ? "text-blue-400" : p === "PRO" ? "text-purple-400" :
-                            p === "BUSINESS" ? "text-amber-400" : p === "ENTERPRISE" ? "text-red-400" :
-                            p === "STUDENT" ? "text-green-400" :
-                            p === "SP_PLAN" ? "text-cyan-400" :
-                            "text-zinc-500"
-                          } />
+                          <Icon size={16} className={pc2.text} />
                           <span className="font-semibold text-zinc-100">{p}</span>
                           {meta.badge && (
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${
-                              p === "PLUS" ? "bg-blue-500/15 text-blue-300 border-blue-500/25" :
-                              p === "PRO" ? "bg-purple-500/15 text-purple-300 border-purple-500/25" :
-                              p === "BUSINESS" ? "bg-amber-500/15 text-amber-300 border-amber-500/25" :
-                              p === "STUDENT" ? "bg-green-500/15 text-green-300 border-green-500/25" :
-                              p === "ENTERPRISE" ? "bg-red-500/15 text-red-300 border-red-500/25" :
-                              p === "SP_PLAN" ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/25" :
-                              "bg-zinc-500/15 text-zinc-300 border-zinc-500/25"
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${pc2.badge}`}>
                               {meta.badge}
                             </span>
                           )}
@@ -453,12 +438,7 @@ export default function GrantPremiumModal({
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {Object.entries(catFeatures).map(([cat, feats]) => (
                         <div key={cat} className="flex items-center gap-1.5 rounded-md bg-zinc-800/30 px-2 py-1 text-[10px] text-zinc-400">
-                          <div className={`h-2 w-2 rounded-full shrink-0 ${
-                            p === "PLUS" ? "bg-blue-400" : p === "PRO" ? "bg-purple-400" :
-                            p === "BUSINESS" ? "bg-amber-400" : p === "ENTERPRISE" ? "bg-red-400" :
-                            p === "STUDENT" ? "bg-green-400" :
-                            p === "SP_PLAN" ? "bg-cyan-400" : "bg-zinc-500"
-                          }`} />
+                          <div className={`h-2 w-2 rounded-full shrink-0 bg-current ${pc2.text}`} />
                           <span className="truncate flex-1">{cat}</span>
                           <span className="rounded bg-zinc-800 px-1 text-[9px] font-medium text-zinc-500">{feats.length}</span>
                         </div>
@@ -477,47 +457,25 @@ export default function GrantPremiumModal({
             </div>
             {plan && (
               <div className={`rounded-xl border p-5 mt-4 ring-1 ring-inset transition-all ${
-                planBorderMap[plan] || "border-zinc-700/80 bg-zinc-800/60 ring-zinc-600/30"
+                PLAN_BORDER_COLORS[planMeta?.color || 'gray'] || "border-zinc-700/80 bg-zinc-800/60 ring-zinc-600/30"
               }`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold uppercase tracking-wider ${
-                      plan === "PLUS" ? "text-blue-300" : plan === "PRO" ? "text-purple-300" :
-                      plan === "BUSINESS" ? "text-amber-300" : plan === "ENTERPRISE" ? "text-red-300" :
-                      plan === "STUDENT" ? "text-green-300" :
-                      plan === "SP_PLAN" ? "text-cyan-300" : "text-zinc-200"
-                    }`}>
+                    <span className={`text-sm font-bold uppercase tracking-wider ${pc.text}`}>
                       Full Feature Breakdown &mdash; {plan}
                     </span>
                     <Badge label={`${Object.keys(selectedFeatures).length} categories`} color={planMeta?.color || "zinc"} />
                   </div>
-                  <div className={`hidden sm:flex items-center gap-1 text-[10px] ${
-                    plan === "PLUS" ? "text-blue-400" : plan === "PRO" ? "text-purple-400" :
-                    plan === "BUSINESS" ? "text-amber-400" : plan === "ENTERPRISE" ? "text-red-400" :
-                    plan === "STUDENT" ? "text-green-400" :
-                    plan === "SP_PLAN" ? "text-cyan-400" : "text-zinc-400"
-                  }`}>
+                  <div className={`hidden sm:flex items-center gap-1 text-[10px] ${pc.text}`}>
                     <CheckCircle size={8} />
                     {selectedFeatureList.length} total features
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {Object.entries(selectedFeatures).map(([cat, feats]) => (
-                    <div key={cat} className={`rounded-lg border p-3 ${
-                      plan === "PLUS" ? "border-blue-500/15 bg-blue-500/[0.04]" :
-                      plan === "PRO" ? "border-purple-500/15 bg-purple-500/[0.04]" :
-                      plan === "BUSINESS" ? "border-amber-500/15 bg-amber-500/[0.04]" :
-                      plan === "ENTERPRISE" ? "border-red-500/15 bg-red-500/[0.04]" :
-                      plan === "STUDENT" ? "border-green-500/15 bg-green-500/[0.04]" :
-                      plan === "SP_PLAN" ? "border-cyan-500/15 bg-cyan-500/[0.04]" :
-                      "border-zinc-700/50 bg-zinc-800/30"
-                    }`}>
+                    <div key={cat} className={`rounded-lg border p-3 ${pc.border} ${pc.bg}`}>
                       <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-zinc-700/30">
-                        <div className={`h-2.5 w-2.5 rounded-full ${
-                          plan === "PLUS" ? "bg-blue-400" : plan === "PRO" ? "bg-purple-400" :
-                          plan === "BUSINESS" ? "bg-amber-400" : plan === "ENTERPRISE" ? "bg-red-400" :
-                          plan === "STUDENT" ? "bg-green-400" : plan === "SP_PLAN" ? "bg-cyan-400" : plan === "BASIC" ? "bg-zinc-400" : "bg-zinc-500"
-                        }`} />
+                        <div className={`h-2.5 w-2.5 rounded-full bg-current ${pc.text}`} />
                         <span className="text-sm font-semibold text-zinc-200">{cat}</span>
                         <span className="ml-auto rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-medium text-zinc-500">{feats.length}</span>
                       </div>
@@ -585,15 +543,7 @@ export default function GrantPremiumModal({
                 <div className="mt-3 flex items-center gap-1.5 text-[10px]">
                   <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">FREE</span>
                   <ChevronRight size={10} className="text-zinc-600" />
-                  <span className={`rounded px-1.5 py-0.5 font-medium ${
-                    plan === "PLUS" ? "bg-blue-500/10 text-blue-400" :
-                    plan === "PRO" ? "bg-purple-500/10 text-purple-400" :
-                    plan === "BUSINESS" ? "bg-amber-500/10 text-amber-400" :
-                    plan === "ENTERPRISE" ? "bg-red-500/10 text-red-400" :
-                    plan === "STUDENT" ? "bg-green-500/10 text-green-400" :
-                    plan === "SP_PLAN" ? "bg-cyan-500/10 text-cyan-400" :
-                    "bg-zinc-700 text-zinc-300"
-                  }`}>{plan}</span>
+                  <span className={`rounded px-1.5 py-0.5 font-medium ${pc.badge}`}>{plan}</span>
                   <span className="text-zinc-600">&middot;</span>
                   <span className="text-green-400">+{gainedFeatures.length} features gained</span>
                 </div>
@@ -627,10 +577,12 @@ export default function GrantPremiumModal({
                   </label>
                   <select value={subscriptionType} onChange={(e) => setSubscriptionType(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-800 p-2.5 text-sm text-zinc-100 outline-none focus:border-blue-500">
+                    <option value="DAILY">DAILY</option>
+                    <option value="WEEKLY">WEEKLY</option>
                     <option value="MONTHLY">MONTHLY</option>
                     <option value="YEARLY">YEARLY</option>
-                    <option value="CUSTOM">CUSTOM</option>
                     <option value="LIFETIME">LIFETIME</option>
+                    <option value="CUSTOM">CUSTOM</option>
                   </select>
                 </div>
                 <div>
@@ -640,7 +592,10 @@ export default function GrantPremiumModal({
                   </label>
                   <div className="flex h-[42px] items-center rounded-xl border border-zinc-700 bg-zinc-800/50 px-3 text-sm text-zinc-300">
                     <Clock size={14} className="mr-2 text-zinc-500" />
-                    {isLifetime ? "Permanent" : isCustom ? `${customDuration} ${customDurationUnit}` : subscriptionType === "MONTHLY" ? "30 days" : "365 days"}
+                    {isLifetime ? "Permanent" : isCustom ? `${customDuration} ${customDurationUnit}` : (() => {
+                      const daysMap: Record<string, string> = { DAILY: "1 day", WEEKLY: "7 days", MONTHLY: "30 days", YEARLY: "365 days" };
+                      return daysMap[subscriptionType] || "30 days";
+                    })()}
                   </div>
                 </div>
               </div>
@@ -754,7 +709,10 @@ export default function GrantPremiumModal({
                       <div className="flex flex-wrap items-center gap-1.5 text-xs">
                         <span className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-zinc-200 font-medium">{fmt(new Date(startDate))}</span>
                         <ArrowRight size={10} className="shrink-0 text-zinc-500" />
-                        <span className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-zinc-300">{subscriptionType === "MONTHLY" ? "30 days" : "365 days"}</span>
+                        <span className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-zinc-300">{(() => {
+          const daysMap: Record<string, string> = { DAILY: "1 day", WEEKLY: "7 days", MONTHLY: "30 days", YEARLY: "365 days" };
+          return daysMap[subscriptionType] || "30 days";
+        })()}</span>
                         <ArrowRight size={10} className="shrink-0 text-zinc-500" />
                         <span className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-blue-400 font-medium">{fmt(computedEndDate)}</span>
                       </div>
@@ -834,12 +792,7 @@ export default function GrantPremiumModal({
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-green-400">After</span>
                 </div>
                 <div className="flex items-center gap-1.5 mb-3">
-                  <Crown size={16} className={
-                    plan === "PLUS" ? "text-blue-400" : plan === "PRO" ? "text-purple-400" :
-                    plan === "BUSINESS" ? "text-amber-400" : plan === "ENTERPRISE" ? "text-red-400" :
-                    plan === "STUDENT" ? "text-green-400" :
-                    plan === "SP_PLAN" ? "text-cyan-400" : "text-red-400"
-                  } />
+                  <Crown size={16} className={pc.text} />
                   <span className="text-sm font-bold text-zinc-100">{plan}</span>
                   <span className="rounded-full border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[9px] text-zinc-400">{subscriptionType}</span>
                   {planMeta?.badge && <Badge label={planMeta.badge} color={planMeta.color} />}
@@ -859,13 +812,7 @@ export default function GrantPremiumModal({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-600">Support</span>
-                    <span className={
-                      plan === "SP_PLAN" ? "text-cyan-400" :
-                      plan === "ENTERPRISE" ? "text-purple-400" :
-                      plan === "BUSINESS" ? "text-amber-400" :
-                      plan === "PRO" ? "text-purple-300" :
-                      "text-green-300"
-                    }>
+                    <span className={pc.text}>
                       {plan === "SP_PLAN" ? "Concierge + Direct Engineering" :
                        plan === "ENTERPRISE" ? "24/7 Dedicated + AM" :
                        plan === "BUSINESS" ? "Dedicated + SLA" :
@@ -920,7 +867,7 @@ export default function GrantPremiumModal({
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
                     <CheckCircle size={7} className="shrink-0 text-blue-500" />
-                    <span className={plan === "ENTERPRISE" ? "text-red-400" : plan === "SP_PLAN" ? "text-cyan-400" : plan === "BUSINESS" ? "text-amber-400" : plan === "PRO" ? "text-purple-400" : "text-blue-400"}>
+                    <span className={pc.text}>
                       {Object.keys(selectedFeatures).length}
                     </span> feature categories
                   </div>
@@ -987,15 +934,7 @@ export default function GrantPremiumModal({
                   <ChevronRight size={8} className="text-zinc-600" />
                   <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">{prev}</span>
                   <ChevronRight size={8} className="text-zinc-600" />
-                  <span className={`rounded px-1.5 py-0.5 font-medium ${
-                    plan === "PLUS" ? "bg-blue-500/10 text-blue-400" :
-                    plan === "PRO" ? "bg-purple-500/10 text-purple-400" :
-                    plan === "BUSINESS" ? "bg-amber-500/10 text-amber-400" :
-                    plan === "ENTERPRISE" ? "bg-red-500/10 text-red-400" :
-                    plan === "STUDENT" ? "bg-green-500/10 text-green-400" :
-                    plan === "SP_PLAN" ? "bg-cyan-500/10 text-cyan-400" :
-                    "bg-zinc-700 text-zinc-300"
-                  }`}>{plan}</span>
+                  <span className={`rounded px-1.5 py-0.5 font-medium ${pc.badge}`}>{plan}</span>
                 </div>
                 <div className="mt-1.5 text-[10px] text-zinc-500">
                   Everything in {prev} is included + {newInThisTier.length} new features at this tier
@@ -1066,12 +1005,7 @@ export default function GrantPremiumModal({
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-500">Selected Plan</span>
                       <span className="flex items-center gap-1 font-medium text-zinc-100">
-                        <Crown size={12} className={
-                          plan === "PLUS" ? "text-blue-400" : plan === "PRO" ? "text-purple-400" :
-                          plan === "BUSINESS" ? "text-amber-400" : plan === "ENTERPRISE" ? "text-red-400" :
-                          plan === "STUDENT" ? "text-green-400" :
-                          plan === "SP_PLAN" ? "text-cyan-400" : "text-zinc-400"
-                        } />
+                        <Crown size={12} className={pc.text} />
                         {plan}
                         {planMeta?.badge && <Badge label={planMeta.badge} color={planMeta.color} />}
                       </span>
@@ -1081,7 +1015,10 @@ export default function GrantPremiumModal({
                       <span className="rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
                         {isLifetime ? "Lifetime" : isCustom
                           ? `${customDuration} ${customDurationUnit}`
-                          : subscriptionType === "MONTHLY" ? "30 days" : "365 days"}
+                          : (() => {
+                            const daysMap: Record<string, string> = { DAILY: "1 day", WEEKLY: "7 days", MONTHLY: "30 days", YEARLY: "365 days" };
+                            return daysMap[subscriptionType] || "30 days";
+                          })()}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
