@@ -20,15 +20,15 @@ export default function EditLicenseButton({ license, size = "md" }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  if (!hasPermission("Edit Licenses") && !open) return null;
-
   const [organization, setOrganization] = useState(license.organization);
   const [plan, setPlan] = useState(license.plan);
   const [status, setStatus] = useState(license.status);
   const [maxDevices, setMaxDevices] = useState(license.maxDevices);
   const [notes, setNotes] = useState(license.notes ?? "");
   const [expiresAt, setExpiresAt] = useState(new Date(license.expiresAt).toISOString().split("T")[0]);
+
+  const hasPermissionToEdit = hasPermission("Edit Licenses");
+  if (!hasPermissionToEdit && !open) return null;
 
   const hasChanges = organization !== license.organization || plan !== license.plan || status !== license.status || maxDevices !== license.maxDevices || notes !== (license.notes ?? "") || expiresAt !== new Date(license.expiresAt).toISOString().split("T")[0];
 
@@ -149,7 +149,8 @@ export default function EditLicenseButton({ license, size = "md" }: Props) {
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {PLANS.map((p) => (
                       <button key={p} type="button" onClick={() => setPlan(p)}
-                        className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${plan === p ? "border-blue-500 bg-blue-500/10 text-blue-400" : "border-zinc-700 text-zinc-400 hover:border-zinc-600"}`}>
+                        className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${plan === p ? "border-blue-500 bg-blue-500/10 text-blue-400" : "border-zinc-700 text-zinc-400 hover:border-zinc-600"}`}
+                      >
                         {p}
                       </button>
                     ))}
