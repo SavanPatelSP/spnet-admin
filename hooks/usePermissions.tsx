@@ -34,12 +34,8 @@ async function checkPermissionVersion(): Promise<{
 }
 
 export function PermissionProvider({ permissions: initialPermissions, children }: { permissions: string[]; children: ReactNode }) {
-  const [permissions, setPermissions] = useState(initialPermissions);
+  const [permissions, setPermissions] = useState<string[]>(initialPermissions);
   const router = useRouter();
-
-  useEffect(() => {
-    setPermissions(initialPermissions);
-  }, [initialPermissions]);
 
   useEffect(() => {
     let mounted = true;
