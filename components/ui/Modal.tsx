@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/shared";
 
@@ -24,13 +24,20 @@ const sizeStyles = {
 
 export function Modal({ open, onClose, title, description, children, footer, size = "md", className }: ModalProps) {
   const [visible, setVisible] = useState(false);
+  const frameIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (open) {
-      requestAnimationFrame(() => setVisible(true));
+      frameIdRef.current = requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
     }
+
+    return () => {
+      if (frameIdRef.current !== null) {
+        cancelAnimationFrame(frameIdRef.current);
+      }
+    };
   }, [open]);
 
   const handleKeyDown = useCallback(
