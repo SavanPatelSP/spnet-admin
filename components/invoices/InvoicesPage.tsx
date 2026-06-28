@@ -11,8 +11,7 @@ import { formatDateTime, formatPrice } from "@/lib/shared";
 import { API_ROUTES } from "@/lib/constants";
 import {
   RefreshCw, Trash2, CheckCircle, Clock, AlertCircle, XCircle, RotateCcw,
-  FileText, Eye, Search, TrendingUp, DollarSign, FileSpreadsheet, Printer,
-  Share2, Archive, Filter, ChevronLeft, ChevronRight,
+  FileText, Eye, Search, TrendingUp, DollarSign, Archive, Filter, ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 interface Invoice {
