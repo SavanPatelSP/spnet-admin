@@ -76,7 +76,9 @@ export function NotificationCenter({ memberId, initialUnread, initialTotal }: { 
     } catch {}
   }, []);
 
-  useEffect(() => { fetchNotifs(page, category); }, [page, category, fetchNotifs]);
+  useEffect(() => {
+    fetchNotifs(page, category);
+  }, [page, category, fetchNotifs]);
 
   const markRead = useCallback(async (id: string) => {
     try {
