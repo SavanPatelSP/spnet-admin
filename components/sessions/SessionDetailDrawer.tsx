@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatDateTime, parseUA, formatPrice } from "@/lib/shared";
+import { formatDateTime, parseUA } from "@/lib/shared";
 import { cn } from "@/lib/shared";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   X, User, Monitor, Smartphone, Globe, Clock, Shield,
-  MapPin, Activity, AlertTriangle, ChevronRight, FileText,
-  Fingerprint, Network, Terminal, Calendar, Cpu,
-  RefreshCw, Crown, LogOut, ArrowUpCircle, Eye, ExternalLink, Timer,
+  MapPin, Activity, AlertTriangle, Fingerprint, Network, Terminal, Calendar, Cpu,
+  RefreshCw, Crown, LogOut, ArrowUpCircle, Eye, ExternalLink,
 } from "lucide-react";
 import { SessionLiveCountdown, SessionOverrideStatus, SessionCooldownStatus } from "./SessionLiveCountdown";
 
@@ -78,12 +77,7 @@ function Badge({ label, color }: { label: string; color: "green" | "yellow" | "r
 export function SessionDetailDrawer({ session, onClose, onExtend, onOverride, onForceLogout }: Props) {
   const router = useRouter();
   const [now, setNow] = useState<number>(() => Date.now());
-  const [liveExpiresAt, setLiveExpiresAt] = useState(session.expiresAt);
-
-  // Sync liveExpiresAt whenever session prop changes (e.g. after re-open)
-  useEffect(() => {
-    setLiveExpiresAt(session.expiresAt);
-  }, [session.id, session.expiresAt]);
+  const [liveExpiresAt, setLiveExpiresAt] = useState<Date>(session.expiresAt);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -99,6 +93,11 @@ export function SessionDetailDrawer({ session, onClose, onExtend, onOverride, on
       window.removeEventListener("session-updated", onSessionUpdated);
     };
   }, [session.id]);
+
+  // Update liveExpiresAt only when session.expiresAt changes, not on every render
+  useEffect(() => {
+    setLiveExpiresAt(session.expiresAt);
+  }, [session.expiresAt]);
 
   const parsed = useMemo(() => session.userAgent ? parseUA(session.userAgent) : null, [session.userAgent]);
   const isActive = liveExpiresAt.getTime() > now;
@@ -193,7 +192,7 @@ export function SessionDetailDrawer({ session, onClose, onExtend, onOverride, on
                   <InfoRow label="Email" value={session.teamMember?.email || "Not Available"} icon={<Terminal size={12} />} />
                 </div>
                 {session.teamMember?.role?.name && (
-                  <InfoRow label="Role" value={<Badge label={session.teamMember.role.name} color={session.teamMember.role.name === "OWNER" ? "red" : session.teamMember.role.name === "SUPER_ADMIN" ? "purple" : "blue"} />} icon={<Shield size={12} />} />
+                  <InfoRow label="Role" value={<Badge label={session.teamMember.role.name} color={session.teamMember.role.name === "OWNER" ? "red" : session.teamMember.role.name === "SUPER_ADMIN" ? "purple" : "blue"} />} />
                 )}
               </Section>
 
@@ -230,8 +229,8 @@ export function SessionDetailDrawer({ session, onClose, onExtend, onOverride, on
                   <InfoRow label="Expires" value={formatDateTime(liveExpiresAt)} icon={<Clock size={12} />} />
                   <InfoRow label="Remaining" value={<SessionLiveCountdown expiresAt={liveExpiresAt.toISOString()} />} icon={<Clock size={12} />} />
                   <InfoRow label="Status" value={<Badge label={isActive ? "Active" : "Expired"} color={isActive ? "green" : "zinc"} />} icon={<Activity size={12} />} />
-                  <InfoRow label="Override" value={<SessionOverrideStatus overrideDurationMinutes={session.overrideDurationMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} expiresAt={session.expiresAt.toISOString()} />} icon={<Crown size={12} />} />
-                  <InfoRow label="Cooldown" value={<SessionCooldownStatus overrideCooldownMinutes={session.overrideCooldownMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} />} icon={<Timer size={12} />} />
+                  <InfoRow label="Override" value={<SessionOverrideStatus overrideDurationMinutes={session.overrideDurationMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} />} />
+                  <InfoRow label="Cooldown" value={<SessionCooldownStatus overrideCooldownMinutes={session.overrideCooldownMinutes} lastOverrideAt={session.lastOverrideAt?.toISOString() || null} />} />
                 </div>
               </Section>
 
@@ -285,7 +284,7 @@ export function SessionDetailDrawer({ session, onClose, onExtend, onOverride, on
           {/* Footer */}
           <div className="border-t border-zinc-800 px-5 py-3">
             <div className="flex items-center gap-2 text-[10px] text-zinc-600">
-              <FileText size={10} />
+              <Eye size={10} />
               Session data captured at login. Device metadata via User-Agent parsing.
             </div>
           </div>
@@ -296,5 +295,5 @@ export function SessionDetailDrawer({ session, onClose, onExtend, onOverride, on
 }
 
 function Key(props: { size?: number }) {
-  return <svg width={props.size || 12} height={props.size || 12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4a5 5 0 1 1-3.12 8.85L8 15l-2-2 2.15-2.15A5 5 0 0 1 15 4z"/><line x1="8" y1="15" x2="6" y2="17"/><line x1="10" y1="17" x2="8" y2="19"/></svg>;
+  return <svg width={props.size || 12} height={props.size || 12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/><path d="M5.821 15.5A6 6 0 0 1 15 12a6 6 0 0 1 0 12H2c-1.105 0-2-.895-2-2v-5a2 2 0 0 1 2-2h15.821z"/></svg>;
 }
